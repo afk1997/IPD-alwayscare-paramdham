@@ -1,34 +1,36 @@
+import { getCachedTodayCounts } from '@/features/animals/queries';
 import { ThemeSwitcher } from '@/features/settings/components/ThemeSwitcher';
 import { getThemeFromCookie } from '@/lib/theme';
-import { Activity, AlertTriangle, ArrowUpRight, Scissors, Skull } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowUpRight, Skull } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cookies } from 'next/headers';
 
-type Tone = 'accent' | 'neutral' | 'stable' | 'critical';
+type Tone = 'accent' | 'neutral' | 'stable' | 'critical' | 'observation';
 
 interface Tile {
   label: string;
-  value: string;
+  value: string | number;
   icon: LucideIcon;
   tone: Tone;
 }
-
-const tiles: Tile[] = [
-  { label: 'Admissions today', value: '—', icon: ArrowUpRight, tone: 'accent' },
-  { label: 'Surgeries today', value: '—', icon: Scissors, tone: 'neutral' },
-  { label: 'Discharges today', value: '—', icon: Activity, tone: 'stable' },
-  { label: 'Deaths today', value: '—', icon: Skull, tone: 'critical' },
-];
 
 const toneClasses: Record<Tone, string> = {
   accent: 'bg-accent-soft text-accent-ink',
   neutral: 'bg-surface-2 text-text',
   stable: 'bg-stable-bg text-stable',
   critical: 'bg-critical-bg text-critical',
+  observation: 'bg-observation-bg text-observation',
 };
 
 export async function TodayDashboard() {
-  const theme = getThemeFromCookie(await cookies());
+  const [theme, counts] = await Promise.all([cookies().then(getThemeFromCookie), getCachedTodayCounts()]);
+
+  const tiles: Tile[] = [
+    { label: 'Admissions today', value: counts.admissionsToday, icon: ArrowUpRight, tone: 'accent' },
+    { label: 'Critical now', value: counts.critical, icon: AlertTriangle, tone: 'observation' },
+    { label: 'Discharges today', value: counts.dischargesToday, icon: Activity, tone: 'stable' },
+    { label: 'Deaths today', value: counts.deathsToday, icon: Skull, tone: 'critical' },
+  ];
 
   return (
     <div className="flex flex-col gap-6">

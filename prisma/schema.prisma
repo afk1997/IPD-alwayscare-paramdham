@@ -13,6 +13,43 @@ enum Role {
   ADMIN
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum Vaccination {
+  DONE
+  PARTIAL
+  NONE
+  NA
+}
+
+enum AnimalStatus {
+  CRITICAL
+  STABLE
+  OBSERVATION
+  DISCHARGED
+  DECEASED
+}
+
+enum TestKind {
+  XRAY
+  USG
+  BLOOD_TEST
+  MRI
+  CT_SCAN
+  SONOGRAPHY
+}
+
+enum MediaKind {
+  PHOTO
+  VIDEO
+  XRAY
+  DOC
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
@@ -27,10 +64,13 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  invitedBy User?     @relation("UserInvites", fields: [invitedById], references: [id])
-  invitees  User[]    @relation("UserInvites")
-  sessions  Session[]
-  accounts  Account[]
+  invitedBy      User?        @relation("UserInvites", fields: [invitedById], references: [id])
+  invitees       User[]       @relation("UserInvites")
+  sessions       Session[]
+  accounts       Account[]
+  createdAnimals Animal[]     @relation("AnimalCreatedBy")
+  uploads        MediaAsset[] @relation("MediaUploadedBy")
+  auditLogs      AuditLog[]   @relation("AuditActor")
 
   @@index([role, active])
 }
@@ -70,4 +110,107 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Animal {
+  id              String       @id @default(cuid())
+  name            String
+  species         String
+  breed           String?
+  gender          Gender?
+  ageText         String?
+  color           String?
+  weightKg        Decimal?     @db.Decimal(7, 2)
+  vaccination     Vaccination  @default(NONE)
+  sterilized      Boolean      @default(false)
+  aggressive      Boolean      @default(false)
+  rescuer         String?
+  rescuerPhone    String?
+  address         String?
+  ngo             String?
+  broughtBy       String?
+  admittedAt      DateTime     @default(now())
+  complaint       String?
+  injuryType      String?
+  history         String?
+  diagnosis       String?
+  surgeryRequired String?
+  contagious      Boolean      @default(false)
+  status          AnimalStatus @default(OBSERVATION)
+  ward            String?
+  dischargedAt    DateTime?
+  deceasedAt      DateTime?
+  createdById     String
+  createdBy       User         @relation("AnimalCreatedBy", fields: [createdById], references: [id])
+  editedAt        DateTime?
+  editedById      String?
+  deletedAt       DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  testsAdvised AnimalTest[]
+  media        AnimalMedia[]
+
+  @@index([status, admittedAt])
+  @@index([admittedAt])
+  @@index([species])
+  @@index([deletedAt])
+}
+
+model AnimalTest {
+  id       String   @id @default(cuid())
+  animalId String
+  animal   Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  test     TestKind
+
+  @@unique([animalId, test])
+}
+
+model MediaAsset {
+  id           String    @id @default(cuid())
+  kind         MediaKind
+  filename     String
+  mimeType     String
+  size         Int
+  storageKey   String
+  width        Int?
+  height       Int?
+  durationSec  Int?
+  uploadedById String
+  uploadedBy   User      @relation("MediaUploadedBy", fields: [uploadedById], references: [id])
+  createdAt    DateTime  @default(now())
+
+  animalMedia AnimalMedia[]
+
+  @@index([uploadedById, createdAt])
+}
+
+model AnimalMedia {
+  id        String     @id @default(cuid())
+  animalId  String
+  animal    Animal     @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  assetId   String
+  asset     MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  label     String?
+  order     Int        @default(0)
+  source    String     @default("admission")
+  createdAt DateTime   @default(now())
+
+  @@index([animalId, order])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation("AuditActor", fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  context    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
 }
