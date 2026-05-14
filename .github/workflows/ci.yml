@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: arham
+          POSTGRES_PASSWORD: arham_dev
+          POSTGRES_DB: arham_ipd
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U arham -d arham_ipd"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://arham:arham_dev@localhost:5432/arham_ipd?schema=public
+      AUTH_SECRET: ci-secret-for-build-only-not-real
+      AUTH_URL: http://localhost:3000
+      STORAGE_DRIVER: local
+      LOCAL_UPLOAD_DIR: ./uploads
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm run test
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: |
+          echo "DATABASE_URL=$DATABASE_URL" > .env.local
+          echo "AUTH_SECRET=$AUTH_SECRET" >> .env.local
+          echo "AUTH_URL=$AUTH_URL" >> .env.local
+          echo "STORAGE_DRIVER=$STORAGE_DRIVER" >> .env.local
+          echo "LOCAL_UPLOAD_DIR=$LOCAL_UPLOAD_DIR" >> .env.local
+          echo "NODE_ENV=development" >> .env.local
+      - run: pnpm run db:seed
+      - run: pnpm exec playwright test
