@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+[data-theme='clinical'] {
+  --bg: 245 248 250;
+  --paper: 255 255 255;
+  --paper-2: 240 244 247;
+  --line: 226 232 238;
+  --text: 15 27 38;
+  --muted: 91 107 122;
+  --soft: 144 160 176;
+
+  --accent: 14 124 123;
+  --accent-soft: 214 238 238;
+  --accent-ink: 10 93 92;
+  --accent-fg: 255 255 255;
+
+  --critical: 180 35 24;
+  --critical-bg: 254 228 226;
+  --stable: 6 118 71;
+  --stable-bg: 220 250 230;
+  --observation: 147 55 13;
+  --observation-bg: 254 240 199;
+
+  --header-bg: 255 255 255;
+  --surface: 255 255 255;
+  --surface-2: 240 244 247;
+}
+
+[data-theme='warm'] {
+  --bg: 252 247 242;
+  --paper: 255 255 255;
+  --paper-2: 248 240 232;
+  --line: 232 220 208;
+  --text: 41 27 18;
+  --muted: 122 96 78;
+  --soft: 176 152 130;
+
+  --accent: 181 71 26;
+  --accent-soft: 246 226 210;
+  --accent-ink: 122 47 17;
+  --accent-fg: 255 255 255;
+
+  --critical: 180 35 24;
+  --critical-bg: 254 228 226;
+  --stable: 6 118 71;
+  --stable-bg: 220 250 230;
+  --observation: 147 55 13;
+  --observation-bg: 254 240 199;
+
+  --header-bg: 255 255 255;
+  --surface: 255 255 255;
+  --surface-2: 248 240 232;
+}
+
+[data-theme='utility'] {
+  --bg: 11 15 20;
+  --paper: 22 28 36;
+  --paper-2: 30 38 48;
+  --line: 46 56 70;
+  --text: 232 238 246;
+  --muted: 153 166 183;
+  --soft: 110 124 142;
+
+  --accent: 91 228 155;
+  --accent-soft: 26 50 41;
+  --accent-ink: 200 246 220;
+  --accent-fg: 11 15 20;
+
+  --critical: 248 113 113;
+  --critical-bg: 60 28 28;
+  --stable: 134 239 172;
+  --stable-bg: 22 50 36;
+  --observation: 251 191 36;
+  --observation-bg: 50 38 12;
+
+  --header-bg: 22 28 36;
+  --surface: 22 28 36;
+  --surface-2: 30 38 48;
+}
+
+html,
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--text));
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[data-density='compact'] {
+  --space-y: 0.5rem;
+}
+
+[data-density='comfortable'] {
+  --space-y: 0.75rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
