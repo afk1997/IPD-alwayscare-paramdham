@@ -1,3 +1,4 @@
+import { GoogleDriveStorage } from './gdrive';
 import { LocalDiskStorage } from './local';
 
 export interface PutResult {
@@ -24,5 +25,16 @@ export function getStorage(): FileStorage {
     cached = new LocalDiskStorage(process.env.LOCAL_UPLOAD_DIR ?? './uploads');
     return cached;
   }
+  if (driver === 'gdrive') {
+    cached = new GoogleDriveStorage(
+      process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '',
+      process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '',
+    );
+    return cached;
+  }
   throw new Error(`Unsupported STORAGE_DRIVER: ${driver}`);
+}
+
+export function resetStorageForTests(): void {
+  cached = null;
 }
