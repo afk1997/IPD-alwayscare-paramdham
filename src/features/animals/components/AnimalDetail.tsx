@@ -1,8 +1,10 @@
-import { EmptyState } from '@/components/ui/EmptyState';
+import { ActivityTimeline } from '@/features/activities/components/ActivityTimeline';
+import { listActivitiesForAnimal } from '@/features/activities/queries';
 import { Activity, FileText, Info } from 'lucide-react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getAnimal } from '../queries';
+import { AnimalDetailActions } from './AnimalDetailActions';
 import { FreshnessIndicator } from './FreshnessIndicator';
 import { StatusBadge } from './StatusBadge';
 
@@ -20,8 +22,9 @@ interface Props {
 }
 
 export async function AnimalDetail({ animalId }: Props) {
-  const animal = await getAnimal(animalId);
+  const [animal, activities] = await Promise.all([getAnimal(animalId), listActivitiesForAnimal(animalId)]);
   if (!animal) notFound();
+  const lastActivityAt = activities[0]?.occurredAt ?? null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,9 +59,10 @@ export async function AnimalDetail({ animalId }: Props) {
               {animal.weightKg ? ` · ${String(animal.weightKg)}kg` : ''}
             </div>
             <div className="mt-2">
-              <FreshnessIndicator lastActivityAt={null} />
+              <FreshnessIndicator lastActivityAt={lastActivityAt} />
             </div>
           </div>
+          <AnimalDetailActions animalId={animal.id} />
         </div>
       </div>
 
@@ -134,11 +138,8 @@ export async function AnimalDetail({ animalId }: Props) {
         </DetailSection>
       )}
 
-      <DetailSection icon={Activity} title="Activity">
-        <EmptyState
-          title="No activities yet"
-          description="Log treatments, rounds, food, walks, and other care actions from the New entry button."
-        />
+      <DetailSection icon={Activity} title={`Activity (${activities.length})`}>
+        <ActivityTimeline activities={activities} />
       </DetailSection>
     </div>
   );

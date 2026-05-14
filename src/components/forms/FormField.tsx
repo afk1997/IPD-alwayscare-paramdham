@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 
 interface Props {
   label: string;
@@ -6,17 +6,19 @@ interface Props {
   error?: string | undefined;
   hint?: string | undefined;
   required?: boolean | undefined;
-  children: ReactNode;
+  children: ReactNode | ((id: string) => ReactNode);
 }
 
 export function FormField({ label, htmlFor, error, hint, required, children }: Props) {
+  const autoId = useId();
+  const id = htmlFor ?? autoId;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-sm font-medium text-text">
+      <label htmlFor={id} className="text-sm font-medium text-text">
         {label}
         {required && <span className="ml-1 text-critical">*</span>}
       </label>
-      {children}
+      {typeof children === 'function' ? children(id) : children}
       {error && <div className="text-xs text-critical">{error}</div>}
       {hint && !error && <div className="text-xs text-muted">{hint}</div>}
     </div>

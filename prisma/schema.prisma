@@ -50,6 +50,17 @@ enum MediaKind {
   DOC
 }
 
+enum ActivityType {
+  ADMISSION
+  TREATMENT
+  ROUND
+  DIAGNOSTIC
+  SURGERY
+  FOOD
+  BATH
+  WALK
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
@@ -71,6 +82,8 @@ model User {
   createdAnimals Animal[]     @relation("AnimalCreatedBy")
   uploads        MediaAsset[] @relation("MediaUploadedBy")
   auditLogs      AuditLog[]   @relation("AuditActor")
+  activities     Activity[]   @relation("ActivityBy")
+  activityEdits  Activity[]   @relation("ActivityEditedBy")
 
   @@index([role, active])
 }
@@ -150,11 +163,51 @@ model Animal {
 
   testsAdvised AnimalTest[]
   media        AnimalMedia[]
+  activities   Activity[]
 
   @@index([status, admittedAt])
   @@index([admittedAt])
   @@index([species])
   @@index([deletedAt])
+}
+
+model Activity {
+  id               String       @id @default(cuid())
+  animalId         String
+  animal           Animal       @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  type             ActivityType
+  occurredAt       DateTime     @default(now())
+  byUserId         String?
+  byUser           User?        @relation("ActivityBy", fields: [byUserId], references: [id])
+  byName           String
+  remarks          String?
+  data             Json
+  editedAt         DateTime?
+  editedById       String?
+  editedBy         User?        @relation("ActivityEditedBy", fields: [editedById], references: [id])
+  deletedAt        DateTime?
+  duplicatedFromId String?
+  createdAt        DateTime     @default(now())
+
+  media ActivityMedia[]
+
+  @@index([animalId, occurredAt(sort: Desc)])
+  @@index([type, occurredAt])
+  @@index([occurredAt])
+  @@index([byUserId, occurredAt])
+  @@index([deletedAt])
+}
+
+model ActivityMedia {
+  id         String     @id @default(cuid())
+  activityId String
+  activity   Activity   @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  assetId    String
+  asset      MediaAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  label      String?
+  createdAt  DateTime   @default(now())
+
+  @@index([activityId])
 }
 
 model AnimalTest {
@@ -180,7 +233,8 @@ model MediaAsset {
   uploadedBy   User      @relation("MediaUploadedBy", fields: [uploadedById], references: [id])
   createdAt    DateTime  @default(now())
 
-  animalMedia AnimalMedia[]
+  animalMedia   AnimalMedia[]
+  activityMedia ActivityMedia[]
 
   @@index([uploadedById, createdAt])
 }
