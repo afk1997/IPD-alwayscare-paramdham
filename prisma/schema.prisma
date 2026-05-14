@@ -83,16 +83,18 @@ model User {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  invitedBy      User?        @relation("UserInvites", fields: [invitedById], references: [id])
-  invitees       User[]       @relation("UserInvites")
-  sessions       Session[]
-  accounts       Account[]
-  createdAnimals Animal[]     @relation("AnimalCreatedBy")
-  uploads        MediaAsset[] @relation("MediaUploadedBy")
-  auditLogs      AuditLog[]   @relation("AuditActor")
-  activities     Activity[]   @relation("ActivityBy")
-  activityEdits  Activity[]   @relation("ActivityEditedBy")
-  documentUploads Document[]  @relation("DocumentUploadedBy")
+  invitedBy       User?             @relation("UserInvites", fields: [invitedById], references: [id])
+  invitees        User[]            @relation("UserInvites")
+  sessions        Session[]
+  accounts        Account[]
+  createdAnimals  Animal[]          @relation("AnimalCreatedBy")
+  uploads         MediaAsset[]      @relation("MediaUploadedBy")
+  auditLogs       AuditLog[]        @relation("AuditActor")
+  activities      Activity[]        @relation("ActivityBy")
+  activityEdits   Activity[]        @relation("ActivityEditedBy")
+  documentUploads Document[]        @relation("DocumentUploadedBy")
+  deathRecords    DeathRecord[]     @relation("DeathRecordedBy")
+  discharges      DischargeRecord[] @relation("DischargedBy")
 
   @@index([role, active])
 }
@@ -170,10 +172,12 @@ model Animal {
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  testsAdvised AnimalTest[]
-  media        AnimalMedia[]
-  activities   Activity[]
-  documents    Document[]
+  testsAdvised    AnimalTest[]
+  media           AnimalMedia[]
+  activities      Activity[]
+  documents       Document[]
+  deathRecord     DeathRecord?
+  dischargeRecord DischargeRecord?
 
   @@index([status, admittedAt])
   @@index([admittedAt])
@@ -281,6 +285,30 @@ model AnimalMedia {
   createdAt DateTime   @default(now())
 
   @@index([animalId, order])
+}
+
+model DeathRecord {
+  animalId         String    @id
+  animal           Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  causeOfDeath     String
+  diedAt           DateTime
+  postmortemDoneAt DateTime?
+  bodyHandedOverTo String?
+  bodyHandedOverAt DateTime?
+  recordedById     String
+  recordedBy       User      @relation("DeathRecordedBy", fields: [recordedById], references: [id])
+  createdAt        DateTime  @default(now())
+}
+
+model DischargeRecord {
+  animalId       String   @id
+  animal         Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  summary        String
+  instructions   String?
+  dischargedAt   DateTime
+  dischargedById String
+  dischargedBy   User     @relation("DischargedBy", fields: [dischargedById], references: [id])
+  createdAt      DateTime @default(now())
 }
 
 model AuditLog {

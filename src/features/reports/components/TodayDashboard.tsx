@@ -4,6 +4,7 @@ import { getThemeFromCookie } from '@/lib/theme';
 import { Activity, AlertTriangle, ArrowUpRight, Skull } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cookies } from 'next/headers';
+import { NeedsAttention } from './NeedsAttention';
 
 type Tone = 'accent' | 'neutral' | 'stable' | 'critical' | 'observation';
 
@@ -64,7 +65,7 @@ export async function TodayDashboard() {
           <AlertTriangle size={16} className="text-observation" />
           <h2 className="font-display text-base font-bold">Needs attention</h2>
         </div>
-        <p className="text-sm text-muted">No data yet — admit your first patient to see this populate.</p>
+        <NeedsAttention />
       </div>
     </div>
   );
