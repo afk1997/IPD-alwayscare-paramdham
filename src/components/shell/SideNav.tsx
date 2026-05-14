@@ -1,5 +1,5 @@
 'use client';
-import { CalendarRange, FileText, Home, PawPrint, Plus, Users } from 'lucide-react';
+import { CalendarRange, FileText, History, Home, PawPrint, Plus, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -18,7 +18,10 @@ const nav: NavItem[] = [
   { href: '/documents', label: 'Documents', icon: FileText },
 ];
 
-const adminNav: NavItem[] = [{ href: '/admin/users', label: 'Users', icon: Users }];
+const adminNav: NavItem[] = [
+  { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/audit-log', label: 'Audit log', icon: History },
+];
 
 interface Props {
   isAdmin: boolean;
