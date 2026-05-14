@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root,
-[data-theme='clinical'] {
+[data-theme="clinical"] {
   --bg: 245 248 250;
   --paper: 255 255 255;
   --paper-2: 240 244 247;
@@ -29,7 +29,7 @@
   --surface-2: 240 244 247;
 }
 
-[data-theme='warm'] {
+[data-theme="warm"] {
   --bg: 252 247 242;
   --paper: 255 255 255;
   --paper-2: 248 240 232;
@@ -55,7 +55,7 @@
   --surface-2: 248 240 232;
 }
 
-[data-theme='utility'] {
+[data-theme="utility"] {
   --bg: 11 15 20;
   --paper: 22 28 36;
   --paper-2: 30 38 48;
@@ -92,11 +92,11 @@ body {
   box-sizing: border-box;
 }
 
-[data-density='compact'] {
+[data-density="compact"] {
   --space-y: 0.5rem;
 }
 
-[data-density='comfortable'] {
+[data-density="comfortable"] {
   --space-y: 0.75rem;
 }
 
