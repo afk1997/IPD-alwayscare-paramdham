@@ -61,6 +61,14 @@ enum ActivityType {
   WALK
 }
 
+enum DocCategory {
+  MEDICAL
+  DIAGNOSTICS
+  CONSENT
+  OWNERSHIP
+  DEATH
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
@@ -84,6 +92,7 @@ model User {
   auditLogs      AuditLog[]   @relation("AuditActor")
   activities     Activity[]   @relation("ActivityBy")
   activityEdits  Activity[]   @relation("ActivityEditedBy")
+  documentUploads Document[]  @relation("DocumentUploadedBy")
 
   @@index([role, active])
 }
@@ -164,6 +173,7 @@ model Animal {
   testsAdvised AnimalTest[]
   media        AnimalMedia[]
   activities   Activity[]
+  documents    Document[]
 
   @@index([status, admittedAt])
   @@index([admittedAt])
@@ -210,6 +220,25 @@ model ActivityMedia {
   @@index([activityId])
 }
 
+model Document {
+  id           String      @id @default(cuid())
+  animalId     String
+  animal       Animal      @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  category     DocCategory
+  kind         String
+  name         String
+  fileId       String?
+  file         MediaAsset? @relation("DocumentFile", fields: [fileId], references: [id])
+  uploadedById String
+  uploadedBy   User        @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  createdAt    DateTime    @default(now())
+  deletedAt    DateTime?
+
+  @@index([animalId, category])
+  @@index([category, createdAt])
+  @@index([deletedAt])
+}
+
 model AnimalTest {
   id       String   @id @default(cuid())
   animalId String
@@ -235,6 +264,7 @@ model MediaAsset {
 
   animalMedia   AnimalMedia[]
   activityMedia ActivityMedia[]
+  documents     Document[]      @relation("DocumentFile")
 
   @@index([uploadedById, createdAt])
 }

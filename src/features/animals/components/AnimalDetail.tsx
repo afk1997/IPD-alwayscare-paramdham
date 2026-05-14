@@ -1,5 +1,8 @@
 import { ActivityTimeline } from '@/features/activities/components/ActivityTimeline';
 import { listActivitiesForAnimal } from '@/features/activities/queries';
+import { DocumentList } from '@/features/documents/components/DocumentList';
+import { DocumentUploadDialog } from '@/features/documents/components/DocumentUploadDialog';
+import { listDocumentsForAnimal } from '@/features/documents/queries';
 import { Activity, FileText, Info } from 'lucide-react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -22,7 +25,11 @@ interface Props {
 }
 
 export async function AnimalDetail({ animalId }: Props) {
-  const [animal, activities] = await Promise.all([getAnimal(animalId), listActivitiesForAnimal(animalId)]);
+  const [animal, activities, documents] = await Promise.all([
+    getAnimal(animalId),
+    listActivitiesForAnimal(animalId),
+    listDocumentsForAnimal(animalId),
+  ]);
   if (!animal) notFound();
   const lastActivityAt = activities[0]?.occurredAt ?? null;
 
@@ -141,6 +148,17 @@ export async function AnimalDetail({ animalId }: Props) {
       <DetailSection icon={Activity} title={`Activity (${activities.length})`}>
         <ActivityTimeline activities={activities} />
       </DetailSection>
+
+      <section className="rounded-lg border border-line bg-paper p-5">
+        <header className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <FileText size={16} className="text-muted" />
+            <h2 className="font-display text-base font-bold">Documents ({documents.length})</h2>
+          </div>
+          <DocumentUploadDialog animalId={animal.id} />
+        </header>
+        <DocumentList documents={documents} />
+      </section>
     </div>
   );
 }
