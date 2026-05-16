@@ -5,7 +5,7 @@ import type { Actor } from '@/lib/rbac';
 import { revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { type CreateAnimalInput, CreateAnimalSchema } from './schema';
-import { createAnimal } from './service';
+import { type UpdateAnimalPatch, createAnimal, updateAnimal } from './service';
 
 async function requireActor(): Promise<Actor> {
   const user = await getCurrentUser();
@@ -38,4 +38,27 @@ export async function createAnimalAction(input: CreateAnimalInput): Promise<Admi
     throw e;
   }
   redirect(`/patients/${animalId}`);
+}
+
+export interface UpdateAnimalActionResult {
+  ok: boolean;
+  error?: string;
+}
+
+export async function updateAnimalAction(
+  animalId: string,
+  patch: UpdateAnimalPatch,
+): Promise<UpdateAnimalActionResult> {
+  try {
+    const actor = await requireActor();
+    await updateAnimal(actor, animalId, patch);
+    revalidateTag('animals');
+    revalidateTag(`animal:${animalId}`);
+    revalidateTag('today-counts');
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof RbacError) return { ok: false, error: e.message };
+    if (e instanceof ValidationError) return { ok: false, error: e.message };
+    throw e;
+  }
 }

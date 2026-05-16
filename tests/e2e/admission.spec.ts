@@ -42,6 +42,9 @@ test('admit a new animal end-to-end', async ({ page }) => {
   await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 15_000 });
   await expect(page.getByText('TestBruno').first()).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('Hit by vehicle')).toBeVisible();
+
+  // Switch to Details tab to verify diagnosis
+  await page.getByRole('button', { name: /^Details$/ }).click();
   await expect(page.getByText('Suspected femur fracture')).toBeVisible();
 });
 

@@ -49,6 +49,71 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
   });
 }
 
+export async function updateActivity(
+  actor: ActivityActor,
+  activityId: string,
+  patch: { remarks?: string | null; data?: unknown },
+) {
+  const before = await prisma.activity.findUnique({ where: { id: activityId } });
+  if (!before) throw new NotFoundError('Activity', activityId);
+
+  const owns = before.byUserId === actor.id;
+  const withinWindow = Date.now() - new Date(before.createdAt).getTime() < 24 * 60 * 60 * 1000;
+  const canEditAny = can(actor, 'activity.update.any');
+  if (!canEditAny && !(owns && withinWindow)) throw new RbacError('activity.update');
+
+  const updateData: Prisma.ActivityUpdateInput = {
+    editedAt: new Date(),
+    editedBy: { connect: { id: actor.id } },
+  };
+  if (patch.remarks !== undefined) updateData.remarks = patch.remarks;
+  if (patch.data !== undefined) updateData.data = patch.data as Prisma.InputJsonValue;
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.activity.update({
+      where: { id: activityId },
+      data: updateData,
+    });
+    await writeAuditLog(tx, {
+      actorId: actor.id,
+      action: 'update',
+      entityType: 'Activity',
+      entityId: activityId,
+      before: { remarks: before.remarks, data: before.data as Prisma.InputJsonValue },
+      after: { remarks: updated.remarks, data: updated.data as Prisma.InputJsonValue },
+    });
+    return updated;
+  });
+}
+
+export async function duplicateActivity(actor: ActivityActor, activityId: string) {
+  const original = await prisma.activity.findUnique({ where: { id: activityId } });
+  if (!original) throw new NotFoundError('Activity', activityId);
+  assertCan(actor, requiredAction(original.type) as 'activity.create' | 'activity.create.clinical');
+
+  return prisma.$transaction(async (tx) => {
+    const created = await tx.activity.create({
+      data: {
+        animalId: original.animalId,
+        type: original.type,
+        byUserId: actor.id,
+        byName: actor.name,
+        remarks: original.remarks,
+        data: original.data as Prisma.InputJsonValue,
+        duplicatedFromId: original.id,
+      },
+    });
+    await writeAuditLog(tx, {
+      actorId: actor.id,
+      action: 'create',
+      entityType: 'Activity',
+      entityId: created.id,
+      after: { type: created.type, duplicatedFromId: original.id },
+    });
+    return created;
+  });
+}
+
 export async function softDeleteActivity(actor: Actor, activityId: string) {
   const activity = await prisma.activity.findUnique({ where: { id: activityId } });
   if (!activity) throw new NotFoundError('Activity', activityId);

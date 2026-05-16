@@ -53,6 +53,12 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
         orderBy: { order: 'asc' },
         select: { asset: { select: { storageKey: true } } },
       },
+      activities: {
+        take: 1,
+        orderBy: { occurredAt: 'desc' },
+        where: { deletedAt: null },
+        select: { occurredAt: true },
+      },
     },
   });
 
@@ -66,7 +72,7 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
     contagious: r.contagious,
     aggressive: r.aggressive,
     admittedAt: r.admittedAt,
-    lastActivityAt: null,
+    lastActivityAt: r.activities[0]?.occurredAt ?? null,
     thumbnailKey: r.media[0]?.asset.storageKey ?? null,
   }));
 }

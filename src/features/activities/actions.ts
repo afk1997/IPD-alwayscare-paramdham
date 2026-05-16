@@ -3,7 +3,13 @@ import { getCurrentUser } from '@/lib/auth';
 import { RbacError } from '@/lib/errors';
 import { revalidateTag } from 'next/cache';
 import { type CreateActivityInput, CreateActivitySchema } from './schema';
-import { type ActivityActor, createActivity, softDeleteActivity } from './service';
+import {
+  type ActivityActor,
+  createActivity,
+  duplicateActivity,
+  softDeleteActivity,
+  updateActivity,
+} from './service';
 
 async function requireActor(): Promise<ActivityActor> {
   const user = await getCurrentUser();
@@ -44,6 +50,41 @@ export async function deleteActivityAction(
     await softDeleteActivity(actor, activityId);
     revalidateTag(`animal:${animalId}:activities`);
     return { ok: true };
+  } catch (e) {
+    if (e instanceof RbacError) return { ok: false, error: e.message };
+    throw e;
+  }
+}
+
+export async function updateActivityAction(
+  activityId: string,
+  animalId: string,
+  patch: { remarks?: string | null; data?: unknown },
+): Promise<ActivityActionResult> {
+  try {
+    const actor = await requireActor();
+    const updated = await updateActivity(actor, activityId, patch);
+    revalidateTag(`animal:${animalId}:activities`);
+    return { ok: true, activityId: updated.id };
+  } catch (e) {
+    if (e instanceof RbacError) return { ok: false, error: e.message };
+    if (e && typeof e === 'object' && 'issues' in e) {
+      const z = e as { issues?: Array<{ message?: string }> };
+      return { ok: false, error: z.issues?.[0]?.message ?? 'Invalid input' };
+    }
+    throw e;
+  }
+}
+
+export async function duplicateActivityAction(
+  activityId: string,
+  animalId: string,
+): Promise<ActivityActionResult> {
+  try {
+    const actor = await requireActor();
+    const created = await duplicateActivity(actor, activityId);
+    revalidateTag(`animal:${animalId}:activities`);
+    return { ok: true, activityId: created.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     throw e;
