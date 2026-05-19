@@ -9,11 +9,12 @@ interface Props<T extends string> {
   value: T;
   options: Option<T>[];
   onChange: (v: T) => void;
+  fill?: boolean;
 }
 
-export function SegmentedTabs<T extends string>({ value, options, onChange }: Props<T>) {
+export function SegmentedTabs<T extends string>({ value, options, onChange, fill = false }: Props<T>) {
   return (
-    <div className="inline-flex rounded-md border border-line bg-paper-2 p-1">
+    <div className={`inline-flex rounded-xl border border-line bg-surface-2 p-1 ${fill ? 'w-full' : ''}`}>
       {options.map((opt) => {
         const isActive = opt.value === value;
         return (
@@ -21,7 +22,7 @@ export function SegmentedTabs<T extends string>({ value, options, onChange }: Pr
             type="button"
             key={opt.value}
             onClick={() => onChange(opt.value)}
-            className={`rounded px-3 py-1.5 text-sm font-medium transition ${
+            className={`${fill ? 'flex-1' : ''} rounded-lg px-3 py-2 text-sm font-semibold transition ${
               isActive ? 'bg-paper text-text shadow-sm' : 'text-muted hover:text-text'
             }`}
           >

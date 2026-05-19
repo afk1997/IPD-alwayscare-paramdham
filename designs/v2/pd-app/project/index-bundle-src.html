@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Arham Always Care — IPD App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  html, body, #root { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color: #0F1B26;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  button, input, select, textarea { font-family: inherit; }
+  /* keyframes for sheet rise */
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  /* hide scrollbars on horizontal chip strips */
+  div::-webkit-scrollbar { display: none; }
+  div { scrollbar-width: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<template id="__bundler_thumbnail" data-bg-color="#0E7C7B">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#0E7C7B"/>
+    <g transform="translate(600 400)" fill="none" stroke="#D6EEEE" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="-130" cy="-70" r="38" fill="#D6EEEE" stroke="none"/>
+      <circle cx="-50" cy="-130" r="38" fill="#D6EEEE" stroke="none"/>
+      <circle cx="50" cy="-130" r="38" fill="#D6EEEE" stroke="none"/>
+      <circle cx="130" cy="-70" r="38" fill="#D6EEEE" stroke="none"/>
+      <path d="M-110 70 C-110 0 -50 -30 0 -30 C50 -30 110 0 110 70 C110 130 50 150 0 150 C-50 150 -110 130 -110 70 Z" fill="#D6EEEE" stroke="none"/>
+    </g>
+    <text x="600" y="700" text-anchor="middle" font-family="system-ui, sans-serif" font-size="42" font-weight="600" fill="#D6EEEE" letter-spacing="2">ARHAM ALWAYS CARE</text>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Data layer (vanilla) -->
+<script src="data.js"></script>
+
+<!-- Tweaks panel + iOS frame (both expose to window) -->
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+
+<!-- Icons + shell primitives -->
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+
+<!-- Screens -->
+<script type="text/babel" src="screens-main.jsx"></script>
+<script type="text/babel" src="screens-forms.jsx"></script>
+
+<!-- App entry -->
+<script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

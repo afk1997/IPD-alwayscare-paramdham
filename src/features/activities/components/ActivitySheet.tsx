@@ -1,11 +1,12 @@
 'use client';
+import { Photo } from '@/components/media/Photo';
 import { Button } from '@/components/ui/Button';
-import { Textarea } from '@/components/ui/Textarea';
 import { relativeTime } from '@/lib/time';
 import { Copy, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useTransition } from 'react';
 import { deleteActivityAction, duplicateActivityAction, updateActivityAction } from '../actions';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
+import { ActivityEditFields } from './ActivityEditFields';
 
 export interface ActivitySummary {
   id: string;
@@ -14,9 +15,10 @@ export interface ActivitySummary {
   occurredAt: Date;
   byName: string;
   remarks: string | null;
-  // biome-ignore lint/suspicious/noExplicitAny: server-side data shape is type-erased here
+  // biome-ignore lint/suspicious/noExplicitAny: server-erased shape
   data: any;
   editedAt: Date | null;
+  media: { id: string; assetId: string; label: string | null }[];
 }
 
 interface Props {
@@ -28,16 +30,28 @@ interface Props {
 
 type Mode = 'view' | 'edit' | 'confirmDelete';
 
+const TYPE_COLOR: Record<ActivityType, string> = {
+  ADMISSION: '#0E7C7B',
+  TREATMENT: '#2563EB',
+  ROUND: '#7C3AED',
+  DIAGNOSTIC: '#0891B2',
+  SURGERY: '#B5471A',
+  FOOD: '#15803D',
+  BATH: '#0EA5E9',
+  WALK: '#A16207',
+};
+
 export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   const [mode, setMode] = useState<Mode>('view');
-  const [remarks, setRemarks] = useState('');
+  // biome-ignore lint/suspicious/noExplicitAny: data shape varies per type
+  const [draft, setDraft] = useState<{ remarks: string; data: any }>({ remarks: '', data: {} });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && activity) {
       setMode('view');
-      setRemarks(activity.remarks ?? '');
+      setDraft({ remarks: activity.remarks ?? '', data: cloneDeep(activity.data) });
       setError(null);
     }
   }, [open, activity]);
@@ -46,7 +60,10 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
 
   const save = () => {
     start(async () => {
-      const result = await updateActivityAction(activity.id, activity.animalId, { remarks });
+      const result = await updateActivityAction(activity.id, activity.animalId, {
+        remarks: draft.remarks,
+        data: draft.data,
+      });
       if (result.ok) {
         setMode('view');
         onChanged();
@@ -92,7 +109,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
       className="fixed inset-0 z-40 flex items-end justify-end bg-black/45 md:items-stretch"
       style={{ animation: 'fadeIn 0.15s ease-out' }}
     >
-      {/* biome-ignore lint/a11y/useSemanticElements: nested in a <button> backdrop; HTML <dialog> would create invalid nesting */}
+      {/* biome-ignore lint/a11y/useSemanticElements: nested inside <button> backdrop */}
       <div
         role="dialog"
         aria-modal="true"
@@ -100,71 +117,42 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         className="flex h-[88vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-2xl bg-paper shadow-xl md:h-full md:max-h-none md:rounded-none md:border-l md:border-line"
-        style={{
-          animation:
-            typeof window !== 'undefined' && window.innerWidth < 768
-              ? 'slideUp 0.25s ease-out'
-              : 'slideInLeft 0.22s ease-out',
-        }}
       >
-        <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
-          <div className="flex flex-1 flex-col">
-            <h2 className="font-display text-base font-bold">{ACTIVITY_LABELS[activity.type]}</h2>
-            <p className="text-xs text-muted">
-              {new Date(activity.occurredAt).toLocaleString()} · by {activity.byName}
-              {activity.editedAt && ` · edited ${relativeTime(activity.editedAt)}`}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-paper-2"
-          >
-            <X size={16} />
-          </button>
-        </header>
+        <Header activity={activity} onClose={onClose} />
 
-        <div className="flex-1 overflow-y-auto p-4">
-          {mode === 'view' && <ActivityViewer activity={activity} />}
+        <div className="flex-1 overflow-y-auto">
+          {mode === 'view' && <ActivityView activity={activity} />}
           {mode === 'edit' && (
-            <div className="flex flex-col gap-3">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted">Remarks</div>
-              <Textarea rows={5} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
-              <p className="text-xs text-muted">
-                Detailed field editing per activity type is coming in a later pass — for now you can update
-                remarks.
-              </p>
+            <div className="p-4">
+              <ActivityEditFields type={activity.type} value={draft} onChange={setDraft} />
             </div>
           )}
           {mode === 'confirmDelete' && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 p-5">
               <div className="font-display text-base font-semibold">
                 Delete this {ACTIVITY_LABELS[activity.type].toLowerCase()}?
               </div>
-              <p className="text-sm text-muted">
-                Soft delete — it can be restored from the audit log by an admin.
-              </p>
+              <p className="text-sm text-muted">Soft delete — an admin can restore it from the audit log.</p>
             </div>
           )}
-          {error && <div className="mt-3 text-sm text-critical">{error}</div>}
+          {error && <div className="px-5 py-2 text-sm text-critical">{error}</div>}
         </div>
 
-        <footer className="flex shrink-0 items-center gap-2 border-t border-line p-3">
+        <footer className="flex shrink-0 items-center gap-2 border-t border-line bg-paper p-3">
           {mode === 'view' && (
             <>
-              <Button variant="ghost" size="sm" onClick={() => setMode('edit')} disabled={pending}>
-                <Pencil size={14} />
-                Edit
+              <Button variant="ghost" size="sm" onClick={() => setMode('confirmDelete')} disabled={pending}>
+                <Trash2 size={14} />
+                Delete
               </Button>
               <Button variant="ghost" size="sm" onClick={dup} disabled={pending}>
                 <Copy size={14} />
                 Duplicate
               </Button>
               <div className="flex-1" />
-              <Button variant="danger" size="sm" onClick={() => setMode('confirmDelete')} disabled={pending}>
-                <Trash2 size={14} />
-                Delete
+              <Button size="sm" onClick={() => setMode('edit')} disabled={pending}>
+                <Pencil size={14} />
+                Edit
               </Button>
             </>
           )}
@@ -175,7 +163,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
               </Button>
               <div className="flex-1" />
               <Button size="sm" onClick={save} disabled={pending}>
-                {pending ? 'Saving…' : 'Save'}
+                {pending ? 'Saving…' : 'Save changes'}
               </Button>
             </>
           )}
@@ -196,55 +184,236 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   );
 }
 
-function ActivityViewer({ activity }: { activity: ActivitySummary }) {
-  const data = activity.data as Record<string, unknown> | null;
+function Header({ activity, onClose }: { activity: ActivitySummary; onClose: () => void }) {
+  const color = TYPE_COLOR[activity.type];
   return (
-    <div className="flex flex-col gap-4 text-sm">
-      {data ? renderFields(activity.type, data) : null}
-      {activity.remarks && (
-        <Field label="Remarks">
-          <p>{activity.remarks}</p>
-        </Field>
+    <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3">
+      <div
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+        style={{ background: `${color}1A`, color }}
+      >
+        <span className="h-2.5 w-2.5 rounded-full bg-current" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <h2 className="font-display text-base font-bold">{ACTIVITY_LABELS[activity.type]}</h2>
+        <p className="mt-0.5 text-[11.5px] text-muted">
+          {new Date(activity.occurredAt).toLocaleString()} · by {activity.byName}
+          {activity.editedAt && ` · edited ${relativeTime(activity.editedAt)}`}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close"
+        className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-paper-2"
+      >
+        <X size={16} />
+      </button>
+    </header>
+  );
+}
+
+function ActivityView({ activity }: { activity: ActivitySummary }) {
+  const color = TYPE_COLOR[activity.type];
+  const fields = fieldsFor(activity.type, activity.data ?? {});
+  const meds = (activity.data?.meds ?? []) as Array<{
+    name: string;
+    dose: string;
+    route: string;
+    remarks?: string;
+  }>;
+
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      {activity.media.length > 0 && (
+        <div className="grid gap-2" style={mediaGridStyle(activity.media.length)}>
+          {activity.media.map((m) => (
+            <Photo
+              key={m.id}
+              src={`/api/files/${m.assetId}`}
+              seed={m.assetId}
+              alt={m.label ?? ''}
+              rounded={12}
+              className="aspect-square w-full"
+            />
+          ))}
+        </div>
       )}
+
+      <div
+        className="rounded-xl px-3.5 py-3 text-[14px] font-medium leading-snug"
+        style={{ background: `${color}14`, borderLeft: `3px solid ${color}` }}
+      >
+        {summarize(activity)}
+      </div>
+
+      {activity.type === 'TREATMENT' && meds.length > 0 && (
+        <Section label={`Medicines · ${meds.length}`}>
+          <ul className="overflow-hidden rounded-xl border border-line">
+            {meds.map((m, i) => (
+              <li
+                key={`${m.name}-${m.dose}-${m.route}-${i}`}
+                className={`flex items-center gap-3 px-3 py-2.5 ${i > 0 ? 'border-t border-line' : ''}`}
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft font-bold text-[12px] text-accent-ink">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-[13.5px]">{m.name || '—'}</div>
+                  <div className="text-[12px] text-muted">
+                    {[m.dose, m.route].filter(Boolean).join(' · ')}
+                    {m.remarks ? ` — ${m.remarks}` : ''}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
+
+      {fields.length > 0 && (
+        <Section label="Details">
+          <div className="rounded-xl border border-line">
+            {fields.map((f, i) => (
+              <div key={f.label} className={`px-3 py-2.5 ${i > 0 ? 'border-t border-line' : ''}`}>
+                <div className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted">
+                  {f.label}
+                </div>
+                <div className="mt-1 whitespace-pre-wrap text-[13.5px] text-text">{f.value}</div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {activity.remarks && activity.type !== 'TREATMENT' && (
+        <Section label="Remarks">
+          <p className="text-[13.5px] text-text">{activity.remarks}</p>
+        </Section>
+      )}
+
+      <Section label="Audit">
+        <div className="rounded-xl border border-line">
+          <KV k="Logged by" v={activity.byName} />
+          <KV k="Logged at" v={new Date(activity.occurredAt).toLocaleString()} />
+          {activity.editedAt && <KV k="Last edited" v={relativeTime(activity.editedAt)} />}
+        </div>
+      </Section>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-soft">{label}</div>
-      <div className="mt-1 text-sm text-text">{children}</div>
+      <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.07em] text-muted">{label}</div>
+      {children}
     </div>
   );
 }
 
-function renderFields(type: ActivityType, data: Record<string, unknown>): React.ReactNode {
-  if (type === 'TREATMENT') {
-    const meds = (data.meds ?? []) as Array<{ name: string; dose: string; route: string }>;
-    return (
-      <Field label="Medicines">
-        <ul className="flex flex-col gap-1 font-mono text-xs">
-          {meds.map((m) => (
-            <li key={`${m.name}-${m.dose}-${m.route}`}>
-              {m.name} · {m.dose} · {m.route}
-            </li>
-          ))}
-        </ul>
-      </Field>
-    );
-  }
+function KV({ k, v }: { k: string; v: string }) {
   return (
-    <>
-      {Object.entries(data).map(([k, v]) => {
-        if (v === null || v === undefined || v === '' || v === false) return null;
-        const display = Array.isArray(v) ? v.join(', ') : String(v);
-        return (
-          <Field key={k} label={k}>
-            {display}
-          </Field>
-        );
-      })}
-    </>
+    <div className="flex items-center justify-between gap-3 px-3 py-2.5 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-line">
+      <span className="text-[11.5px] font-semibold uppercase tracking-[0.05em] text-muted">{k}</span>
+      <span className="text-[13px] text-text">{v}</span>
+    </div>
   );
+}
+
+function mediaGridStyle(n: number): React.CSSProperties {
+  if (n === 1) return { gridTemplateColumns: '1fr' };
+  if (n === 2) return { gridTemplateColumns: '1fr 1fr' };
+  return { gridTemplateColumns: 'repeat(3, 1fr)' };
+}
+
+function cloneDeep<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v));
+}
+
+interface DisplayField {
+  label: string;
+  value: string;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: per-type field list builder
+function fieldsFor(type: ActivityType, data: Record<string, unknown>): DisplayField[] {
+  const out: DisplayField[] = [];
+  const push = (label: string, value: unknown) => {
+    if (value === undefined || value === null || value === '' || value === false) return;
+    out.push({ label, value: Array.isArray(value) ? value.join(', ') : String(value) });
+  };
+  if (type === 'ROUND') {
+    push('Temperature', data.temp ? `${data.temp}° F` : null);
+    push('Pain', data.pain);
+    push('Appetite', data.appetite);
+    push('Hydration', data.hydration);
+    push('Wound', data.wound);
+    push('Stool / Urine', data.stool);
+    push('Progress', data.progress);
+    push('Notes', data.notes);
+  } else if (type === 'DIAGNOSTIC') {
+    push('Tests', data.tests);
+    push('Findings', data.findings);
+    push('Interpretation', data.interpretation);
+  } else if (type === 'SURGERY') {
+    push('Surgery', data.surgeryName);
+    push('Surgeon', data.surgeon);
+    push('Anesthesia', data.anesthesia);
+    push('Duration', data.duration);
+    push('Findings', data.findings);
+    push('Complications', data.complications);
+    push('Post-op care', data.postOp);
+  } else if (type === 'FOOD') {
+    push('Food', data.foodType);
+    push('Quantity', data.qty);
+    push('Water', data.water);
+    push('Intake', data.intake);
+    push('Vomiting?', data.vomiting ? 'Yes' : null);
+  } else if (type === 'BATH') {
+    push('Type', data.bathType);
+    push('Grooming by', data.groomingBy);
+    push('Remarks', data.remarks);
+  } else if (type === 'WALK') {
+    push('Duration', data.duration);
+    push('Urination', data.urination ? 'Passed' : null);
+    push('Stool', data.stool ? 'Passed' : null);
+    push('Mobility', data.mobility);
+    push('Movement', data.assisted ? 'Assisted' : 'Independent');
+  } else if (type === 'ADMISSION') {
+    push('Summary', data.summary);
+  }
+  return out;
+}
+
+function summarize(a: ActivitySummary): string {
+  const d = a.data ?? {};
+  if (a.type === 'TREATMENT') {
+    const meds = (d.meds ?? []) as Array<{ name: string; dose: string; route: string }>;
+    return meds.length
+      ? meds.map((m) => `${m.name} ${m.dose} ${m.route}`).join(', ')
+      : (a.remarks ?? 'Treatment given');
+  }
+  if (a.type === 'ADMISSION') return String(d.summary ?? 'Admitted');
+  if (a.type === 'ROUND') {
+    const bits: string[] = [];
+    if (d.temp) bits.push(`Temp ${d.temp}°`);
+    if (d.pain) bits.push(`Pain ${d.pain}`);
+    if (d.progress) bits.push(String(d.progress));
+    return bits.join(' · ') || String(d.notes ?? '—');
+  }
+  if (a.type === 'SURGERY') {
+    return `${String(d.surgeryName ?? '')} (${String(d.duration ?? '')}) — ${String(d.surgeon ?? '')}`;
+  }
+  if (a.type === 'FOOD') {
+    return [d.foodType, d.qty, d.intake, d.vomiting ? 'vomited' : null].filter(Boolean).join(' · ');
+  }
+  if (a.type === 'BATH') return String(d.bathType ?? '—');
+  if (a.type === 'WALK') {
+    return [d.duration, d.mobility, d.assisted ? 'assisted' : 'independent'].filter(Boolean).join(' · ');
+  }
+  if (a.type === 'DIAGNOSTIC') {
+    return `${((d.tests ?? []) as string[]).join(', ')}${d.findings ? ` — ${d.findings}` : ''}`;
+  }
+  return '—';
 }

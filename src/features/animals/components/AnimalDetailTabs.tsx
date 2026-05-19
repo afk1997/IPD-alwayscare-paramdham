@@ -17,6 +17,7 @@ export function AnimalDetailTabs({ activeCount, docCount, feed, info, docs }: Pr
   return (
     <div className="flex flex-col gap-4">
       <SegmentedTabs<Tab>
+        fill
         value={tab}
         onChange={setTab}
         options={[

@@ -66,8 +66,11 @@
     "seed": "tsx prisma/seed.ts"
   },
   "lint-staged": {
-    "*.{ts,tsx}": ["biome format --write", "biome check --write"],
-    "*.{json,md,css}": ["biome format --write"]
+    "*.{ts,tsx}": [
+      "biome format --write --no-errors-on-unmatched",
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "*.{json,md,css}": ["biome format --write --no-errors-on-unmatched"]
   },
   "pnpm": {
     "onlyBuiltDependencies": [

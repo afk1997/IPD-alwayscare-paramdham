@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Arham Always Care — IPD App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body, #root { margin: 0; padding: 0; height: 100%; }
+  body {
+    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    color: #0F1B26;
+    background: #F5F8FA;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font-family: inherit; }
+  /* sheet rise (used by ActivitySheet drawer) */
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes slideRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes slideInLeft { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+  @keyframes modalIn { from { opacity:0; transform: translateY(8px) scale(.98); } to { opacity:1; transform: translateY(0) scale(1); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+  /* hide horizontal scrollbars on chip strips */
+  div::-webkit-scrollbar { height: 0; width: 0; }
+  div { scrollbar-width: none; }
+  /* but allow vertical scrolling in main content area */
+  main > div[style*="overflow: auto"]::-webkit-scrollbar,
+  main > div[style*="overflow:auto"]::-webkit-scrollbar { width: 10px; height: 10px; }
+  main > div { scrollbar-width: thin; scrollbar-color: #c5cdd5 transparent; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<template id="__bundler_thumbnail" data-bg-color="#0E7C7B">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect width="1200" height="800" fill="#0E7C7B"/>
+    <g transform="translate(600 400)" fill="none" stroke="#D6EEEE" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="-130" cy="-70" r="38" fill="#D6EEEE" stroke="none"/>
+      <circle cx="-50" cy="-130" r="38" fill="#D6EEEE" stroke="none"/>
+      <circle cx="50" cy="-130" r="38" fill="#D6EEEE" stroke="none"/>
+      <circle cx="130" cy="-70" r="38" fill="#D6EEEE" stroke="none"/>
+      <path d="M-110 70 C-110 0 -50 -30 0 -30 C50 -30 110 0 110 70 C110 130 50 150 0 150 C-50 150 -110 130 -110 70 Z" fill="#D6EEEE" stroke="none"/>
+    </g>
+    <text x="600" y="700" text-anchor="middle" font-family="system-ui, sans-serif" font-size="42" font-weight="600" fill="#D6EEEE" letter-spacing="2">ARHAM ALWAYS CARE</text>
+  </svg>
+</template>
+
+<script>window.UI_MODE = 'web';</script>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Data layer -->
+<script src="data.js"></script>
+
+<!-- Tweaks panel -->
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<!-- Icons + shell primitives (Header, BottomNav, sheets — all UI-mode-aware) -->
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+
+<!-- Web app chrome (sidebar + topbar) -->
+<script type="text/babel" src="web-shell.jsx"></script>
+
+<!-- Media primitives (Photo placeholders, HeroBanner, MediaStrip, MediaGrid, Lightbox) -->
+<script type="text/babel" src="media.jsx"></script>
+
+<!-- Screens -->
+<script type="text/babel" src="screens-main.jsx"></script>
+<script type="text/babel" src="screens-forms.jsx"></script>
+<script type="text/babel" src="activity-detail.jsx"></script>
+
+<!-- App entry -->
+<script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

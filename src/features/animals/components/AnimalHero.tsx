@@ -1,7 +1,7 @@
+import { Photo } from '@/components/media/Photo';
 import { Chip } from '@/components/ui/Chip';
 import { Pill } from '@/components/ui/Pill';
 import { relativeTime } from '@/lib/time';
-import Image from 'next/image';
 import { StatusBadge } from './StatusBadge';
 
 interface Props {
@@ -28,66 +28,62 @@ interface Props {
   lastActivityAt: Date | null;
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: presentational layout with several conditional fields
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: presentational hero with many conditional rows
 export function AnimalHero({ animal, lastActivityAt }: Props) {
+  const photoSrc = animal.media[0]?.asset.id ? `/api/files/${animal.media[0].asset.id}` : undefined;
+  const stale = !lastActivityAt || Date.now() - new Date(lastActivityAt).getTime() > 6 * 60 * 60 * 1000;
+
   return (
-    <section className="rounded-lg border border-line bg-paper p-5">
+    <section className="rounded-2xl border border-line bg-paper p-5 md:p-6">
       <div className="flex items-start gap-4">
-        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-paper-2 md:h-[62px] md:w-[62px]">
-          {animal.media[0] ? (
-            <Image
-              src={`/api/files/${animal.media[0].asset.id}`}
-              alt={animal.name}
-              fill
-              sizes="64px"
-              className="object-cover"
-              unoptimized
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center font-display text-lg text-muted">
-              {animal.name[0]?.toUpperCase()}
-            </div>
-          )}
-        </div>
+        <Photo
+          seed={animal.id}
+          src={photoSrc}
+          alt={animal.name}
+          rounded={16}
+          className="h-[68px] w-[68px] shrink-0 md:h-[78px] md:w-[78px]"
+        />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-xl font-bold tracking-tight md:text-[22px]">{animal.name}</h1>
+            <h1 className="font-display text-2xl font-extrabold tracking-tight md:text-[26px]">
+              {animal.name}
+            </h1>
             <StatusBadge status={animal.status} />
           </div>
-          <p className="mt-1 text-sm text-muted">
+          <p className="mt-1 text-[13.5px] text-muted">
             {animal.species}
             {animal.breed ? ` · ${animal.breed}` : ''}
-            {animal.gender ? ` · ${animal.gender.toLowerCase()}` : ''}
+            {animal.gender ? ` · ${capitalize(animal.gender)}` : ''}
             {animal.ageText ? ` · ${animal.ageText}` : ''}
           </p>
           {(animal.weightKg || animal.color) && (
-            <p className="text-sm text-muted">
+            <p className="text-[13.5px] text-muted">
               {animal.weightKg ? `${String(animal.weightKg)} kg` : ''}
               {animal.weightKg && animal.color ? ' · ' : ''}
               {animal.color ?? ''}
             </p>
           )}
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
             {animal.ward && <Chip>{animal.ward}</Chip>}
             {animal.contagious && <Pill status="critical">Contagious</Pill>}
             {animal.aggressive && <Pill status="observation">Aggressive</Pill>}
-            <Chip>Vacc: {labelVaccination(animal.vaccination)}</Chip>
+            <Chip>Vacc: {capitalize(animal.vaccination)}</Chip>
           </div>
         </div>
       </div>
 
       {animal.complaint && (
-        <div className="mt-4 rounded-lg bg-surface-2 p-3">
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted">
+        <div className="mt-4 rounded-xl bg-surface-2 px-3.5 py-3">
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.06em] text-muted">
             Chief complaint
           </div>
           <p className="mt-1 text-sm text-text">{animal.complaint}</p>
         </div>
       )}
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3">
         <Stat label="Admitted" value={formatDateTime(animal.admittedAt)} />
-        <Stat label="Last update" value={relativeTime(lastActivityAt)} />
+        <Stat label="Last update" value={relativeTime(lastActivityAt)} tone={stale ? 'warn' : undefined} />
         {animal.rescuer && <Stat label="Rescuer" value={animal.rescuer} />}
         {animal.rescuerPhone && <Stat label="Contact" value={animal.rescuerPhone} />}
       </div>
@@ -95,17 +91,22 @@ export function AnimalHero({ animal, lastActivityAt }: Props) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, tone }: { label: string; value: string; tone?: 'warn' | undefined }) {
   return (
     <div>
-      <div className="text-[10.5px] font-semibold uppercase tracking-[0.05em] text-muted">{label}</div>
-      <div className="mt-0.5 text-sm text-text">{value}</div>
+      <div className="text-[10.5px] font-bold uppercase tracking-[0.05em] text-muted">{label}</div>
+      <div
+        className={`mt-1 text-[13.5px] ${tone === 'warn' ? 'font-semibold text-observation' : 'text-text'}`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
 
-function labelVaccination(v: string): string {
-  return v.charAt(0) + v.slice(1).toLowerCase();
+function capitalize(s: string): string {
+  if (!s) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
 function formatDateTime(d: Date): string {

@@ -1,4 +1,5 @@
 'use client';
+import { Photo } from '@/components/media/Photo';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { relativeTime } from '@/lib/time';
 import {
@@ -7,19 +8,18 @@ import {
   Footprints,
   type LucideIcon,
   Microscope,
-  Pill,
+  Pill as PillIcon,
   Salad,
   Scissors,
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import { ActivitySheet, type ActivitySummary } from './ActivitySheet';
 
-interface SerializedActivity {
+export interface SerializedActivity {
   id: string;
   animalId: string;
   type: ActivityType;
@@ -27,7 +27,7 @@ interface SerializedActivity {
   byName: string;
   remarks: string | null;
   editedAt: string | null;
-  // biome-ignore lint/suspicious/noExplicitAny: server-erased shape
+  // biome-ignore lint/suspicious/noExplicitAny: server-erased data shape
   data: any;
   media: { id: string; assetId: string; label: string | null }[];
 }
@@ -39,18 +39,17 @@ interface Props {
 interface TypeMeta {
   icon: LucideIcon;
   color: string;
-  tint: string;
 }
 
 const TYPE_META: Record<ActivityType, TypeMeta> = {
-  ADMISSION: { icon: UserPlus, color: '#0E7C7B', tint: '#D6EEEE' },
-  TREATMENT: { icon: Pill, color: '#2563EB', tint: '#DBEAFE' },
-  ROUND: { icon: Stethoscope, color: '#7C3AED', tint: '#EDE9FE' },
-  DIAGNOSTIC: { icon: Microscope, color: '#0891B2', tint: '#CFFAFE' },
-  SURGERY: { icon: Scissors, color: '#B5471A', tint: '#FFE4D2' },
-  FOOD: { icon: Salad, color: '#15803D', tint: '#DCFCE7' },
-  BATH: { icon: Bath, color: '#0EA5E9', tint: '#E0F2FE' },
-  WALK: { icon: Footprints, color: '#A16207', tint: '#FEF3C7' },
+  ADMISSION: { icon: UserPlus, color: '#0E7C7B' },
+  TREATMENT: { icon: PillIcon, color: '#2563EB' },
+  ROUND: { icon: Stethoscope, color: '#7C3AED' },
+  DIAGNOSTIC: { icon: Microscope, color: '#0891B2' },
+  SURGERY: { icon: Scissors, color: '#B5471A' },
+  FOOD: { icon: Salad, color: '#15803D' },
+  BATH: { icon: Bath, color: '#0EA5E9' },
+  WALK: { icon: Footprints, color: '#A16207' },
 };
 
 export function ActivityTimeline({ activities }: Props) {
@@ -67,6 +66,8 @@ export function ActivityTimeline({ activities }: Props) {
     );
   }
 
+  const groups = groupByDay(activities);
+
   const onClickRow = (a: SerializedActivity) => {
     setSelected({
       id: a.id,
@@ -77,87 +78,27 @@ export function ActivityTimeline({ activities }: Props) {
       remarks: a.remarks,
       data: a.data,
       editedAt: a.editedAt ? new Date(a.editedAt) : null,
+      media: a.media,
     });
   };
 
   return (
     <>
-      <ol className="relative flex flex-col gap-3 pl-1">
-        {activities.map((a) => {
-          const meta = TYPE_META[a.type];
-          const Icon = meta.icon;
-          const firstPhoto = a.media[0];
-          const hasMedia = !!firstPhoto;
-          return (
-            <li key={a.id} className="flex gap-3">
-              <div className="relative flex shrink-0 flex-col items-center pt-2">
-                {hasMedia ? (
-                  <div className="relative h-11 w-11 shrink-0">
-                    <Image
-                      src={`/api/files/${firstPhoto.assetId}`}
-                      alt=""
-                      fill
-                      sizes="44px"
-                      className="rounded-[11px] object-cover ring-2"
-                      style={{ boxShadow: `0 0 0 2px ${meta.color}` }}
-                      unoptimized
-                    />
-                    <span
-                      className="-bottom-1 -right-1 absolute flex h-5 w-5 items-center justify-center rounded-full text-white shadow-md"
-                      style={{ backgroundColor: meta.color }}
-                    >
-                      <Icon size={11} strokeWidth={2.4} />
-                    </span>
-                    {a.media.length > 1 && (
-                      <span className="-top-1.5 -left-1.5 absolute flex h-4 min-w-[18px] items-center justify-center rounded-full bg-text px-1 font-bold text-[9px] text-white">
-                        +{a.media.length - 1}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    className="flex h-9 w-9 items-center justify-center rounded-full bg-paper"
-                    style={{ boxShadow: `inset 0 0 0 2px ${meta.color}`, color: meta.color }}
-                  >
-                    <Icon size={16} strokeWidth={2} />
-                  </div>
-                )}
-                <div className="mt-1 w-px flex-1 bg-line" />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => onClickRow(a)}
-                className="flex-1 rounded-lg border border-line bg-paper p-4 text-left transition hover:border-accent/40 hover:bg-paper-2"
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span className="font-display text-sm font-bold">{ACTIVITY_LABELS[a.type]}</span>
-                  <span className="text-[11.5px] text-muted">
-                    {relativeTime(new Date(a.occurredAt))}
-                    {' · '}
-                    {new Date(a.occurredAt).toLocaleTimeString(undefined, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-
-                <ActivityBody type={a.type} data={a.data} />
-
-                {a.remarks && a.type !== 'TREATMENT' && (
-                  <p className="mt-1.5 text-sm text-muted">{a.remarks}</p>
-                )}
-
-                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-soft">
-                  <span>by {a.byName}</span>
-                  {a.editedAt && <span className="italic">· edited</span>}
-                </div>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-
+      <div className="flex flex-col gap-5">
+        {groups.map(([day, items]) => (
+          <div key={day}>
+            <div className="mb-2 flex items-baseline gap-2 px-1">
+              <h3 className="font-display text-[13px] font-bold">{formatDayHeader(day)}</h3>
+              <span className="text-[11px] text-muted">{items.length} entries</span>
+            </div>
+            <ol className="flex flex-col gap-2">
+              {items.map((a) => (
+                <ActivityRow key={a.id} activity={a} onClick={() => onClickRow(a)} />
+              ))}
+            </ol>
+          </div>
+        ))}
+      </div>
       <ActivitySheet
         activity={selected}
         open={!!selected}
@@ -168,86 +109,147 @@ export function ActivityTimeline({ activities }: Props) {
   );
 }
 
+function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; onClick: () => void }) {
+  const meta = TYPE_META[a.type];
+  const Icon = meta.icon;
+  const firstPhoto = a.media[0];
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-start gap-3 rounded-xl border border-line bg-paper p-3 text-left transition hover:border-accent/40 hover:bg-paper-2"
+      >
+        <div className="relative shrink-0">
+          {firstPhoto ? (
+            <>
+              <Photo
+                seed={firstPhoto.assetId}
+                src={`/api/files/${firstPhoto.assetId}`}
+                alt=""
+                rounded={11}
+                className="h-12 w-12 ring-2"
+              />
+              <span
+                className="-bottom-1 -right-1 absolute flex h-[22px] w-[22px] items-center justify-center rounded-full text-white"
+                style={{ backgroundColor: meta.color, boxShadow: '0 0 0 2px white' }}
+              >
+                <Icon size={12} strokeWidth={2.4} />
+              </span>
+              {a.media.length > 1 && (
+                <span className="-top-1 -left-1 absolute inline-flex h-[18px] min-w-[20px] items-center justify-center rounded-full bg-text px-1 font-bold text-[10px] text-white">
+                  +{a.media.length - 1}
+                </span>
+              )}
+            </>
+          ) : (
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-xl"
+              style={{ background: `${meta.color}1A`, color: meta.color }}
+            >
+              <Icon size={20} strokeWidth={2} />
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="font-display text-[14px] font-bold">{ACTIVITY_LABELS[a.type]}</span>
+            <span className="text-[11.5px] text-muted">{formatTime(a.occurredAt)}</span>
+          </div>
+          <ActivityBody type={a.type} data={a.data} />
+          {a.remarks && a.type !== 'TREATMENT' && (
+            <p className="mt-1.5 text-[12.5px] text-muted">{a.remarks}</p>
+          )}
+          <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-soft">
+            <span>by {a.byName}</span>
+            {a.editedAt && <span className="italic">· edited {relativeTime(new Date(a.editedAt))}</span>}
+          </div>
+        </div>
+      </button>
+    </li>
+  );
+}
+
+function groupByDay(activities: SerializedActivity[]): Array<[string, SerializedActivity[]]> {
+  const map = new Map<string, SerializedActivity[]>();
+  for (const a of activities) {
+    const d = new Date(a.occurredAt);
+    d.setHours(0, 0, 0, 0);
+    const k = d.toISOString();
+    const list = map.get(k) ?? [];
+    list.push(a);
+    map.set(k, list);
+  }
+  return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+}
+
+function formatDayHeader(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yest = new Date(today);
+  yest.setDate(yest.getDate() - 1);
+  if (d.getTime() === today.getTime()) return 'Today';
+  if (d.getTime() === yest.getTime()) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' });
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const date = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
+  return `${time} · ${date}`;
+}
+
 function ActivityBody({ type, data }: { type: ActivityType; data: Record<string, unknown> | null }) {
   if (!data) return null;
-  const renderer = BODY_RENDERERS[type];
-  return renderer ? renderer(data) : null;
+  const summary = summarize(type, data);
+  if (!summary) return null;
+  return <p className="mt-1 text-[13.5px] text-text">{summary}</p>;
 }
 
-type D = Record<string, unknown>;
-
-const BODY_RENDERERS: Record<ActivityType, (data: D) => React.ReactNode> = {
-  TREATMENT: renderTreatment,
-  ROUND: renderRound,
-  DIAGNOSTIC: renderDiagnostic,
-  SURGERY: renderSurgery,
-  FOOD: renderFood,
-  BATH: renderBath,
-  WALK: renderWalk,
-  ADMISSION: renderAdmission,
-};
-
-function renderTreatment(data: D) {
-  const meds = (data.meds ?? []) as Array<{ name: string; dose: string; route: string }>;
-  if (meds.length === 0) return null;
-  return <p className="mt-1.5 text-sm">{meds.map((m) => `${m.name} ${m.dose} ${m.route}`).join(', ')}</p>;
-}
-
-function renderRound(data: D) {
-  const parts: string[] = [];
-  if (data.temp) parts.push(`Temp ${data.temp}°`);
-  if (data.pain) parts.push(`Pain ${data.pain}`);
-  if (data.progress) parts.push(String(data.progress));
-  if (parts.length === 0 && data.notes) return <p className="mt-1.5 text-sm">{String(data.notes)}</p>;
-  return <p className="mt-1.5 text-sm">{parts.join(' · ')}</p>;
-}
-
-function renderDiagnostic(data: D) {
-  const tests = (data.tests as string[]) ?? [];
-  const tail = data.findings ? ` — ${String(data.findings)}` : '';
-  return (
-    <p className="mt-1.5 text-sm">
-      {tests.join(', ')}
-      {tail}
-    </p>
-  );
-}
-
-function renderSurgery(data: D) {
-  return (
-    <p className="mt-1.5 text-sm">
-      {String(data.surgeryName ?? '')}
-      {data.duration ? ` (${String(data.duration)})` : ''} — {String(data.surgeon ?? '—')}
-    </p>
-  );
-}
-
-function renderFood(data: D) {
-  const parts: string[] = [String(data.foodType ?? '—')];
-  if (data.qty) parts.push(String(data.qty));
-  if (data.intake) parts.push(String(data.intake));
-  if (data.vomiting) parts.push('vomited');
-  return <p className="mt-1.5 text-sm">{parts.join(' · ')}</p>;
-}
-
-function renderBath(data: D) {
-  return (
-    <p className="mt-1.5 text-sm">
-      {String(data.bathType ?? '—')}
-      {data.remarks ? ` — ${String(data.remarks)}` : ''}
-    </p>
-  );
-}
-
-function renderWalk(data: D) {
-  const parts: string[] = [];
-  if (data.duration) parts.push(String(data.duration));
-  if (data.urination) parts.push('urination ✓');
-  if (data.stool) parts.push('stool ✓');
-  if (data.mobility) parts.push(String(data.mobility));
-  return <p className="mt-1.5 text-sm">{parts.join(' · ')}</p>;
-}
-
-function renderAdmission(data: D) {
-  return <p className="mt-1.5 text-sm">{String(data.summary ?? '')}</p>;
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: per-type summary is a flat switch
+function summarize(type: ActivityType, data: Record<string, unknown>): string {
+  if (type === 'ADMISSION') return String(data.summary ?? 'Admitted');
+  if (type === 'TREATMENT') {
+    const meds = (data.meds ?? []) as Array<{ name: string; dose: string; route: string }>;
+    if (meds.length === 0) return String(data.remarks ?? 'Treatment given');
+    return meds.map((m) => `${m.name} ${m.dose} ${m.route}`).join(', ');
+  }
+  if (type === 'ROUND') {
+    const parts: string[] = [];
+    if (data.temp) parts.push(`Temp ${data.temp}°`);
+    if (data.pain) parts.push(`Pain ${data.pain}`);
+    if (data.progress) parts.push(String(data.progress));
+    return parts.join(' · ') || String(data.notes ?? 'Round notes');
+  }
+  if (type === 'DIAGNOSTIC') {
+    const tests = ((data.tests ?? []) as string[]).join(', ');
+    const tail = data.findings ? ` — ${String(data.findings)}` : '';
+    return `${tests}${tail}`;
+  }
+  if (type === 'SURGERY') {
+    return `${String(data.surgeryName ?? '')} (${String(data.duration ?? '—')}) — ${String(data.surgeon ?? '—')}`;
+  }
+  if (type === 'FOOD') {
+    const parts: string[] = [String(data.foodType ?? '—')];
+    if (data.qty) parts.push(String(data.qty));
+    if (data.intake) parts.push(String(data.intake));
+    if (data.vomiting) parts.push('vomited');
+    return parts.join(' · ');
+  }
+  if (type === 'BATH') {
+    return `${String(data.bathType ?? '—')}${data.remarks ? ` — ${String(data.remarks)}` : ''}`;
+  }
+  if (type === 'WALK') {
+    const parts: string[] = [];
+    if (data.duration) parts.push(String(data.duration));
+    if (data.urination) parts.push('urination ✓');
+    if (data.stool) parts.push('stool ✓');
+    if (data.mobility) parts.push(String(data.mobility));
+    return parts.join(' · ');
+  }
+  return '';
 }

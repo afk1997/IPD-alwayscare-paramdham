@@ -5,6 +5,8 @@ export interface NeedsAttentionItem {
   id: string;
   name: string;
   species: string;
+  ward: string | null;
+  contagious: boolean;
   status: string;
   lastActivityAt: Date | null;
 }
@@ -27,6 +29,8 @@ export async function listNeedsAttention(): Promise<NeedsAttentionItem[]> {
       name: true,
       species: true,
       status: true,
+      ward: true,
+      contagious: true,
       activities: {
         take: 1,
         orderBy: { occurredAt: 'desc' },
@@ -40,6 +44,8 @@ export async function listNeedsAttention(): Promise<NeedsAttentionItem[]> {
     id: a.id,
     name: a.name,
     species: a.species,
+    ward: a.ward,
+    contagious: a.contagious,
     status: a.status,
     lastActivityAt: a.activities[0]?.occurredAt ?? null,
   }));
