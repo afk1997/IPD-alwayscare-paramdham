@@ -54,7 +54,7 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
 export async function updateActivity(
   actor: ActivityActor,
   activityId: string,
-  patch: { remarks?: string | null; data?: unknown },
+  patch: { remarks?: string | null; data?: unknown; occurredAt?: string; byName?: string },
 ) {
   const before = await prisma.activity.findUnique({ where: { id: activityId } });
   if (!before) throw new NotFoundError('Activity', activityId);
@@ -70,6 +70,10 @@ export async function updateActivity(
   };
   if (patch.remarks !== undefined) updateData.remarks = patch.remarks;
   if (patch.data !== undefined) updateData.data = patch.data as Prisma.InputJsonValue;
+  if (patch.occurredAt !== undefined) updateData.occurredAt = new Date(patch.occurredAt);
+  if (patch.byName !== undefined && patch.byName.trim().length > 0) {
+    updateData.byName = patch.byName.trim();
+  }
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.activity.update({

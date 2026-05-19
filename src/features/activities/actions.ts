@@ -54,7 +54,7 @@ export async function deleteActivityAction(activityId: string): Promise<Activity
 
 export async function updateActivityAction(
   activityId: string,
-  patch: { remarks?: string | null; data?: unknown },
+  patch: { remarks?: string | null; data?: unknown; occurredAt?: string; byName?: string },
 ): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();

@@ -7,7 +7,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { deleteActivityAction, duplicateActivityAction, updateActivityAction } from '../actions';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import { summarizeActivity } from '../summary';
-import { ActivityEditFields } from './ActivityEditFields';
+import { ActivityEditFields, type EditDraft, toLocalDatetime } from './ActivityEditFields';
 
 export interface ActivitySummary {
   id: string;
@@ -44,15 +44,24 @@ const TYPE_COLOR: Record<ActivityType, string> = {
 
 export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   const [mode, setMode] = useState<Mode>('view');
-  // biome-ignore lint/suspicious/noExplicitAny: data shape varies per type
-  const [draft, setDraft] = useState<{ remarks: string; data: any }>({ remarks: '', data: {} });
+  const [draft, setDraft] = useState<EditDraft>({
+    remarks: '',
+    data: {},
+    occurredAtLocal: '',
+    byName: '',
+  });
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && activity) {
       setMode('view');
-      setDraft({ remarks: activity.remarks ?? '', data: cloneDeep(activity.data) });
+      setDraft({
+        remarks: activity.remarks ?? '',
+        data: cloneDeep(activity.data),
+        occurredAtLocal: toLocalDatetime(activity.occurredAt),
+        byName: activity.byName,
+      });
       setError(null);
     }
   }, [open, activity]);
@@ -61,9 +70,12 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
 
   const save = () => {
     start(async () => {
+      const occurredAtISO = draft.occurredAtLocal ? new Date(draft.occurredAtLocal).toISOString() : undefined;
       const result = await updateActivityAction(activity.id, {
         remarks: draft.remarks,
         data: draft.data,
+        ...(occurredAtISO ? { occurredAt: occurredAtISO } : {}),
+        ...(draft.byName.trim() ? { byName: draft.byName.trim() } : {}),
       });
       if (result.ok) {
         setMode('view');
