@@ -33,7 +33,7 @@ export function BottomNav() {
       ))}
       <button
         type="button"
-        onClick={open}
+        onClick={() => open()}
         aria-label="New entry"
         className="-translate-y-2.5 mx-2 my-auto flex h-12 w-12 items-center justify-center self-center rounded-full bg-accent text-accent-fg shadow-md"
       >

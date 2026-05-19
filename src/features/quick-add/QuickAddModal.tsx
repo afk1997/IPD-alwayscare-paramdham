@@ -12,20 +12,43 @@ import { PatientPicker } from './PatientPicker';
 import { QuickAddMenu } from './QuickAddMenu';
 import type { QuickAddAction, QuickAddStep } from './types';
 
+interface Prefill {
+  action: 'admission' | 'activity' | 'document' | 'lifecycle';
+  activityType?: ActivityType;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
+  prefill?: Prefill | null;
 }
 
 const INITIAL: QuickAddStep = { kind: 'menu' };
 
-export function QuickAddModal({ open, onClose }: Props) {
+export function QuickAddModal({ open, onClose, prefill }: Props) {
   const router = useRouter();
   const [step, setStep] = useState<QuickAddStep>(INITIAL);
 
+  // When the modal opens, apply any prefill from `useQuickAdd().open(...)`
+  // by jumping straight to the patient picker (or, for admission, closing
+  // the modal and navigating to /patients/new).  When it closes we reset
+  // to the menu step for the next open.
   useEffect(() => {
-    if (!open) setStep(INITIAL);
-  }, [open]);
+    if (!open) {
+      setStep(INITIAL);
+      return;
+    }
+    if (!prefill) {
+      setStep(INITIAL);
+      return;
+    }
+    if (prefill.action === 'admission') {
+      onClose();
+      router.push('/patients/new');
+      return;
+    }
+    setStep({ kind: 'pick-patient', purpose: prefill.action });
+  }, [open, prefill, onClose, router]);
 
   useEffect(() => {
     if (!open) return;
@@ -50,7 +73,18 @@ export function QuickAddModal({ open, onClose }: Props) {
   const handlePatient = (animal: ActiveAnimalLite) => {
     if (step.kind !== 'pick-patient') return;
     if (step.purpose === 'activity') {
-      setStep({ kind: 'activity-type', animalId: animal.id, animalName: animal.name });
+      // If a prefill provided the activity type (e.g. "Log treatment"
+      // quick-action), skip the type chooser and go straight to the form.
+      if (prefill?.activityType) {
+        setStep({
+          kind: 'activity-form',
+          animalId: animal.id,
+          animalName: animal.name,
+          type: prefill.activityType,
+        });
+      } else {
+        setStep({ kind: 'activity-type', animalId: animal.id, animalName: animal.name });
+      }
     } else if (step.purpose === 'document') {
       setStep({ kind: 'document-form', animalId: animal.id, animalName: animal.name });
     } else {

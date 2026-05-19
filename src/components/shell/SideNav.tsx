@@ -67,7 +67,7 @@ export function SideNav({ isAdmin, user }: Props) {
 
       <button
         type="button"
-        onClick={open}
+        onClick={() => open()}
         className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 font-semibold text-accent-fg text-sm shadow-sm transition hover:opacity-90"
       >
         <Plus size={16} strokeWidth={2.4} />

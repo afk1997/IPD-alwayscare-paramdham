@@ -1,11 +1,25 @@
 'use client';
+import type { ActivityType } from '@/features/activities/schema';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { QuickAddModal } from './QuickAddModal';
 
+export interface QuickAddPrefill {
+  /**
+   * When set, the modal skips the menu step and goes straight to the
+   * patient picker for that purpose.  For 'admission' the modal closes
+   * itself and navigates to /patients/new instead — there's no patient
+   * to pick yet.
+   */
+  action: 'admission' | 'activity' | 'document' | 'lifecycle';
+  /** Only meaningful with action='activity' — pre-selects the type and
+   *  skips the activity-type chooser after a patient is picked. */
+  activityType?: ActivityType;
+}
+
 interface QuickAddContextValue {
   isOpen: boolean;
-  open: () => void;
+  open: (prefill?: QuickAddPrefill) => void;
   close: () => void;
 }
 
@@ -23,11 +37,18 @@ interface Props {
 
 export function QuickAddProvider({ children }: Props) {
   const [isOpen, setIsOpen] = useState(false);
+  const [prefill, setPrefill] = useState<QuickAddPrefill | null>(null);
   const router = useRouter();
   const search = useSearchParams();
 
-  const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
+  const open = useCallback((next?: QuickAddPrefill) => {
+    setPrefill(next ?? null);
+    setIsOpen(true);
+  }, []);
+  const close = useCallback(() => {
+    setIsOpen(false);
+    setPrefill(null);
+  }, []);
 
   // Auto-open when arriving with ?quickAdd=1; then strip the param.
   useEffect(() => {
@@ -50,6 +71,7 @@ export function QuickAddProvider({ children }: Props) {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return;
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
+        setPrefill(null);
         setIsOpen(true);
       }
     }
@@ -62,7 +84,7 @@ export function QuickAddProvider({ children }: Props) {
   return (
     <QuickAddContext.Provider value={value}>
       {children}
-      <QuickAddModal open={isOpen} onClose={close} />
+      <QuickAddModal open={isOpen} onClose={close} prefill={prefill} />
     </QuickAddContext.Provider>
   );
 }

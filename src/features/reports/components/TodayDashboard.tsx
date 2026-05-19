@@ -1,5 +1,6 @@
 import { getCachedTodayCounts } from '@/features/animals/queries';
 import { ArrowRight, type LucideIcon, Plus, Scissors, Skull } from 'lucide-react';
+import { QuickActions } from './QuickActions';
 import { TodayTimeline } from './TodayTimeline';
 
 interface Tile {
@@ -62,6 +63,13 @@ export async function TodayDashboard() {
           );
         })}
       </div>
+
+      <section>
+        <div className="mb-2.5 flex items-baseline justify-between px-1">
+          <h2 className="font-bold text-[10.5px] text-muted uppercase tracking-[0.07em]">Quick actions</h2>
+        </div>
+        <QuickActions />
+      </section>
 
       <section>
         <div className="mb-2.5 flex items-baseline justify-between px-1">
