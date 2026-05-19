@@ -1,17 +1,18 @@
 'use client';
-import { DeathForm } from '@/features/animals/lifecycle/components/DeathForm';
-import { DischargeForm } from '@/features/animals/lifecycle/components/DischargeForm';
 import { useState } from 'react';
+import { DeathForm } from './DeathForm';
+import { DischargeForm } from './DischargeForm';
 
-type Variant = 'discharge' | 'death';
+export type LifecycleVariant = 'discharge' | 'death';
 
 interface Props {
   animalId: string;
   onDone: () => void;
+  initialVariant?: LifecycleVariant;
 }
 
-export function LifecycleForm({ animalId, onDone }: Props) {
-  const [variant, setVariant] = useState<Variant>('discharge');
+export function LifecycleForm({ animalId, onDone, initialVariant = 'discharge' }: Props) {
+  const [variant, setVariant] = useState<LifecycleVariant>(initialVariant);
 
   return (
     <div className="flex flex-col gap-4">

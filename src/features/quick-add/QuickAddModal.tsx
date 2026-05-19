@@ -1,13 +1,13 @@
 'use client';
 import { ActivityForm } from '@/features/activities/components/ActivityForm';
 import type { ActivityType } from '@/features/activities/schema';
+import { LifecycleForm } from '@/features/animals/lifecycle/components/LifecycleForm';
 import type { ActiveAnimalLite } from '@/features/animals/queries';
 import { DocumentUpload } from '@/features/documents/components/DocumentUpload';
 import { ArrowLeft, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ActivityTypeChooser } from './ActivityTypeChooser';
-import { LifecycleForm } from './LifecycleForm';
 import { PatientPicker } from './PatientPicker';
 import { QuickAddMenu } from './QuickAddMenu';
 import type { QuickAddAction, QuickAddStep } from './types';

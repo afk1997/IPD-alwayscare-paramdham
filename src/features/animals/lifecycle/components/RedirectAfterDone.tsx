@@ -1,19 +1,14 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { DeathForm } from './DeathForm';
-import { DischargeForm } from './DischargeForm';
+import { LifecycleForm, type LifecycleVariant } from './LifecycleForm';
 
 interface Props {
   animalId: string;
-  variant: 'discharge' | 'death';
+  variant: LifecycleVariant;
 }
 
 export function LifecyclePageForm({ animalId, variant }: Props) {
   const router = useRouter();
   const onDone = () => router.push(`/patients/${animalId}`);
-  return variant === 'discharge' ? (
-    <DischargeForm animalId={animalId} onDone={onDone} />
-  ) : (
-    <DeathForm animalId={animalId} onDone={onDone} />
-  );
+  return <LifecycleForm animalId={animalId} onDone={onDone} initialVariant={variant} />;
 }
