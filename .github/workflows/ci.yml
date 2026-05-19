@@ -35,6 +35,12 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # Generate the Prisma client BEFORE typecheck so @prisma/client exports
+      # (PrismaClient, ActivityType, Role, etc.) resolve.  postinstall in
+      # package.json does this for fresh installs, but pnpm sometimes skips
+      # lifecycle scripts when --frozen-lockfile + cache hit — keep an
+      # explicit step here as a guarantee.
+      - run: pnpm exec prisma generate
       - run: pnpm exec prisma migrate deploy
       - run: pnpm run typecheck
       - run: pnpm run lint
