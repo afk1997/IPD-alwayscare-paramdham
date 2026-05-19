@@ -15,7 +15,22 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 
 export const ROUTES = ['IV', 'IM', 'Oral', 'SC', 'Topical'] as const;
 export const INTAKE = ['Fully', 'Partially', 'Refused'] as const;
-export const BATH_TYPES = ['Medicated bath', 'Tick treatment', 'Wound cleaning', 'Regular'] as const;
+export const BATH_TYPES = [
+  'Medicated bath',
+  'Tick treatment',
+  'Wound cleaning',
+  'Regular',
+  'Coat grooming',
+  'Nail trim',
+] as const;
+
+// Constrained option sets the Round/Walk segmented controls use. Free-text
+// is still legal at the schema level (so legacy rows validate), but new
+// entries pick from the canonical list.
+export const APPETITE_OPTIONS = ['Normal', 'Partial', 'Refused'] as const;
+export const HYDRATION_OPTIONS = ['Good', 'OK', 'Mild', 'Severe'] as const;
+export const PROGRESS_OPTIONS = ['Worsening', 'Stable', 'Improving', 'Recovered'] as const;
+export const MOBILITY_OPTIONS = ['Normal', 'Mild limp', 'Severe limp', 'Unable'] as const;
 export const TESTS = ['Blood test', 'X-ray', 'Sonography', 'MRI', 'CT', 'USG'] as const;
 
 export const TreatmentData = z.object({
