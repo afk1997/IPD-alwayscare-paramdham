@@ -16,7 +16,7 @@ export async function TodayDashboard() {
 
   const tiles: Tile[] = [
     { label: 'Admissions', value: counts.admissionsToday, icon: Plus, color: '#0E7C7B', tint: '#D6EEEE' },
-    { label: 'Surgeries', value: 0, icon: Scissors, color: '#B5471A', tint: '#F6E2D2' },
+    { label: 'Surgeries', value: counts.surgeriesToday, icon: Scissors, color: '#B5471A', tint: '#F6E2D2' },
     {
       label: 'Discharges',
       value: counts.dischargesToday,

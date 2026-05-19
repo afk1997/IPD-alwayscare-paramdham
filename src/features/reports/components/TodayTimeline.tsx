@@ -41,9 +41,9 @@ export async function TodayTimeline() {
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl border border-line border-dashed bg-paper py-10 text-center">
         <ActivityIcon size={22} className="text-soft" />
-        <p className="font-medium text-[13px] text-muted">No activities logged today yet.</p>
+        <p className="font-medium text-[13px] text-muted">Nothing logged yet today.</p>
         <p className="text-[12px] text-soft">
-          Treatments, rounds, food, walks — everything you log will appear here latest first.
+          Treatments, rounds, food, baths, walks — tap "+ New entry" or press N to log the first one.
         </p>
       </div>
     );

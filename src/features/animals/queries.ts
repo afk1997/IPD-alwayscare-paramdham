@@ -151,15 +151,18 @@ export const getCachedTodayCounts = unstable_cache(
   async () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const [admissionsToday, dischargesToday, deathsToday, critical] = await Promise.all([
+    const [admissionsToday, dischargesToday, deathsToday, surgeriesToday, critical] = await Promise.all([
       prisma.animal.count({ where: { admittedAt: { gte: today }, deletedAt: null } }),
       prisma.animal.count({ where: { dischargedAt: { gte: today }, deletedAt: null } }),
       prisma.animal.count({ where: { deceasedAt: { gte: today }, deletedAt: null } }),
+      prisma.activity.count({
+        where: { type: 'SURGERY', occurredAt: { gte: today }, deletedAt: null },
+      }),
       prisma.animal.count({
         where: { status: 'CRITICAL', deletedAt: null, dischargedAt: null, deceasedAt: null },
       }),
     ]);
-    return { admissionsToday, dischargesToday, deathsToday, critical };
+    return { admissionsToday, dischargesToday, deathsToday, surgeriesToday, critical };
   },
   ['today-counts'],
   { revalidate: 60, tags: ['today-counts', 'animals'] },
