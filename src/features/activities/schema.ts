@@ -87,6 +87,11 @@ const Base = z.object({
   animalId: z.string().min(1),
   remarks: z.string().optional(),
   mediaAssetIds: z.array(z.string()).default([]),
+  // Optional override for when the activity actually happened — defaults
+  // server-side to the Prisma `@default(now())` if omitted.  Accepts any
+  // string parsable by `new Date()`; explicitly NOT validated as strict
+  // ISO so `<input type="datetime-local">`'s local-time string works.
+  occurredAt: z.string().optional(),
 });
 
 export const CreateActivitySchema = z.discriminatedUnion('type', [

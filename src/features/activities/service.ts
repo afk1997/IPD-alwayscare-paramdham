@@ -29,6 +29,7 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
         byName: actor.name,
         remarks: parsed.remarks ?? null,
         data: parsed.data as Prisma.InputJsonValue,
+        ...(parsed.occurredAt ? { occurredAt: new Date(parsed.occurredAt) } : {}),
         media: {
           create: parsed.mediaAssetIds.map((assetId) => ({
             asset: { connect: { id: assetId } },
