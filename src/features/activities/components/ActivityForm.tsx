@@ -4,6 +4,7 @@ import { MediaUploader, type UploadedAsset } from '@/components/media/MediaUploa
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { useToast } from '@/components/ui/Toast';
 import { useMemo, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { createActivityAction } from '../actions';
@@ -65,6 +66,7 @@ function localDatetimeInputValue(d: Date): string {
 }
 
 export function ActivityForm({ animalId, type, onDone }: Props) {
+  const { showToast } = useToast();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [media, setMedia] = useState<UploadedAsset[]>([]);
@@ -97,7 +99,10 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
         byName: byNameOverride.trim() || undefined,
       } as CreateActivityInput);
       if (!result.ok) setError(result.error ?? 'Failed to log');
-      else onDone();
+      else {
+        showToast({ message: `${ACTIVITY_LABELS[type]} saved` });
+        onDone();
+      }
     });
   });
 

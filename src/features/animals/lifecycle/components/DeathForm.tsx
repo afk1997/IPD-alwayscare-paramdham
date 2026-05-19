@@ -4,6 +4,7 @@ import { MediaUploader, type UploadedAsset } from '@/components/media/MediaUploa
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { useToast } from '@/components/ui/Toast';
 import { AlertTriangle } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { deathAction } from '../actions';
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function DeathForm({ animalId, onDone }: Props) {
+  const { showToast } = useToast();
   const [causeOfDeath, setCauseOfDeath] = useState('');
   const [bodyHandedOverTo, setBodyHandedOverTo] = useState('');
   const [docs, setDocs] = useState<UploadedAsset[]>([]);
@@ -31,7 +33,10 @@ export function DeathForm({ animalId, onDone }: Props) {
         documentFileIds: docs.map((d) => d.id),
       });
       if (!result.ok) setError(result.error ?? 'Failed to record death');
-      else onDone();
+      else {
+        showToast({ message: 'Death recorded' });
+        onDone();
+      }
     });
   };
 

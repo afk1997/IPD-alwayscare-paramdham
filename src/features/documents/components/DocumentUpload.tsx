@@ -3,6 +3,7 @@ import { FormField } from '@/components/forms/FormField';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { useToast } from '@/components/ui/Toast';
 import { resumableUpload } from '@/lib/upload/resumable';
 import { Upload } from 'lucide-react';
 import { useState, useTransition } from 'react';
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export function DocumentUpload({ animalId, onDone }: Props) {
+  const { showToast } = useToast();
   const [category, setCategory] = useState<DocCategory>('MEDICAL');
   const [kind, setKind] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -47,6 +49,7 @@ export function DocumentUpload({ animalId, onDone }: Props) {
         if (!result.ok) {
           setError(result.error ?? 'Save failed');
         } else {
+          showToast({ message: 'Document uploaded' });
           onDone();
         }
       } catch (e2) {

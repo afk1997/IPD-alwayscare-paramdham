@@ -85,6 +85,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
         ...(draft.byName.trim() ? { byName: draft.byName.trim() } : {}),
       });
       if (result.ok) {
+        showToast({ message: `${ACTIVITY_LABELS[activity.type]} updated` });
         setMode('view');
         onChanged();
         onClose();

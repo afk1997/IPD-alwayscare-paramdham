@@ -3,6 +3,7 @@ import { FormField, FormSection } from '@/components/forms/FormField';
 import { MediaUploader, type UploadedAsset } from '@/components/media/MediaUploader';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
+import { useToast } from '@/components/ui/Toast';
 import { useState, useTransition } from 'react';
 import { dischargeAction } from '../actions';
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function DischargeForm({ animalId, onDone }: Props) {
+  const { showToast } = useToast();
   const [summary, setSummary] = useState('');
   const [instructions, setInstructions] = useState('');
   const [docs, setDocs] = useState<UploadedAsset[]>([]);
@@ -29,7 +31,10 @@ export function DischargeForm({ animalId, onDone }: Props) {
         documentFileIds: docs.map((d) => d.id),
       });
       if (!result.ok) setError(result.error ?? 'Failed to discharge');
-      else onDone();
+      else {
+        showToast({ message: 'Patient discharged' });
+        onDone();
+      }
     });
   };
 

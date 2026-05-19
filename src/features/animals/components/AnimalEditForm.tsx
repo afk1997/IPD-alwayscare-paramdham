@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
+import { useToast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { updateAnimalAction } from '../actions';
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
+  const { showToast } = useToast();
   const router = useRouter();
   const [form, setForm] = useState(animal);
   const [pending, start] = useTransition();
@@ -80,6 +82,7 @@ export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
       });
       if (!result.ok) setError(result.error ?? 'Update failed');
       else {
+        showToast({ message: 'Patient updated' });
         router.refresh();
         if (onDone) onDone();
         else router.push(`/patients/${animal.id}`);
