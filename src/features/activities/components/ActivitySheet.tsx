@@ -2,6 +2,7 @@
 import { Photo } from '@/components/media/Photo';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
+import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
 import { relativeTime } from '@/lib/time';
 import { Copy, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useTransition } from 'react';
@@ -72,6 +73,8 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
       setError(null);
     }
   }, [open, activity]);
+
+  const swipe = useSwipeDown({ onClose });
 
   if (!open || !activity) return null;
 
@@ -150,7 +153,12 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
         className="flex h-[88vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-2xl bg-paper shadow-xl md:h-full md:max-h-none md:rounded-none md:border-l md:border-line"
+        style={swipe.style}
       >
+        {/* Drag-to-dismiss grabber, mobile only. */}
+        <div className="flex justify-center py-2 md:hidden" {...swipe.bind}>
+          <div className="h-1 w-9 rounded-full bg-line" />
+        </div>
         <Header activity={activity} onClose={onClose} />
 
         <div className="flex-1 overflow-y-auto">

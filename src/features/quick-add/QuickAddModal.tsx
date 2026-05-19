@@ -4,6 +4,7 @@ import type { ActivityType } from '@/features/activities/schema';
 import { LifecycleForm } from '@/features/animals/lifecycle/components/LifecycleForm';
 import type { ActiveAnimalLite } from '@/features/animals/queries';
 import { DocumentUpload } from '@/features/documents/components/DocumentUpload';
+import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
 import { ArrowLeft, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -115,6 +116,7 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
 
   const title = headerTitle(step);
   const showBack = step.kind !== 'menu';
+  const swipe = useSwipeDown({ onClose });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
@@ -130,9 +132,15 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
+        style={swipe.style}
       >
         <div className="mb-3 hidden md:block" />
-        <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-line md:hidden" />
+        {/* Drag handle — also the swipe target on mobile.  Putting touch
+            listeners on the whole sheet would steal scrolls inside the
+            content, so we scope them to this grabber strip. */}
+        <div className="-mx-5 -mt-5 mb-2 flex justify-center px-5 py-2 md:hidden" {...swipe.bind}>
+          <div className="h-1 w-9 rounded-full bg-line" />
+        </div>
         <div className="mb-4 flex items-center gap-2">
           {showBack && (
             <button
