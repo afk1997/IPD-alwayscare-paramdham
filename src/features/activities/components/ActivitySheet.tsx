@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
-import { relativeTime } from '@/lib/time';
+import { formatDateTime, relativeTime } from '@/lib/time';
 import { Copy, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
@@ -246,7 +246,7 @@ function Header({ activity, onClose }: { activity: ActivitySummary; onClose: () 
       <div className="min-w-0 flex-1">
         <h2 className="font-display text-base font-bold">{ACTIVITY_LABELS[activity.type]}</h2>
         <p className="mt-0.5 text-[11.5px] text-muted">
-          {new Date(activity.occurredAt).toLocaleString()} · by {activity.byName}
+          {formatDateTime(activity.occurredAt)} · by {activity.byName}
           {activity.editedAt && ` · edited ${relativeTime(activity.editedAt)}`}
         </p>
       </div>
@@ -344,7 +344,7 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
       <Section label="Audit">
         <div className="rounded-xl border border-line">
           <KV k="Logged by" v={activity.byName} />
-          <KV k="Logged at" v={new Date(activity.occurredAt).toLocaleString()} />
+          <KV k="Logged at" v={formatDateTime(activity.occurredAt)} />
           {activity.editedAt && <KV k="Last edited" v={relativeTime(activity.editedAt)} />}
         </div>
       </Section>

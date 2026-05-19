@@ -54,9 +54,7 @@ export async function TodayTimeline() {
       {items.map((it, idx) => {
         const meta = TYPE_META[it.type];
         const Icon = meta.icon;
-        const photoSrc = it.animalThumbnailKey
-          ? `/api/files/${it.animalThumbnailKey.split(':').pop()}`
-          : undefined;
+        const photoSrc = it.animalThumbnailAssetId ? `/api/files/${it.animalThumbnailAssetId}` : undefined;
         return (
           <li key={it.id}>
             <Link

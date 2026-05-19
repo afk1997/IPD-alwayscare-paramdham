@@ -110,10 +110,12 @@ function capitalize(s: string): string {
 }
 
 function formatDateTime(d: Date): string {
-  return d.toLocaleString(undefined, {
+  // Fixed `en-GB` + 24-hour avoids SSR/CSR locale-driven hydration warnings.
+  return d.toLocaleString('en-GB', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   });
 }

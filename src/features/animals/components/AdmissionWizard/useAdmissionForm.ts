@@ -1,7 +1,8 @@
 'use client';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import type { CreateAnimalInput } from '../../schema';
+import { type CreateAnimalInput, CreateAnimalSchema } from '../../schema';
 
 const DEFAULTS: CreateAnimalInput = {
   name: '',
@@ -36,7 +37,17 @@ const DEFAULTS: CreateAnimalInput = {
 export const STEP_LABELS = ['Basics', 'Rescuer', 'Medical', 'Media', 'Doctor notes'];
 
 export function useAdmissionForm() {
-  const form = useForm<CreateAnimalInput>({ defaultValues: DEFAULTS, mode: 'onBlur' });
+  // Wire the same CreateAnimalSchema the server uses, so step.trigger()
+  // actually fires the Zod gate.  Without the resolver, RHF only ran
+  // its own (empty) rule set and let users Continue past required
+  // fields — the server still rejected the final submit but the UX
+  // was broken (the user got a banner error after 5 wasted clicks).
+  const form = useForm<CreateAnimalInput>({
+    defaultValues: DEFAULTS,
+    mode: 'onBlur',
+    // biome-ignore lint/suspicious/noExplicitAny: zodResolver/RHF type drift across versions
+    resolver: zodResolver(CreateAnimalSchema) as any,
+  });
   const [step, setStep] = useState(0);
 
   const next = async (fieldsToValidate?: (keyof CreateAnimalInput)[]) => {

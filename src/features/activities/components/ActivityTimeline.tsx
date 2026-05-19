@@ -204,8 +204,12 @@ function formatTime(iso: string): string {
   // timeline much faster when "20m ago" / "3h ago" replaces "10:41 PM".
   // Older same-day activities show clock time; older days show clock
   // time only (the day-grouping header already supplies the date).
+  //
+  // NOTE: relative-time output is naturally consistent server↔client.
+  // The absolute branch goes through `clockTime` (24h, fixed locale)
+  // for the same reason — see lib/time.ts.
   if (diff >= 0 && diff < 6 * HOUR) return relativeTime(d);
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 function ActivityBody({ type, data }: { type: ActivityType; data: Record<string, unknown> | null }) {

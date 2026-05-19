@@ -46,7 +46,7 @@ export function SideNavDrawer({ open, onClose, isAdmin, user }: Props) {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
-        <SideNav isAdmin={isAdmin} user={user} />
+        <SideNav isAdmin={isAdmin} user={user} forceVisible />
       </div>
     </dialog>
   );

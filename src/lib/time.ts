@@ -22,12 +22,25 @@ export function relativeTime(date: Date | string | null | undefined, now: Date =
 export function formatDateTime(date: Date | string | null | undefined): string {
   if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleString(undefined, {
+  // Force `en-GB` + `hour12: false` for a clinically-readable 24h stamp
+  // that's identical on Node (server) and on browser (whatever locale).
+  // Using `undefined` locale here was a hydration-bug source — Node's
+  // ICU defaults to `en-US` ("10:41 PM"), an Indian browser renders
+  // `en-IN` ("10:41 pm"), and React logged a mismatch on every render.
+  return d.toLocaleString('en-GB', {
     day: '2-digit',
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
+    hour12: false,
   });
+}
+
+// SSR-safe wall-clock formatter — "21:41" rather than "10:41 PM"/"10:41 pm".
+export function clockTime(date: Date | string | null | undefined): string {
+  if (!date) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
 export function isStale(lastActivity: Date | null | undefined, thresholdHours = 6): boolean {

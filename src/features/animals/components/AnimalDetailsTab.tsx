@@ -1,5 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/Button';
+import { formatDateTime } from '@/lib/time';
 import { Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { AnimalEditForm } from './AnimalEditForm';
@@ -97,7 +98,7 @@ export function AnimalDetailsTab({ animal }: Props) {
       <DetailSection title="Details">
         <DetailGrid>
           <Field label="Ward" value={animal.ward} />
-          <Field label="Admitted at" value={new Date(animal.admittedAt).toLocaleString()} />
+          <Field label="Admitted at" value={formatDateTime(animal.admittedAt)} />
           <Field label="Color" value={animal.color} />
           <Field label="Vaccination" value={animal.vaccination} />
           <Field label="Sterilized" value={animal.sterilized ? 'Yes' : 'No'} />

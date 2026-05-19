@@ -27,7 +27,7 @@ export function BottomNav() {
   const after = nav.slice(2);
 
   return (
-    <nav className="fixed right-0 bottom-0 left-0 z-30 flex h-[64px] items-stretch border-line border-t bg-paper">
+    <nav className="fixed right-0 bottom-0 left-0 z-30 flex h-[64px] items-stretch border-line border-t bg-paper md:hidden">
       {before.map((it) => (
         <BottomLink key={it.href} item={it} active={isActive(it.href)} />
       ))}

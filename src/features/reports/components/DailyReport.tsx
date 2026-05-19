@@ -1,6 +1,7 @@
 'use client';
 import { Input } from '@/components/ui/Input';
 import { ACTIVITY_LABELS, ACTIVITY_TYPES, type ActivityType } from '@/features/activities/schema';
+import { clockTime } from '@/lib/time';
 import { Download } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -141,12 +142,7 @@ export function DailyReport({ date, rows }: Props) {
             <tbody>
               {filtered.map((r) => (
                 <tr key={r.id} className="border-line border-t">
-                  <td className="px-3 py-2 font-mono text-xs">
-                    {r.occurredAt.toLocaleTimeString(undefined, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </td>
+                  <td className="px-3 py-2 font-mono text-xs">{clockTime(r.occurredAt)}</td>
                   <td className="px-3 py-2">
                     <Link href={`/patients/${r.animalId}`} className="text-accent">
                       {r.animalName}

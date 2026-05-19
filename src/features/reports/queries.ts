@@ -17,7 +17,7 @@ export interface TodayTimelineItem {
   animalId: string;
   animalName: string;
   animalSpecies: string;
-  animalThumbnailKey: string | null;
+  animalThumbnailAssetId: string | null;
   type: ActivityType;
   occurredAt: Date;
   byName: string;
@@ -53,7 +53,10 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
           media: {
             take: 1,
             orderBy: { order: 'asc' },
-            select: { asset: { select: { storageKey: true } } },
+            // Only READY assets resolve via /api/files/[id]; skip
+            // PENDING/FAILED so the timeline doesn't ship broken images.
+            where: { asset: { status: 'READY' } },
+            select: { asset: { select: { id: true } } },
           },
         },
       },
@@ -65,7 +68,7 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
     animalId: r.animalId,
     animalName: r.animal.name,
     animalSpecies: r.animal.species,
-    animalThumbnailKey: r.animal.media[0]?.asset.storageKey ?? null,
+    animalThumbnailAssetId: r.animal.media[0]?.asset.id ?? null,
     type: r.type,
     occurredAt: r.occurredAt.toISOString(),
     byName: r.byName,

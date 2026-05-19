@@ -21,7 +21,11 @@ export interface AnimalListItem {
   aggressive: boolean;
   admittedAt: Date;
   lastActivityAt: Date | null;
-  thumbnailKey: string | null;
+  // MediaAsset.id of the first photo — used to build a `/api/files/[id]`
+  // URL.  Previously this column held the raw storageKey ("gdrive:1abc…")
+  // and the UI split out the Drive ID, which 404'd because the API
+  // expects a CUID.  Storing the asset id makes the URL trivially correct.
+  thumbnailAssetId: string | null;
 }
 
 export async function listAnimals(params: ListAnimalsParams = {}): Promise<AnimalListItem[]> {
@@ -63,7 +67,10 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
       media: {
         take: 1,
         orderBy: { order: 'asc' },
-        select: { asset: { select: { storageKey: true } } },
+        // Only READY thumbnails — PENDING / FAILED would 425 / 410
+        // through /api/files/[id].
+        where: { asset: { status: 'READY' } },
+        select: { asset: { select: { id: true } } },
       },
       activities: {
         take: 1,
@@ -85,7 +92,7 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
     aggressive: r.aggressive,
     admittedAt: r.admittedAt,
     lastActivityAt: r.activities[0]?.occurredAt ?? null,
-    thumbnailKey: r.media[0]?.asset.storageKey ?? null,
+    thumbnailAssetId: r.media[0]?.asset.id ?? null,
   }));
 }
 

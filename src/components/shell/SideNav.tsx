@@ -27,6 +27,10 @@ const adminNav: NavItem[] = [
 interface Props {
   isAdmin: boolean;
   user: { name: string; role: string };
+  // When true, render unconditionally (used inside the mobile SideNavDrawer
+  // <dialog>).  Otherwise hide below the md breakpoint — the page-level
+  // BottomNav takes over on mobile.
+  forceVisible?: boolean;
 }
 
 function NavLink({ item, active }: { item: NavItem; active: boolean }) {
@@ -44,7 +48,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-export function SideNav({ isAdmin, user }: Props) {
+export function SideNav({ isAdmin, user, forceVisible = false }: Props) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const { open } = useQuickAdd();
@@ -55,8 +59,11 @@ export function SideNav({ isAdmin, user }: Props) {
     .slice(0, 2)
     .join('');
 
+  const visibility = forceVisible ? 'flex' : 'hidden md:flex';
   return (
-    <aside className="sticky top-0 flex h-screen w-[232px] shrink-0 flex-col border-r border-line bg-surface">
+    <aside
+      className={`sticky top-0 h-screen w-[232px] shrink-0 flex-col border-r border-line bg-surface ${visibility}`}
+    >
       <div className="flex items-center gap-2.5 px-4 pb-6 pt-5">
         <BrandMark size={30} />
         <div className="flex flex-col leading-tight">

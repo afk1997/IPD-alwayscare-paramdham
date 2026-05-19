@@ -12,7 +12,7 @@ interface Props {
 export function PatientCard({ animal }: Props) {
   const stale =
     !animal.lastActivityAt || Date.now() - new Date(animal.lastActivityAt).getTime() > 6 * 60 * 60 * 1000;
-  const photoSrc = animal.thumbnailKey ? `/api/files/${animal.thumbnailKey.split(':').pop()}` : undefined;
+  const photoSrc = animal.thumbnailAssetId ? `/api/files/${animal.thumbnailAssetId}` : undefined;
 
   return (
     <Link
