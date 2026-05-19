@@ -7,6 +7,7 @@ import {
   type ActivityActor,
   createActivity,
   duplicateActivity,
+  restoreActivity,
   softDeleteActivity,
   updateActivity,
 } from './service';
@@ -46,6 +47,18 @@ export async function deleteActivityAction(activityId: string): Promise<Activity
     await softDeleteActivity(actor, activityId);
     revalidateTag('today-counts');
     return { ok: true };
+  } catch (e) {
+    if (e instanceof RbacError) return { ok: false, error: e.message };
+    throw e;
+  }
+}
+
+export async function restoreActivityAction(activityId: string): Promise<ActivityActionResult> {
+  try {
+    const actor = await requireActor();
+    await restoreActivity(actor, activityId);
+    revalidateTag('today-counts');
+    return { ok: true, activityId };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     throw e;

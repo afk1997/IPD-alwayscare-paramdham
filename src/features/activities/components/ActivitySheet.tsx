@@ -1,10 +1,16 @@
 'use client';
 import { Photo } from '@/components/media/Photo';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ui/Toast';
 import { relativeTime } from '@/lib/time';
 import { Copy, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useTransition } from 'react';
-import { deleteActivityAction, duplicateActivityAction, updateActivityAction } from '../actions';
+import {
+  deleteActivityAction,
+  duplicateActivityAction,
+  restoreActivityAction,
+  updateActivityAction,
+} from '../actions';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import { summarizeActivity } from '../summary';
 import { ActivityEditFields, type EditDraft, toLocalDatetime } from './ActivityEditFields';
@@ -43,6 +49,7 @@ const TYPE_COLOR: Record<ActivityType, string> = {
 };
 
 export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
+  const { showToast } = useToast();
   const [mode, setMode] = useState<Mode>('view');
   const [draft, setDraft] = useState<EditDraft>({
     remarks: '',
@@ -88,11 +95,23 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   };
 
   const del = () => {
+    const id = activity.id;
+    const typeLabel = ACTIVITY_LABELS[activity.type];
     start(async () => {
-      const result = await deleteActivityAction(activity.id);
+      const result = await deleteActivityAction(id);
       if (result.ok) {
         onChanged();
         onClose();
+        showToast({
+          message: `${typeLabel} deleted`,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              const r = await restoreActivityAction(id);
+              if (r.ok) onChanged();
+            },
+          },
+        });
       } else {
         setError(result.error ?? 'Delete failed');
       }
