@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import type { DocCategory } from './schema';
 
 // Practical hard cap on per-animal documents.  Typical patient has <20;
 // generous cap protects the patient page from pathological inputs.
@@ -16,9 +17,28 @@ export async function listDocumentsForAnimal(animalId: string) {
   });
 }
 
-export async function listAllDocuments(limit = 100) {
+export interface ListAllDocumentsParams {
+  limit?: number;
+  search?: string;
+  category?: DocCategory;
+}
+
+export async function listAllDocuments(params: ListAllDocumentsParams = {}) {
+  const { limit = 100, search, category } = params;
   return prisma.document.findMany({
-    where: { deletedAt: null },
+    where: {
+      deletedAt: null,
+      ...(category ? { category } : {}),
+      ...(search
+        ? {
+            OR: [
+              { kind: { contains: search, mode: 'insensitive' as const } },
+              { name: { contains: search, mode: 'insensitive' as const } },
+              { animal: { name: { contains: search, mode: 'insensitive' as const } } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: 'desc' },
     take: limit,
     include: {
