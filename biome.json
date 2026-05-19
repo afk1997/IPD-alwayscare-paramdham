@@ -50,5 +50,16 @@
         "noUnusedImports": "error"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "include": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "complexity": { "noExcessiveCognitiveComplexity": "off" },
+          "style": { "noNonNullAssertion": "off", "noUnusedTemplateLiteral": "off" }
+        }
+      }
+    }
+  ]
 }
