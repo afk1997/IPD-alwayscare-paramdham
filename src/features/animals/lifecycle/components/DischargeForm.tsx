@@ -1,5 +1,6 @@
 'use client';
 import { FormField, FormSection } from '@/components/forms/FormField';
+import { MediaUploader, type UploadedAsset } from '@/components/media/MediaUploader';
 import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Textarea';
 import { useState, useTransition } from 'react';
@@ -13,6 +14,7 @@ interface Props {
 export function DischargeForm({ animalId, onDone }: Props) {
   const [summary, setSummary] = useState('');
   const [instructions, setInstructions] = useState('');
+  const [docs, setDocs] = useState<UploadedAsset[]>([]);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -20,7 +22,12 @@ export function DischargeForm({ animalId, onDone }: Props) {
     e.preventDefault();
     setError(null);
     start(async () => {
-      const result = await dischargeAction({ animalId, summary, instructions });
+      const result = await dischargeAction({
+        animalId,
+        summary,
+        instructions,
+        documentFileIds: docs.map((d) => d.id),
+      });
       if (!result.ok) setError(result.error ?? 'Failed to discharge');
       else onDone();
     });
@@ -50,6 +57,13 @@ export function DischargeForm({ animalId, onDone }: Props) {
             />
           )}
         </FormField>
+        <MediaUploader
+          value={docs}
+          onChange={setDocs}
+          context={{ kind: 'document', animalId, category: 'CONSENT' }}
+          label="Discharge summary / consent"
+          accept="image/*,application/pdf"
+        />
       </FormSection>
       {error && <div className="text-sm text-critical">{error}</div>}
       <div className="flex justify-end">

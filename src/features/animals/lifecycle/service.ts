@@ -38,6 +38,19 @@ export async function dischargeAnimal(actor: ActorWithName, input: DischargeInpu
       },
     });
 
+    if (parsed.documentFileIds.length > 0) {
+      await tx.document.createMany({
+        data: parsed.documentFileIds.map((fileId) => ({
+          animalId: parsed.animalId,
+          category: 'CONSENT' as const,
+          kind: 'Discharge summary',
+          name: 'Discharge document',
+          fileId,
+          uploadedById: actor.id,
+        })),
+      });
+    }
+
     await tx.activity.create({
       data: {
         animalId: parsed.animalId,
