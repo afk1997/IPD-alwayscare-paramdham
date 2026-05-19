@@ -69,6 +69,7 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
   const [pending, start] = useTransition();
   const [media, setMedia] = useState<UploadedAsset[]>([]);
   const [occurredAtLocal, setOccurredAtLocal] = useState(() => localDatetimeInputValue(new Date()));
+  const [byNameOverride, setByNameOverride] = useState('');
 
   const form = useForm<CreateActivityInput>({
     // biome-ignore lint/suspicious/noExplicitAny: discriminated union typing is intentionally relaxed at the form layer
@@ -93,6 +94,7 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
         type,
         mediaAssetIds: media.map((m) => m.id),
         occurredAt: occurredAtISO,
+        byName: byNameOverride.trim() || undefined,
       } as CreateActivityInput);
       if (!result.ok) setError(result.error ?? 'Failed to log');
       else onDone();
@@ -116,6 +118,19 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
         <Body form={form} />
         <FormField label="Remarks">
           {(id) => <Textarea id={id} rows={2} {...form.register('remarks')} />}
+        </FormField>
+        <FormField
+          label="Logged by"
+          hint="Defaults to your name — override if logging on someone else's behalf"
+        >
+          {(id) => (
+            <Input
+              id={id}
+              value={byNameOverride}
+              onChange={(e) => setByNameOverride(e.target.value)}
+              placeholder="Defaults to current user"
+            />
+          )}
         </FormField>
         <MediaUploader
           value={media}

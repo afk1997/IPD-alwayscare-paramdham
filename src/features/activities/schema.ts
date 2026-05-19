@@ -92,6 +92,10 @@ const Base = z.object({
   // string parsable by `new Date()`; explicitly NOT validated as strict
   // ISO so `<input type="datetime-local">`'s local-time string works.
   occurredAt: z.string().optional(),
+  // Optional override for the "logged by" name shown in the timeline.
+  // Defaults to the signed-in actor's name.  byUserId always tracks the
+  // actual user who saved the row (for audit + RBAC ownership).
+  byName: z.string().min(1).max(120).optional(),
 });
 
 export const CreateActivitySchema = z.discriminatedUnion('type', [

@@ -26,7 +26,7 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
         animalId: parsed.animalId,
         type: parsed.type,
         byUserId: actor.id,
-        byName: actor.name,
+        byName: parsed.byName ?? actor.name,
         remarks: parsed.remarks ?? null,
         data: parsed.data as Prisma.InputJsonValue,
         ...(parsed.occurredAt ? { occurredAt: new Date(parsed.occurredAt) } : {}),
