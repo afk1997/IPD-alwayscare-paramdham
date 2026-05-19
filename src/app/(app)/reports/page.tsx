@@ -24,16 +24,16 @@ export default function ReportsPage() {
           </div>
         </Link>
         <Link
-          href="/patients"
+          href="/reports/by-animal"
           className="flex items-start gap-3 rounded-lg border border-line bg-paper p-5 hover:bg-paper-2"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
             <PawPrint size={18} />
           </div>
           <div>
-            <h2 className="font-display text-base font-bold">Per-animal report</h2>
-            <p className="mt-1 text-sm text-muted">
-              Pick an animal to see its full case history (use the patient page).
+            <h2 className="font-display font-bold text-base">Per-animal report</h2>
+            <p className="mt-1 text-muted text-sm">
+              Pick an animal to see its full case history with activity totals.
             </p>
           </div>
         </Link>

@@ -1,4 +1,5 @@
 import { DailyReport } from '@/features/reports/components/DailyReport';
+import { ReportsNav } from '@/features/reports/components/ReportsNav';
 import { listActivitiesOnDate } from '@/features/reports/queries';
 import { Suspense } from 'react';
 
@@ -18,9 +19,10 @@ export default async function TodayReportPage({
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight">Daily activity report</h1>
-        <p className="mt-1 text-sm text-muted">Activities on the selected date</p>
+        <h1 className="font-display font-bold text-2xl tracking-tight">Reports</h1>
+        <p className="mt-1 text-muted text-sm">Activity logs and per-animal case histories</p>
       </div>
+      <ReportsNav active="today" />
       <Suspense>
         <DailyReport date={date} rows={rows} />
       </Suspense>

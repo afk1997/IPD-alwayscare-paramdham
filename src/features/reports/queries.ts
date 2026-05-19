@@ -5,6 +5,7 @@ import { unstable_cache } from 'next/cache';
 
 const ACTIVITIES_ON_DATE_CAP = 1000;
 const TODAY_TIMELINE_CAP = 200;
+const PER_ANIMAL_HISTORY_CAP = 500;
 
 // ── Today timeline ────────────────────────────────────────────────────────
 // Latest activities across ALL animals for "today" (start of local day → now).
@@ -112,4 +113,82 @@ export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
     occurredAt: r.occurredAt,
     byName: r.byName,
   }));
+}
+
+// ── Per-animal report (used by /reports/by-animal) ────────────────────────
+
+export interface AnimalActivitySummary {
+  id: string;
+  type: ActivityType;
+  occurredAt: Date;
+  byName: string;
+  summary: string;
+}
+
+export interface PerAnimalReport {
+  animal: {
+    id: string;
+    name: string;
+    species: string;
+    ward: string | null;
+    admittedAt: Date;
+    dischargedAt: Date | null;
+    deceasedAt: Date | null;
+  };
+  totals: Record<ActivityType, number>;
+  history: AnimalActivitySummary[];
+}
+
+export async function getPerAnimalReport(animalId: string): Promise<PerAnimalReport | null> {
+  const animal = await prisma.animal.findFirst({
+    where: { id: animalId, deletedAt: null },
+    select: {
+      id: true,
+      name: true,
+      species: true,
+      ward: true,
+      admittedAt: true,
+      dischargedAt: true,
+      deceasedAt: true,
+    },
+  });
+  if (!animal) return null;
+
+  const [history, totalsRaw] = await Promise.all([
+    prisma.activity.findMany({
+      where: { animalId, deletedAt: null },
+      orderBy: { occurredAt: 'desc' },
+      take: PER_ANIMAL_HISTORY_CAP,
+      select: { id: true, type: true, occurredAt: true, byName: true, data: true, remarks: true },
+    }),
+    prisma.activity.groupBy({
+      by: ['type'],
+      where: { animalId, deletedAt: null },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const totals: Record<ActivityType, number> = {
+    ADMISSION: 0,
+    TREATMENT: 0,
+    ROUND: 0,
+    DIAGNOSTIC: 0,
+    SURGERY: 0,
+    FOOD: 0,
+    BATH: 0,
+    WALK: 0,
+  };
+  for (const row of totalsRaw) totals[row.type] = row._count._all;
+
+  return {
+    animal,
+    totals,
+    history: history.map((h) => ({
+      id: h.id,
+      type: h.type,
+      occurredAt: h.occurredAt,
+      byName: h.byName,
+      summary: summarizeActivity({ type: h.type, data: h.data, remarks: h.remarks }),
+    })),
+  };
 }

@@ -19,6 +19,17 @@ export function relativeTime(date: Date | string | null | undefined, now: Date =
   return d.toLocaleDateString();
 }
 
+export function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleString(undefined, {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 export function isStale(lastActivity: Date | null | undefined, thresholdHours = 6): boolean {
   if (!lastActivity) return true;
   return Date.now() - lastActivity.getTime() > thresholdHours * HOUR;
