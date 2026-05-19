@@ -60,6 +60,10 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
+  // Must stay above the early-return below — hooks have to run in the same
+  // order every render or React throws ("rendered fewer hooks than expected").
+  const swipe = useSwipeDown({ onClose });
+
   if (!open) return null;
 
   const handleAction = (action: QuickAddAction) => {
@@ -116,7 +120,6 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
 
   const title = headerTitle(step);
   const showBack = step.kind !== 'menu';
-  const swipe = useSwipeDown({ onClose });
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
