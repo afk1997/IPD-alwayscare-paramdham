@@ -35,6 +35,7 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
     injuryType: nz(parsed.injuryType),
     history: nz(parsed.history),
     diagnosis: nz(parsed.diagnosis),
+    immediateTreatment: nz(parsed.immediateTreatment),
     surgeryRequired: nz(parsed.surgeryRequired),
     contagious: parsed.contagious,
     status: parsed.status as AnimalStatus,
@@ -126,6 +127,7 @@ export interface UpdateAnimalPatch {
   injuryType?: string | null;
   history?: string | null;
   diagnosis?: string | null;
+  immediateTreatment?: string | null;
   surgeryRequired?: string | null;
   contagious?: boolean;
   status?: AnimalStatus;
@@ -159,6 +161,7 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
   if (patch.injuryType !== undefined) data.injuryType = patch.injuryType;
   if (patch.history !== undefined) data.history = patch.history;
   if (patch.diagnosis !== undefined) data.diagnosis = patch.diagnosis;
+  if (patch.immediateTreatment !== undefined) data.immediateTreatment = patch.immediateTreatment;
   if (patch.surgeryRequired !== undefined) data.surgeryRequired = patch.surgeryRequired;
   if (patch.contagious !== undefined) data.contagious = patch.contagious;
   if (patch.status !== undefined) data.status = patch.status;

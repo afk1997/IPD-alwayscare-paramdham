@@ -26,6 +26,7 @@ const DEFAULTS: CreateAnimalInput = {
   status: 'OBSERVATION',
   ward: '',
   diagnosis: '',
+  immediateTreatment: '',
   surgeryRequired: '',
   testsAdvised: [],
   mediaAssetIds: [],

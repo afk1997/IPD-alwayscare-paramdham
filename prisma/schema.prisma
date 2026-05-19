@@ -163,9 +163,10 @@ model Animal {
   complaint       String?
   injuryType      String?
   history         String?
-  diagnosis       String?
-  surgeryRequired String?
-  contagious      Boolean      @default(false)
+  diagnosis          String?
+  immediateTreatment String?
+  surgeryRequired    String?
+  contagious         Boolean      @default(false)
   status          AnimalStatus @default(OBSERVATION)
   ward            String?
   dischargedAt    DateTime?

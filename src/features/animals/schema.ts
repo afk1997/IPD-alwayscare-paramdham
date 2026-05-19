@@ -45,6 +45,7 @@ export const CreateAnimalSchema = z.object({
 
   // doctor notes
   diagnosis: z.string().max(2000).optional().or(z.literal('')),
+  immediateTreatment: z.string().max(2000).optional().or(z.literal('')),
   surgeryRequired: z.string().max(200).optional().or(z.literal('')),
   testsAdvised: z.array(z.enum(TEST_KINDS)).default([]),
 

@@ -25,6 +25,13 @@ export function Step5DoctorNotes({ form }: Props) {
       <FormField label="Tentative diagnosis" htmlFor="diagnosis">
         <Textarea id="diagnosis" rows={3} {...register('diagnosis')} />
       </FormField>
+      <FormField
+        label="Immediate treatment started"
+        htmlFor="immediateTreatment"
+        hint="Fluids, pain mgmt, AB cover…"
+      >
+        <Textarea id="immediateTreatment" rows={3} {...register('immediateTreatment')} />
+      </FormField>
       <FormField label="Surgery required?" htmlFor="surgeryRequired" hint="No / Yes / Maybe — and notes">
         <Input id="surgeryRequired" {...register('surgeryRequired')} />
       </FormField>
