@@ -27,6 +27,7 @@ interface Props {
     history: string | null;
     injuryType: string | null;
     diagnosis: string | null;
+    immediateTreatment: string | null;
     surgeryRequired: string | null;
     rescuer: string | null;
     rescuerPhone: string | null;
@@ -34,9 +35,13 @@ interface Props {
     ngo: string | null;
     broughtBy: string | null;
   };
+  /** Called on successful save.  Default: navigate to /patients/{id}. */
+  onDone?: () => void;
+  /** When provided, renders a Cancel button next to Save. */
+  onCancel?: () => void;
 }
 
-export function AnimalEditForm({ animal }: Props) {
+export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
   const router = useRouter();
   const [form, setForm] = useState(animal);
   const [pending, start] = useTransition();
@@ -65,6 +70,7 @@ export function AnimalEditForm({ animal }: Props) {
         history: form.history,
         injuryType: form.injuryType,
         diagnosis: form.diagnosis,
+        immediateTreatment: form.immediateTreatment,
         surgeryRequired: form.surgeryRequired,
         rescuer: form.rescuer,
         rescuerPhone: form.rescuerPhone,
@@ -74,8 +80,9 @@ export function AnimalEditForm({ animal }: Props) {
       });
       if (!result.ok) setError(result.error ?? 'Update failed');
       else {
-        router.push(`/patients/${animal.id}`);
         router.refresh();
+        if (onDone) onDone();
+        else router.push(`/patients/${animal.id}`);
       }
     });
   };
@@ -227,6 +234,16 @@ export function AnimalEditForm({ animal }: Props) {
             />
           )}
         </FormField>
+        <FormField label="Immediate treatment started">
+          {(id) => (
+            <Textarea
+              id={id}
+              rows={2}
+              value={form.immediateTreatment ?? ''}
+              onChange={(e) => onField('immediateTreatment', e.target.value)}
+            />
+          )}
+        </FormField>
         <FormField label="Surgery required?">
           {(id) => (
             <Input
@@ -289,7 +306,7 @@ export function AnimalEditForm({ animal }: Props) {
 
       {error && <div className="text-sm text-critical">{error}</div>}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => router.back()} disabled={pending}>
+        <Button type="button" variant="ghost" onClick={onCancel ?? (() => router.back())} disabled={pending}>
           Cancel
         </Button>
         <Button type="submit" disabled={pending}>

@@ -28,6 +28,7 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
           history: animal.history,
           injuryType: animal.injuryType,
           diagnosis: animal.diagnosis,
+          immediateTreatment: animal.immediateTreatment,
           surgeryRequired: animal.surgeryRequired,
           rescuer: animal.rescuer,
           rescuerPhone: animal.rescuerPhone,
