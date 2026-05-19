@@ -38,8 +38,9 @@ test('admit a new animal end-to-end', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Admit animal' }).click();
 
-  // Land on detail page
-  await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 15_000 });
+  // Land on detail page (createAnimal includes a Drive folder lookup +
+  // ownership check, which can push the redirect past 15s on cold CI).
+  await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 30_000 });
   await expect(page.getByText('TestBruno').first()).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText('Hit by vehicle')).toBeVisible();
 
