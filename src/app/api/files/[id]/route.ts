@@ -1,7 +1,12 @@
+import { Readable } from 'node:stream';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getStorage } from '@/lib/storage';
 import { NextResponse } from 'next/server';
+
+// Force Node.js runtime so the storage adapters that use the Node `stream`
+// and `googleapis` SDK work; the edge runtime would reject them.
+export const runtime = 'nodejs';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getCurrentUser();
@@ -14,12 +19,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const storage = getStorage();
   const { stream, size } = await storage.get(asset.storageKey);
 
-  return new NextResponse(stream as unknown as ReadableStream, {
-    headers: {
-      'content-type': asset.mimeType,
-      'content-length': String(size),
-      'cache-control': 'private, max-age=86400',
-      etag: `"${asset.id}"`,
-    },
-  });
+  // Convert Node Readable → Web ReadableStream for NextResponse.
+  const webStream =
+    stream instanceof Readable
+      ? (Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>)
+      : (stream as unknown as ReadableStream<Uint8Array>);
+
+  const headers: Record<string, string> = {
+    'content-type': asset.mimeType,
+    'cache-control': 'private, max-age=86400',
+    etag: `"${asset.id}"`,
+  };
+  if (size > 0) headers['content-length'] = String(size);
+
+  return new NextResponse(webStream, { headers });
 }

@@ -4,6 +4,10 @@ import { getStorage } from '@/lib/storage';
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
 
+// Node runtime required for sharp + googleapis (FormData parsing + Drive SDK).
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
 

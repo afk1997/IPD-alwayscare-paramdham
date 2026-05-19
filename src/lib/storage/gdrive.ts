@@ -5,6 +5,10 @@ import type { FileStorage, PutResult } from './index';
 
 const PREFIX = 'gdrive:';
 
+// `supportsAllDrives` lets the call work on both My Drive and Shared Drive
+// folders without us needing to know which kind we're hitting.
+const SHARED = { supportsAllDrives: true } as const;
+
 export class GoogleDriveStorage implements FileStorage {
   private driveClient: drive_v3.Drive | null = null;
 
@@ -12,8 +16,8 @@ export class GoogleDriveStorage implements FileStorage {
     private readonly serviceAccountJson: string,
     private readonly rootFolderId: string,
   ) {
-    if (!serviceAccountJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is required');
-    if (!rootFolderId) throw new Error('GOOGLE_DRIVE_ROOT_FOLDER_ID is required');
+    if (!serviceAccountJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is required');
+    if (!rootFolderId) throw new Error('GOOGLE_DRIVE_FOLDER_ID is required');
   }
 
   private drive(): drive_v3.Drive {
@@ -32,6 +36,7 @@ export class GoogleDriveStorage implements FileStorage {
     const result = await pRetry(
       async () => {
         const res = await drive.files.create({
+          ...SHARED,
           requestBody: {
             name: meta.filename,
             parents: [this.rootFolderId],
@@ -54,8 +59,8 @@ export class GoogleDriveStorage implements FileStorage {
     if (!key.startsWith(PREFIX)) throw new Error(`Invalid gdrive key: ${key}`);
     const fileId = key.slice(PREFIX.length);
     const drive = this.drive();
-    const meta = await drive.files.get({ fileId, fields: 'mimeType, size' });
-    const dataRes = await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' });
+    const meta = await drive.files.get({ ...SHARED, fileId, fields: 'mimeType, size' });
+    const dataRes = await drive.files.get({ ...SHARED, fileId, alt: 'media' }, { responseType: 'stream' });
     return {
       stream: dataRes.data as unknown as NodeJS.ReadableStream,
       mime: meta.data.mimeType ?? 'application/octet-stream',
@@ -66,7 +71,13 @@ export class GoogleDriveStorage implements FileStorage {
   async delete(key: string): Promise<void> {
     if (!key.startsWith(PREFIX)) return;
     const fileId = key.slice(PREFIX.length);
-    await this.drive().files.delete({ fileId });
+    // Move to trash rather than permanent-delete — service accounts on
+    // shared drives don't always have the `delete` capability but can trash.
+    await this.drive().files.update({
+      ...SHARED,
+      fileId,
+      requestBody: { trashed: true },
+    });
   }
 
   directUrl(): string | null {

@@ -26,10 +26,9 @@ export function getStorage(): FileStorage {
     return cached;
   }
   if (driver === 'gdrive') {
-    cached = new GoogleDriveStorage(
-      process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '',
-      process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '',
-    );
+    const key = process.env.GOOGLE_SERVICE_ACCOUNT_KEY ?? process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '';
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID ?? process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID ?? '';
+    cached = new GoogleDriveStorage(key, folderId);
     return cached;
   }
   throw new Error(`Unsupported STORAGE_DRIVER: ${driver}`);
