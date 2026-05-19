@@ -65,6 +65,49 @@ export async function restoreActivityAction(activityId: string): Promise<Activit
   }
 }
 
+export interface ActivitySearchResult {
+  id: string;
+  animalId: string;
+  animalName: string;
+  type: string;
+  remarks: string | null;
+  occurredAt: string;
+}
+
+export async function searchActivitiesAction(query: string): Promise<ActivitySearchResult[]> {
+  await requireActor();
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const { prisma } = await import('@/lib/prisma');
+  const rows = await prisma.activity.findMany({
+    where: {
+      deletedAt: null,
+      OR: [
+        { remarks: { contains: q, mode: 'insensitive' } },
+        { byName: { contains: q, mode: 'insensitive' } },
+      ],
+    },
+    orderBy: { occurredAt: 'desc' },
+    take: 10,
+    select: {
+      id: true,
+      animalId: true,
+      type: true,
+      remarks: true,
+      occurredAt: true,
+      animal: { select: { name: true } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    animalId: r.animalId,
+    animalName: r.animal.name,
+    type: r.type,
+    remarks: r.remarks,
+    occurredAt: r.occurredAt.toISOString(),
+  }));
+}
+
 export async function updateActivityAction(
   activityId: string,
   patch: { remarks?: string | null; data?: unknown; occurredAt?: string; byName?: string },
