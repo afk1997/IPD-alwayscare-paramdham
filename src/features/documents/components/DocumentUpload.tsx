@@ -114,7 +114,11 @@ export function DocumentUpload({ animalId, onDone }: Props) {
           />
         </div>
       )}
-      {error && <div className="text-sm text-critical">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-critical">
+          {error}
+        </div>
+      )}
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onDone} disabled={pending}>
           Cancel

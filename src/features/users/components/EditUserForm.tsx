@@ -56,7 +56,11 @@ export function EditUserForm({ user }: Props) {
           )}
         </FormField>
       </FormSection>
-      {error && <div className="text-sm text-critical">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-critical">
+          {error}
+        </div>
+      )}
       <div className="flex justify-between">
         {user.active && (
           <Button type="button" variant="danger" onClick={disable} disabled={pending}>

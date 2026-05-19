@@ -54,7 +54,11 @@ export function LoginForm() {
           className="rounded-md border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-accent"
         />
       </div>
-      {error && <div className="text-sm text-critical">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-critical">
+          {error}
+        </div>
+      )}
       <Button type="submit" disabled={pending}>
         {pending ? 'Signing in…' : 'Sign in'}
       </Button>

@@ -4,10 +4,11 @@ import type { ActivityType } from '@/features/activities/schema';
 import { LifecycleForm } from '@/features/animals/lifecycle/components/LifecycleForm';
 import type { ActiveAnimalLite } from '@/features/animals/queries';
 import { DocumentUpload } from '@/features/documents/components/DocumentUpload';
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
 import { ArrowLeft, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityTypeChooser } from './ActivityTypeChooser';
 import { PatientPicker } from './PatientPicker';
 import { QuickAddMenu } from './QuickAddMenu';
@@ -29,6 +30,8 @@ const INITIAL: QuickAddStep = { kind: 'menu' };
 export function QuickAddModal({ open, onClose, prefill }: Props) {
   const router = useRouter();
   const [step, setStep] = useState<QuickAddStep>(INITIAL);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
 
   // When the modal opens, apply any prefill from `useQuickAdd().open(...)`
   // by jumping straight to the patient picker (or, for admission, closing
@@ -130,6 +133,7 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
         className="absolute inset-0 cursor-default bg-black/45 backdrop-blur-[1px]"
       />
       <div
+        ref={dialogRef}
         className="relative flex max-h-[88vh] w-full max-w-[460px] flex-col rounded-t-[22px] bg-paper p-5 shadow-2xl md:rounded-2xl"
         // biome-ignore lint/a11y/useSemanticElements: native <dialog> requires showModal()
         role="dialog"

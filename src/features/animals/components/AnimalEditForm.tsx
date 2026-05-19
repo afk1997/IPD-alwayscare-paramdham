@@ -307,7 +307,11 @@ export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
         </div>
       </FormSection>
 
-      {error && <div className="text-sm text-critical">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-critical">
+          {error}
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel ?? (() => router.back())} disabled={pending}>
           Cancel

@@ -2,10 +2,11 @@
 import { Photo } from '@/components/media/Photo';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
 import { relativeTime } from '@/lib/time';
 import { Copy, Pencil, Trash2, X } from 'lucide-react';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import {
   deleteActivityAction,
   duplicateActivityAction,
@@ -75,6 +76,8 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   }, [open, activity]);
 
   const swipe = useSwipeDown({ onClose });
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open && !!activity);
 
   if (!open || !activity) return null;
 
@@ -145,8 +148,9 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
       className="fixed inset-0 z-40 flex items-end justify-end bg-black/45 md:items-stretch"
       style={{ animation: 'fadeIn 0.15s ease-out' }}
     >
-      {/* biome-ignore lint/a11y/useSemanticElements: nested inside <button> backdrop */}
       <div
+        ref={dialogRef}
+        // biome-ignore lint/a11y/useSemanticElements: nested inside <button> backdrop
         role="dialog"
         aria-modal="true"
         aria-label={ACTIVITY_LABELS[activity.type]}
@@ -176,7 +180,11 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
               <p className="text-sm text-muted">Soft delete — an admin can restore it from the audit log.</p>
             </div>
           )}
-          {error && <div className="px-5 py-2 text-sm text-critical">{error}</div>}
+          {error && (
+            <div role="alert" className="px-5 py-2 text-sm text-critical">
+              {error}
+            </div>
+          )}
         </div>
 
         <footer className="flex shrink-0 items-center gap-2 border-t border-line bg-paper p-3">

@@ -79,7 +79,11 @@ export function DeathForm({ animalId, onDone }: Props) {
         </p>
       </div>
 
-      {error && <div className="text-critical text-sm">{error}</div>}
+      {error && (
+        <div role="alert" className="text-critical text-sm">
+          {error}
+        </div>
+      )}
       <div className="flex justify-end">
         <Button type="submit" variant="danger" disabled={pending}>
           {pending ? 'Recording…' : 'Record death'}

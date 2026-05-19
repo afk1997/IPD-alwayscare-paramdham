@@ -58,7 +58,11 @@ export function InviteUserForm() {
           )}
         </FormField>
       </FormSection>
-      {error && <div className="text-sm text-critical">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-critical">
+          {error}
+        </div>
+      )}
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           {pending ? 'Creating…' : 'Create user'}

@@ -144,7 +144,11 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
           label={MEDIA_LABEL[type]}
         />
       </FormSection>
-      {error && <div className="text-critical text-sm">{error}</div>}
+      {error && (
+        <div role="alert" className="text-critical text-sm">
+          {error}
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onDone} disabled={pending}>
           Cancel

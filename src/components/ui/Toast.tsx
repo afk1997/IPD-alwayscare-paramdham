@@ -73,7 +73,13 @@ export function ToastProvider({ children }: Props) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+      {/* <output> has implicit role="status" — screen readers announce save
+          confirmations and undo prompts without interrupting current focus. */}
+      <output
+        className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4"
+        aria-live="polite"
+        aria-atomic="false"
+      >
         <ul className="pointer-events-auto flex flex-col items-center gap-2">
           {toasts.map((t) => (
             <li
@@ -104,7 +110,7 @@ export function ToastProvider({ children }: Props) {
             </li>
           ))}
         </ul>
-      </div>
+      </output>
     </ToastContext.Provider>
   );
 }

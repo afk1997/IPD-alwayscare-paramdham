@@ -70,7 +70,11 @@ export function DischargeForm({ animalId, onDone }: Props) {
           accept="image/*,application/pdf"
         />
       </FormSection>
-      {error && <div className="text-sm text-critical">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-critical">
+          {error}
+        </div>
+      )}
       <div className="flex justify-end">
         <Button type="submit" disabled={pending}>
           {pending ? 'Discharging…' : 'Discharge animal'}

@@ -59,7 +59,11 @@ export function AdmissionWizard() {
         {step === 4 && <Step5DoctorNotes form={form} />}
       </div>
 
-      {error && <div className="text-sm text-critical">{error}</div>}
+      {error && (
+        <div role="alert" className="text-sm text-critical">
+          {error}
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <Button type="button" variant="ghost" onClick={prev} disabled={step === 0 || pending}>
