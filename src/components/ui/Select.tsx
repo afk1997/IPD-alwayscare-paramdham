@@ -11,7 +11,8 @@ export const Select = forwardRef<HTMLSelectElement, Props>(function Select(
   return (
     <select
       ref={ref}
-      className={`w-full rounded-md border bg-paper px-3 py-2 text-sm outline-none transition focus:border-accent ${
+      // 16px on mobile prevents iOS Safari auto-zoom on focus.
+      className={`w-full rounded-md border bg-paper px-3 py-2 text-base outline-none transition focus:border-accent md:text-sm ${
         invalid ? 'border-critical' : 'border-line'
       } ${className}`}
       {...rest}
