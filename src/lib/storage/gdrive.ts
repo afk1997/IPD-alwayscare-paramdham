@@ -5,46 +5,111 @@ import type { FileStorage, PutResult } from './index';
 
 const PREFIX = 'gdrive:';
 
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
 // `supportsAllDrives` lets the call work on both My Drive and Shared Drive
 // folders without us needing to know which kind we're hitting.
 const SHARED = { supportsAllDrives: true } as const;
 
+export interface InitiateResumableResult {
+  uploadUrl: string;
+}
+
+export interface DriveMetadata {
+  size?: number | null;
+  mimeType?: string | null;
+  imageMediaMetadata?: { width?: number | null; height?: number | null } | null;
+  videoMediaMetadata?: { durationMillis?: string | null } | null;
+}
+
+interface ServiceAccountKey {
+  client_email: string;
+  private_key: string;
+}
+
 export class GoogleDriveStorage implements FileStorage {
   private driveClient: drive_v3.Drive | null = null;
+  private accessTokenCache: { token: string; expiresAt: number } | null = null;
+  private readonly creds: ServiceAccountKey;
 
   constructor(
-    private readonly serviceAccountJson: string,
+    serviceAccountJson: string,
     private readonly rootFolderId: string,
   ) {
     if (!serviceAccountJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is required');
     if (!rootFolderId) throw new Error('GOOGLE_DRIVE_FOLDER_ID is required');
+    // Parse once at construction — the JSON is ~2 KB and decoding it on
+    // every Drive call wastes CPU + adds GC pressure under load.
+    this.creds = JSON.parse(Buffer.from(serviceAccountJson, 'base64').toString('utf-8')) as ServiceAccountKey;
+    if (!this.creds.client_email || !this.creds.private_key) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY missing client_email or private_key');
+    }
+  }
+
+  get rootId(): string {
+    return this.rootFolderId;
   }
 
   private drive(): drive_v3.Drive {
     if (this.driveClient) return this.driveClient;
-    const credentials = JSON.parse(Buffer.from(this.serviceAccountJson, 'base64').toString('utf-8'));
     const auth = new google.auth.GoogleAuth({
-      credentials,
+      credentials: this.creds as unknown as Record<string, unknown>,
       scopes: ['https://www.googleapis.com/auth/drive'],
     });
     this.driveClient = google.drive({ version: 'v3', auth });
     return this.driveClient;
   }
 
-  async put(buf: Buffer, meta: { filename: string; mime: string }): Promise<PutResult> {
+  private async accessToken(): Promise<string> {
+    const now = Date.now();
+    if (this.accessTokenCache && this.accessTokenCache.expiresAt > now + 60_000) {
+      return this.accessTokenCache.token;
+    }
+    const jwt = new google.auth.JWT({
+      email: this.creds.client_email,
+      key: this.creds.private_key,
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+    const { access_token, expiry_date } = await jwt.authorize();
+    if (!access_token) throw new Error('Drive token exchange returned no access_token');
+    this.accessTokenCache = {
+      token: access_token,
+      expiresAt: typeof expiry_date === 'number' ? expiry_date : now + 50 * 60_000,
+    };
+    return access_token;
+  }
+
+  // ── Folder ops ────────────────────────────────────────────────────────────
+  async ensureFolder(parentId: string, name: string): Promise<string> {
     const drive = this.drive();
+    const escName = name.replace(/'/g, "\\'");
+    const existing = await drive.files.list({
+      ...SHARED,
+      q: `name = '${escName}' and mimeType = '${FOLDER_MIME}' and trashed = false and '${parentId}' in parents`,
+      fields: 'files(id)',
+      pageSize: 1,
+      includeItemsFromAllDrives: true,
+    });
+    const first = existing.data.files?.[0]?.id;
+    if (first) return first;
+    const created = await drive.files.create({
+      ...SHARED,
+      requestBody: { name, mimeType: FOLDER_MIME, parents: [parentId] },
+      fields: 'id',
+    });
+    if (!created.data.id) throw new Error('Drive folder create returned no id');
+    return created.data.id;
+  }
+
+  // ── Put / get / delete ────────────────────────────────────────────────────
+  async put(buf: Buffer, meta: { filename: string; mime: string; parentId?: string }): Promise<PutResult> {
+    const drive = this.drive();
+    const parents = [meta.parentId ?? this.rootFolderId];
     const result = await pRetry(
       async () => {
         const res = await drive.files.create({
           ...SHARED,
-          requestBody: {
-            name: meta.filename,
-            parents: [this.rootFolderId],
-          },
-          media: {
-            mimeType: meta.mime,
-            body: Readable.from(buf),
-          },
+          requestBody: { name: meta.filename, parents },
+          media: { mimeType: meta.mime, body: Readable.from(buf) },
           fields: 'id, size',
         });
         return res.data;
@@ -71,8 +136,6 @@ export class GoogleDriveStorage implements FileStorage {
   async delete(key: string): Promise<void> {
     if (!key.startsWith(PREFIX)) return;
     const fileId = key.slice(PREFIX.length);
-    // Move to trash rather than permanent-delete — service accounts on
-    // shared drives don't always have the `delete` capability but can trash.
     await this.drive().files.update({
       ...SHARED,
       fileId,
@@ -83,4 +146,79 @@ export class GoogleDriveStorage implements FileStorage {
   directUrl(): string | null {
     return null;
   }
+
+  // ── Resumable upload ──────────────────────────────────────────────────────
+  async initiateResumable(meta: {
+    filename: string;
+    mime: string;
+    size: number;
+    parentId: string;
+    // The browser's origin — required so Drive returns a CORS-friendly
+    // upload URL that the browser can PUT chunks to directly.
+    origin: string;
+  }): Promise<InitiateResumableResult> {
+    const token = await this.accessToken();
+    const url =
+      'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': meta.mime,
+        'X-Upload-Content-Length': String(meta.size),
+        Origin: meta.origin,
+      },
+      body: JSON.stringify({ name: meta.filename, parents: [meta.parentId] }),
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Drive resumable init failed: ${res.status} ${body}`);
+    }
+    const uploadUrl = res.headers.get('location');
+    if (!uploadUrl) throw new Error('Drive resumable init returned no Location header');
+    return { uploadUrl };
+  }
+
+  async getFileMetadata(fileId: string): Promise<DriveMetadata> {
+    const drive = this.drive();
+    const res = await drive.files.get({
+      ...SHARED,
+      fileId,
+      fields: 'size, mimeType, imageMediaMetadata(width, height), videoMediaMetadata(durationMillis)',
+    });
+    return res.data as DriveMetadata;
+  }
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
+  async rename(key: string, newName: string): Promise<void> {
+    if (!key.startsWith(PREFIX)) return;
+    const fileId = key.slice(PREFIX.length);
+    await this.drive().files.update({
+      ...SHARED,
+      fileId,
+      requestBody: { name: newName },
+    });
+  }
+
+  async move(key: string, fromParentId: string, toParentId: string): Promise<void> {
+    if (!key.startsWith(PREFIX)) return;
+    const fileId = key.slice(PREFIX.length);
+    await this.drive().files.update({
+      ...SHARED,
+      fileId,
+      addParents: toParentId,
+      removeParents: fromParentId,
+    });
+  }
+
+  async hardDelete(key: string): Promise<void> {
+    if (!key.startsWith(PREFIX)) return;
+    const fileId = key.slice(PREFIX.length);
+    await this.drive().files.delete({ ...SHARED, fileId });
+  }
+}
+
+export function isGoogleDriveStorage(s: unknown): s is GoogleDriveStorage {
+  return s instanceof GoogleDriveStorage;
 }

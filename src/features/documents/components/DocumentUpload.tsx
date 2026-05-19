@@ -3,6 +3,7 @@ import { FormField } from '@/components/forms/FormField';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { resumableUpload } from '@/lib/upload/resumable';
 import { Upload } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { createDocumentAction } from '../actions';
@@ -17,6 +18,7 @@ export function DocumentUpload({ animalId, onDone }: Props) {
   const [category, setCategory] = useState<DocCategory>('MEDICAL');
   const [kind, setKind] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -28,24 +30,30 @@ export function DocumentUpload({ animalId, onDone }: Props) {
     }
     setError(null);
     start(async () => {
-      const fd = new FormData();
-      fd.append('file', file);
-      const upRes = await fetch('/api/files/upload', { method: 'POST', body: fd });
-      if (!upRes.ok) {
-        const j = (await upRes.json().catch(() => ({}))) as { error?: string };
-        setError(j.error ?? 'Upload failed');
-        return;
+      try {
+        setProgress(0);
+        const asset = await resumableUpload({
+          file,
+          context: { kind: 'document', animalId, category },
+          onProgress: (p) => setProgress(p.fraction),
+        });
+        const result = await createDocumentAction({
+          animalId,
+          category,
+          kind: kind || category,
+          name: file.name,
+          fileId: asset.id,
+        });
+        if (!result.ok) {
+          setError(result.error ?? 'Save failed');
+        } else {
+          onDone();
+        }
+      } catch (e2) {
+        setError(e2 instanceof Error ? e2.message : 'Upload failed');
+      } finally {
+        setProgress(null);
       }
-      const asset = (await upRes.json()) as { id: string };
-      const result = await createDocumentAction({
-        animalId,
-        category,
-        kind: kind || category,
-        name: file.name,
-        fileId: asset.id,
-      });
-      if (!result.ok) setError(result.error ?? 'Save failed');
-      else onDone();
     });
   };
 
@@ -91,9 +99,18 @@ export function DocumentUpload({ animalId, onDone }: Props) {
             type="file"
             accept="image/*,video/*,application/pdf"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            disabled={pending}
           />
         )}
       </FormField>
+      {progress !== null && (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-2">
+          <div
+            className="h-full bg-accent transition-all"
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </div>
+      )}
       {error && <div className="text-sm text-critical">{error}</div>}
       <div className="flex items-center justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onDone} disabled={pending}>

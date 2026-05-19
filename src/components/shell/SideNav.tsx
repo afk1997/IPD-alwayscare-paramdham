@@ -1,4 +1,5 @@
 'use client';
+import { useQuickAdd } from '@/features/quick-add/QuickAddProvider';
 import { CalendarRange, FileText, History, Home, PawPrint, Plus, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -46,6 +47,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 export function SideNav({ isAdmin, user }: Props) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
+  const { open } = useQuickAdd();
 
   const initials = user.name
     .split(' ')
@@ -63,13 +65,14 @@ export function SideNav({ isAdmin, user }: Props) {
         </div>
       </div>
 
-      <Link
-        href="/activity/new"
-        className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 text-sm font-semibold text-accent-fg shadow-sm transition hover:opacity-90"
+      <button
+        type="button"
+        onClick={open}
+        className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 font-semibold text-accent-fg text-sm shadow-sm transition hover:opacity-90"
       >
         <Plus size={16} strokeWidth={2.4} />
         New entry
-      </Link>
+      </button>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-2.5">
         <div className="px-3 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-soft">

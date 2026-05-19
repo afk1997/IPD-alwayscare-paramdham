@@ -1,0 +1,169 @@
+'use client';
+import { ActivityForm } from '@/features/activities/components/ActivityForm';
+import type { ActivityType } from '@/features/activities/schema';
+import type { ActiveAnimalLite } from '@/features/animals/queries';
+import { DocumentUpload } from '@/features/documents/components/DocumentUpload';
+import { ArrowLeft, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { ActivityTypeChooser } from './ActivityTypeChooser';
+import { LifecycleForm } from './LifecycleForm';
+import { PatientPicker } from './PatientPicker';
+import { QuickAddMenu } from './QuickAddMenu';
+import type { QuickAddAction, QuickAddStep } from './types';
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+}
+
+const INITIAL: QuickAddStep = { kind: 'menu' };
+
+export function QuickAddModal({ open, onClose }: Props) {
+  const router = useRouter();
+  const [step, setStep] = useState<QuickAddStep>(INITIAL);
+
+  useEffect(() => {
+    if (!open) setStep(INITIAL);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  const handleAction = (action: QuickAddAction) => {
+    if (action === 'admission') {
+      onClose();
+      router.push('/patients/new');
+      return;
+    }
+    setStep({ kind: 'pick-patient', purpose: action });
+  };
+
+  const handlePatient = (animal: ActiveAnimalLite) => {
+    if (step.kind !== 'pick-patient') return;
+    if (step.purpose === 'activity') {
+      setStep({ kind: 'activity-type', animalId: animal.id, animalName: animal.name });
+    } else if (step.purpose === 'document') {
+      setStep({ kind: 'document-form', animalId: animal.id, animalName: animal.name });
+    } else {
+      setStep({ kind: 'lifecycle-form', animalId: animal.id, animalName: animal.name });
+    }
+  };
+
+  const handleType = (type: ActivityType) => {
+    if (step.kind !== 'activity-type') return;
+    setStep({ kind: 'activity-form', animalId: step.animalId, animalName: step.animalName, type });
+  };
+
+  const goBack = () => {
+    if (step.kind === 'menu') return onClose();
+    if (step.kind === 'pick-patient') return setStep({ kind: 'menu' });
+    if (step.kind === 'activity-type') return setStep({ kind: 'pick-patient', purpose: 'activity' });
+    if (step.kind === 'activity-form')
+      return setStep({ kind: 'activity-type', animalId: step.animalId, animalName: step.animalName });
+    if (step.kind === 'document-form') return setStep({ kind: 'pick-patient', purpose: 'document' });
+    if (step.kind === 'lifecycle-form') return setStep({ kind: 'pick-patient', purpose: 'lifecycle' });
+  };
+
+  const finish = (animalId: string) => {
+    onClose();
+    router.push(`/patients/${animalId}`);
+    router.refresh();
+  };
+
+  const title = headerTitle(step);
+  const showBack = step.kind !== 'menu';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default bg-black/45 backdrop-blur-[1px]"
+      />
+      <div
+        className="relative flex max-h-[88vh] w-full max-w-[460px] flex-col rounded-t-[22px] bg-paper p-5 shadow-2xl md:rounded-2xl"
+        // biome-ignore lint/a11y/useSemanticElements: native <dialog> requires showModal()
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <div className="mb-3 hidden md:block" />
+        <div className="mx-auto mb-2 h-1 w-9 rounded-full bg-line md:hidden" />
+        <div className="mb-4 flex items-center gap-2">
+          {showBack && (
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Back"
+              className="-ml-2 flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-paper-2"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          )}
+          <h2 className="flex-1 font-display font-bold text-[17px] text-text">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted hover:bg-paper-2"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          {step.kind === 'menu' && <QuickAddMenu onPick={handleAction} />}
+          {step.kind === 'pick-patient' && <PatientPicker onPick={handlePatient} onCancel={onClose} />}
+          {step.kind === 'activity-type' && (
+            <div className="flex flex-col gap-3">
+              <p className="text-[12.5px] text-muted">
+                Patient: <span className="font-semibold text-text">{step.animalName}</span>
+              </p>
+              <ActivityTypeChooser onPick={handleType} />
+            </div>
+          )}
+          {step.kind === 'activity-form' && (
+            <ActivityForm animalId={step.animalId} type={step.type} onDone={() => finish(step.animalId)} />
+          )}
+          {step.kind === 'document-form' && (
+            <DocumentUpload animalId={step.animalId} onDone={() => finish(step.animalId)} />
+          )}
+          {step.kind === 'lifecycle-form' && (
+            <LifecycleForm animalId={step.animalId} onDone={() => finish(step.animalId)} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function headerTitle(step: QuickAddStep): string {
+  switch (step.kind) {
+    case 'menu':
+      return 'New entry';
+    case 'pick-patient':
+      return step.purpose === 'activity'
+        ? 'Pick patient — log activity'
+        : step.purpose === 'document'
+          ? 'Pick patient — upload document'
+          : 'Pick patient — end of stay';
+    case 'activity-type':
+      return 'Log activity';
+    case 'activity-form':
+      return `Log activity — ${step.animalName}`;
+    case 'document-form':
+      return `Upload document — ${step.animalName}`;
+    case 'lifecycle-form':
+      return `End of stay — ${step.animalName}`;
+  }
+}

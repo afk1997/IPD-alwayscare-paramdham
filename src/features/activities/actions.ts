@@ -28,7 +28,6 @@ export async function createActivityAction(input: CreateActivityInput): Promise<
     const actor = await requireActor();
     const parsed = CreateActivitySchema.parse(input);
     const activity = await createActivity(actor, parsed);
-    revalidateTag(`animal:${parsed.animalId}:activities`);
     revalidateTag('today-counts');
     return { ok: true, activityId: activity.id };
   } catch (e) {
@@ -41,14 +40,11 @@ export async function createActivityAction(input: CreateActivityInput): Promise<
   }
 }
 
-export async function deleteActivityAction(
-  activityId: string,
-  animalId: string,
-): Promise<ActivityActionResult> {
+export async function deleteActivityAction(activityId: string): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
     await softDeleteActivity(actor, activityId);
-    revalidateTag(`animal:${animalId}:activities`);
+    revalidateTag('today-counts');
     return { ok: true };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -58,13 +54,12 @@ export async function deleteActivityAction(
 
 export async function updateActivityAction(
   activityId: string,
-  animalId: string,
   patch: { remarks?: string | null; data?: unknown },
 ): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
     const updated = await updateActivity(actor, activityId, patch);
-    revalidateTag(`animal:${animalId}:activities`);
+    revalidateTag('today-counts');
     return { ok: true, activityId: updated.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -76,14 +71,11 @@ export async function updateActivityAction(
   }
 }
 
-export async function duplicateActivityAction(
-  activityId: string,
-  animalId: string,
-): Promise<ActivityActionResult> {
+export async function duplicateActivityAction(activityId: string): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
     const created = await duplicateActivity(actor, activityId);
-    revalidateTag(`animal:${animalId}:activities`);
+    revalidateTag('today-counts');
     return { ok: true, activityId: created.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };

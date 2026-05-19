@@ -3,17 +3,20 @@ import { FormField, FormSection } from '@/components/forms/FormField';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { resumableUpload } from '@/lib/upload/resumable';
 import { useState, useTransition } from 'react';
 import { deathAction } from '../actions';
 
 interface Props {
   animalId: string;
+  onDone: () => void;
 }
 
-export function DeathForm({ animalId }: Props) {
+export function DeathForm({ animalId, onDone }: Props) {
   const [causeOfDeath, setCauseOfDeath] = useState('');
   const [bodyHandedOverTo, setBodyHandedOverTo] = useState('');
   const [postmortemFile, setPostmortemFile] = useState<File | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -21,25 +24,30 @@ export function DeathForm({ animalId }: Props) {
     e.preventDefault();
     setError(null);
     start(async () => {
-      let postmortemFileId: string | undefined;
-      if (postmortemFile) {
-        const fd = new FormData();
-        fd.append('file', postmortemFile);
-        const upRes = await fetch('/api/files/upload', { method: 'POST', body: fd });
-        if (!upRes.ok) {
-          setError('Postmortem upload failed');
-          return;
+      try {
+        let postmortemFileId: string | undefined;
+        if (postmortemFile) {
+          setProgress(0);
+          const asset = await resumableUpload({
+            file: postmortemFile,
+            context: { kind: 'document', animalId, category: 'DEATH' },
+            onProgress: (p) => setProgress(p.fraction),
+          });
+          postmortemFileId = asset.id;
         }
-        const asset = (await upRes.json()) as { id: string };
-        postmortemFileId = asset.id;
+        const result = await deathAction({
+          animalId,
+          causeOfDeath,
+          bodyHandedOverTo,
+          postmortemFileId,
+        });
+        if (!result.ok) setError(result.error ?? 'Failed to record death');
+        else onDone();
+      } catch (e2) {
+        setError(e2 instanceof Error ? e2.message : 'Postmortem upload failed');
+      } finally {
+        setProgress(null);
       }
-      const result = await deathAction({
-        animalId,
-        causeOfDeath,
-        bodyHandedOverTo,
-        postmortemFileId,
-      });
-      if (!result.ok) setError(result.error ?? 'Failed to record death');
     });
   };
 
@@ -73,10 +81,19 @@ export function DeathForm({ animalId }: Props) {
               type="file"
               accept="image/*,application/pdf"
               onChange={(e) => setPostmortemFile(e.target.files?.[0] ?? null)}
+              disabled={pending}
             />
           )}
         </FormField>
       </FormSection>
+      {progress !== null && (
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-2">
+          <div
+            className="h-full bg-accent transition-all"
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </div>
+      )}
       {error && <div className="text-sm text-critical">{error}</div>}
       <div className="flex justify-end">
         <Button type="submit" variant="danger" disabled={pending}>

@@ -7,9 +7,10 @@ import { dischargeAction } from '../actions';
 
 interface Props {
   animalId: string;
+  onDone: () => void;
 }
 
-export function DischargeForm({ animalId }: Props) {
+export function DischargeForm({ animalId, onDone }: Props) {
   const [summary, setSummary] = useState('');
   const [instructions, setInstructions] = useState('');
   const [pending, start] = useTransition();
@@ -21,6 +22,7 @@ export function DischargeForm({ animalId }: Props) {
     start(async () => {
       const result = await dischargeAction({ animalId, summary, instructions });
       if (!result.ok) setError(result.error ?? 'Failed to discharge');
+      else onDone();
     });
   };
 

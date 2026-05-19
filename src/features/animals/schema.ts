@@ -50,6 +50,7 @@ export const CreateAnimalSchema = z.object({
 
   // media
   mediaAssetIds: z.array(z.string()).default([]),
+  uploadSessionId: z.string().optional(),
 });
 
 export type CreateAnimalInput = z.infer<typeof CreateAnimalSchema>;

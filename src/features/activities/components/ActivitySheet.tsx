@@ -6,6 +6,7 @@ import { Copy, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useState, useTransition } from 'react';
 import { deleteActivityAction, duplicateActivityAction, updateActivityAction } from '../actions';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
+import { summarizeActivity } from '../summary';
 import { ActivityEditFields } from './ActivityEditFields';
 
 export interface ActivitySummary {
@@ -60,7 +61,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
 
   const save = () => {
     start(async () => {
-      const result = await updateActivityAction(activity.id, activity.animalId, {
+      const result = await updateActivityAction(activity.id, {
         remarks: draft.remarks,
         data: draft.data,
       });
@@ -76,7 +77,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
 
   const del = () => {
     start(async () => {
-      const result = await deleteActivityAction(activity.id, activity.animalId);
+      const result = await deleteActivityAction(activity.id);
       if (result.ok) {
         onChanged();
         onClose();
@@ -88,7 +89,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
 
   const dup = () => {
     start(async () => {
-      const result = await duplicateActivityAction(activity.id, activity.animalId);
+      const result = await duplicateActivityAction(activity.id);
       if (result.ok) {
         onChanged();
         onClose();
@@ -244,7 +245,7 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
         className="rounded-xl px-3.5 py-3 text-[14px] font-medium leading-snug"
         style={{ background: `${color}14`, borderLeft: `3px solid ${color}` }}
       >
-        {summarize(activity)}
+        {summarizeActivity(activity)}
       </div>
 
       {activity.type === 'TREATMENT' && meds.length > 0 && (
@@ -384,36 +385,4 @@ function fieldsFor(type: ActivityType, data: Record<string, unknown>): DisplayFi
     push('Summary', data.summary);
   }
   return out;
-}
-
-function summarize(a: ActivitySummary): string {
-  const d = a.data ?? {};
-  if (a.type === 'TREATMENT') {
-    const meds = (d.meds ?? []) as Array<{ name: string; dose: string; route: string }>;
-    return meds.length
-      ? meds.map((m) => `${m.name} ${m.dose} ${m.route}`).join(', ')
-      : (a.remarks ?? 'Treatment given');
-  }
-  if (a.type === 'ADMISSION') return String(d.summary ?? 'Admitted');
-  if (a.type === 'ROUND') {
-    const bits: string[] = [];
-    if (d.temp) bits.push(`Temp ${d.temp}°`);
-    if (d.pain) bits.push(`Pain ${d.pain}`);
-    if (d.progress) bits.push(String(d.progress));
-    return bits.join(' · ') || String(d.notes ?? '—');
-  }
-  if (a.type === 'SURGERY') {
-    return `${String(d.surgeryName ?? '')} (${String(d.duration ?? '')}) — ${String(d.surgeon ?? '')}`;
-  }
-  if (a.type === 'FOOD') {
-    return [d.foodType, d.qty, d.intake, d.vomiting ? 'vomited' : null].filter(Boolean).join(' · ');
-  }
-  if (a.type === 'BATH') return String(d.bathType ?? '—');
-  if (a.type === 'WALK') {
-    return [d.duration, d.mobility, d.assisted ? 'assisted' : 'independent'].filter(Boolean).join(' · ');
-  }
-  if (a.type === 'DIAGNOSTIC') {
-    return `${((d.tests ?? []) as string[]).join(', ')}${d.findings ? ` — ${d.findings}` : ''}`;
-  }
-  return '—';
 }

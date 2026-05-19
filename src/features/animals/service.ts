@@ -1,5 +1,6 @@
 import { writeAuditLog } from '@/lib/audit';
 import { NotFoundError } from '@/lib/errors';
+import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan } from '@/lib/rbac';
 import type { AnimalStatus, Gender, Prisma, TestKind, Vaccination } from '@prisma/client';
@@ -51,8 +52,8 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
     },
   };
 
-  return prisma.$transaction(async (tx) => {
-    const created = await tx.animal.create({
+  const created = await prisma.$transaction(async (tx) => {
+    const animal = await tx.animal.create({
       data,
       include: { testsAdvised: true, media: { include: { asset: true } } },
     });
@@ -61,17 +62,50 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
       actorId: actor.id,
       action: 'create',
       entityType: 'Animal',
-      entityId: created.id,
+      entityId: animal.id,
       after: {
-        id: created.id,
-        name: created.name,
-        species: created.species,
-        status: created.status,
+        id: animal.id,
+        name: animal.name,
+        species: animal.species,
+        status: animal.status,
       },
     });
 
-    return created;
+    return animal;
   });
+
+  // After the DB transaction commits, move any staged Drive files into the
+  // animal's admission folder. A Drive failure shouldn't roll back the
+  // animal record (files can be re-linked manually), but we DO write an
+  // audit row so an admin can reconcile.
+  const stagedAssets = created.media.map((m) => m.asset).filter((a) => a.storageKey.startsWith('gdrive:'));
+  if (parsed.uploadSessionId && stagedAssets.length > 0) {
+    try {
+      const folders = folderResolver();
+      const fromParent = await folders.stagingFolder(parsed.uploadSessionId);
+      const toParent = await folders.admissionFolder({ id: created.id, name: created.name });
+      await folders.movePending(
+        fromParent,
+        toParent,
+        stagedAssets.map((a) => a.storageKey),
+      );
+    } catch (e) {
+      await writeAuditLog(prisma, {
+        actorId: actor.id,
+        action: 'update',
+        entityType: 'Animal',
+        entityId: created.id,
+        context: {
+          driveOp: 'movePending(staging→admission)',
+          uploadSessionId: parsed.uploadSessionId,
+          assetIds: stagedAssets.map((a) => a.id),
+          error: e instanceof Error ? e.message : String(e),
+        },
+      });
+    }
+  }
+
+  return created;
 }
 
 export interface UpdateAnimalPatch {

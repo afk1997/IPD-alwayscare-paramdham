@@ -1,9 +1,6 @@
 import { getCachedTodayCounts } from '@/features/animals/queries';
-import { ThemeSwitcher } from '@/features/settings/components/ThemeSwitcher';
-import { getThemeFromCookie } from '@/lib/theme';
 import { ArrowRight, type LucideIcon, Plus, Scissors, Skull } from 'lucide-react';
-import { cookies } from 'next/headers';
-import { NeedsAttention } from './NeedsAttention';
+import { TodayTimeline } from './TodayTimeline';
 
 interface Tile {
   label: string;
@@ -14,7 +11,7 @@ interface Tile {
 }
 
 export async function TodayDashboard() {
-  const [theme, counts] = await Promise.all([cookies().then(getThemeFromCookie), getCachedTodayCounts()]);
+  const counts = await getCachedTodayCounts();
 
   const tiles: Tile[] = [
     { label: 'Admissions', value: counts.admissionsToday, icon: Plus, color: '#0E7C7B', tint: '#D6EEEE' },
@@ -38,12 +35,9 @@ export async function TodayDashboard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-display text-[28px] font-extrabold tracking-tight md:text-[32px]">Today</h1>
-          <p className="mt-1 text-sm text-muted">{dateLabel}</p>
-        </div>
-        <ThemeSwitcher current={theme} />
+      <div>
+        <h1 className="font-display text-[28px] font-extrabold tracking-tight md:text-[32px]">Today</h1>
+        <p className="mt-1 text-sm text-muted">{dateLabel}</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -71,9 +65,11 @@ export async function TodayDashboard() {
 
       <section>
         <div className="mb-2.5 flex items-baseline justify-between px-1">
-          <h2 className="text-[10.5px] font-bold uppercase tracking-[0.07em] text-muted">Needs attention</h2>
+          <h2 className="font-bold text-[10.5px] text-muted uppercase tracking-[0.07em]">
+            Today's activities
+          </h2>
         </div>
-        <NeedsAttention />
+        <TodayTimeline />
       </section>
     </div>
   );

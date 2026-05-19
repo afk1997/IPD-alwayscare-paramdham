@@ -1,4 +1,4 @@
-import { DeathForm } from '@/features/animals/lifecycle/components/DeathForm';
+import { LifecyclePageForm } from '@/features/animals/lifecycle/components/RedirectAfterDone';
 import { getAnimal } from '@/features/animals/queries';
 import { notFound } from 'next/navigation';
 
@@ -9,7 +9,7 @@ export default async function DeathPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl font-bold tracking-tight">Record death — {animal.name}</h1>
-      <DeathForm animalId={id} />
+      <LifecyclePageForm animalId={id} variant="death" />
     </div>
   );
 }

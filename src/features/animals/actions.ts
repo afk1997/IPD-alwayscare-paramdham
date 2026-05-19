@@ -4,6 +4,7 @@ import { RbacError, ValidationError } from '@/lib/errors';
 import type { Actor } from '@/lib/rbac';
 import { revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { type ActiveAnimalLite, searchActiveAnimals } from './queries';
 import { type CreateAnimalInput, CreateAnimalSchema } from './schema';
 import { type UpdateAnimalPatch, createAnimal, updateAnimal } from './service';
 
@@ -53,7 +54,6 @@ export async function updateAnimalAction(
     const actor = await requireActor();
     await updateAnimal(actor, animalId, patch);
     revalidateTag('animals');
-    revalidateTag(`animal:${animalId}`);
     revalidateTag('today-counts');
     return { ok: true };
   } catch (e) {
@@ -61,4 +61,9 @@ export async function updateAnimalAction(
     if (e instanceof ValidationError) return { ok: false, error: e.message };
     throw e;
   }
+}
+
+export async function searchAnimalsAction(query: string): Promise<ActiveAnimalLite[]> {
+  await requireActor();
+  return searchActiveAnimals(query);
 }

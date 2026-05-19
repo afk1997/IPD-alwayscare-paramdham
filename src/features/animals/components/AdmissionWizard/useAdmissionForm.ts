@@ -29,6 +29,7 @@ const DEFAULTS: CreateAnimalInput = {
   surgeryRequired: '',
   testsAdvised: [],
   mediaAssetIds: [],
+  uploadSessionId: '',
 };
 
 export const STEP_LABELS = ['Basics', 'Rescuer', 'Medical', 'Media', 'Doctor notes'];

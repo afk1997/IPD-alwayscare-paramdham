@@ -1,7 +1,6 @@
 'use server';
 import { getCurrentUser } from '@/lib/auth';
 import { RbacError } from '@/lib/errors';
-import { revalidateTag } from 'next/cache';
 import { type CreateDocumentInput, CreateDocumentSchema } from './schema';
 import { createDocument } from './service';
 
@@ -22,7 +21,6 @@ export async function createDocumentAction(input: CreateDocumentInput): Promise<
     const actor = await requireActor();
     const parsed = CreateDocumentSchema.parse(input);
     const doc = await createDocument(actor, parsed);
-    revalidateTag(`animal:${parsed.animalId}:documents`);
     return { ok: true, documentId: doc.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };

@@ -1,11 +1,10 @@
 import { Readable } from 'node:stream';
+import { getMediaForRead } from '@/features/media/service';
 import { getCurrentUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { NotFoundError, RbacError } from '@/lib/errors';
 import { getStorage } from '@/lib/storage';
 import { NextResponse } from 'next/server';
 
-// Force Node.js runtime so the storage adapters that use the Node `stream`
-// and `googleapis` SDK work; the edge runtime would reject them.
 export const runtime = 'nodejs';
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -13,13 +12,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!user) return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
 
   const { id } = await params;
-  const asset = await prisma.mediaAsset.findUnique({ where: { id } });
-  if (!asset) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
-  const storage = getStorage();
-  const { stream, size } = await storage.get(asset.storageKey);
+  let asset: Awaited<ReturnType<typeof getMediaForRead>>;
+  try {
+    asset = await getMediaForRead({ id: user.id, role: user.role }, id);
+  } catch (e) {
+    if (e instanceof NotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
+    if (e instanceof RbacError) return NextResponse.json({ error: e.message }, { status: 403 });
+    throw e;
+  }
 
-  // Convert Node Readable → Web ReadableStream for NextResponse.
+  if (asset.status === 'PENDING') {
+    // 425 Too Early — the client raced our /finalize.
+    return NextResponse.json({ error: 'asset still uploading' }, { status: 425 });
+  }
+  if (asset.status === 'FAILED' || !asset.storageKey) {
+    return NextResponse.json({ error: 'asset unavailable' }, { status: 410 });
+  }
+
+  const { stream, size } = await getStorage().get(asset.storageKey);
   const webStream =
     stream instanceof Readable
       ? (Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>)

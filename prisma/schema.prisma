@@ -50,6 +50,12 @@ enum MediaKind {
   DOC
 }
 
+enum MediaStatus {
+  PENDING
+  READY
+  FAILED
+}
+
 enum ActivityType {
   ADMISSION
   TREATMENT
@@ -253,24 +259,37 @@ model AnimalTest {
 }
 
 model MediaAsset {
-  id           String    @id @default(cuid())
-  kind         MediaKind
-  filename     String
-  mimeType     String
-  size         Int
-  storageKey   String
-  width        Int?
-  height       Int?
-  durationSec  Int?
-  uploadedById String
-  uploadedBy   User      @relation("MediaUploadedBy", fields: [uploadedById], references: [id])
-  createdAt    DateTime  @default(now())
+  id               String      @id @default(cuid())
+  kind             MediaKind
+  filename         String
+  originalFilename String?
+  mimeType         String
+  size             Int
+  storageKey       String
+  status           MediaStatus @default(READY)
+  width            Int?
+  height           Int?
+  durationSec      Int?
+  uploadedById     String
+  uploadedBy       User        @relation("MediaUploadedBy", fields: [uploadedById], references: [id])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   animalMedia   AnimalMedia[]
   activityMedia ActivityMedia[]
   documents     Document[]      @relation("DocumentFile")
 
   @@index([uploadedById, createdAt])
+  @@index([status])
+}
+
+model DriveFolder {
+  // `key` is a slash-separated path identifier we compute from the
+  // animal id / activity context, e.g. "staging", "animal:<id>",
+  // "admission:<id>", "activity:<id>:2026-05:18:treatment".
+  key           String   @id
+  driveFolderId String
+  createdAt     DateTime @default(now())
 }
 
 model AnimalMedia {
