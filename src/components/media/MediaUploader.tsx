@@ -44,6 +44,12 @@ export function MediaUploader({
     setError(null);
     const arr = Array.from(files);
 
+    // Accumulate completed assets locally so each iteration sees the latest
+    // running set rather than the stale `value` prop the closure captured.
+    // The old code did `onChange([...value, ...])` per file, but `value` was
+    // the prop snapshot when handleFiles was invoked — so dropping two files
+    // at once silently lost the first one.
+    let running = value.slice();
     for (const file of arr) {
       const tempId = `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setInFlight((cur) => [...cur, { id: tempId, filename: file.name, fraction: 0 }]);
@@ -55,7 +61,8 @@ export function MediaUploader({
             setInFlight((cur) => cur.map((u) => (u.id === tempId ? { ...u, fraction: p.fraction } : u)));
           },
         });
-        onChange([...value, { id: result.id, kind: result.kind, filename: result.filename }]);
+        running = [...running, { id: result.id, kind: result.kind, filename: result.filename }];
+        onChange(running);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Upload failed');
       } finally {

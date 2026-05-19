@@ -189,25 +189,33 @@ async function phase2Uploads(ctx: BrowserContext) {
   //   0=photos, 1=videos, 2=wounds, 3=prescriptions
   // The bucket label "Admission photos" lives on a sibling <span>, not on
   // the file <label>, so we address inputs by index here.
+  // Race-free wait: count the per-tile Remove buttons that the uploader
+  // renders once each asset reaches READY.  Waiting on the "Uploading N…"
+  // text is racy because there's a 100-300 ms window between
+  // setInputFiles and that text appearing.
+  const tileCount = () => page.locator('button[aria-label^="Remove "]').count();
+
   const fileInputs = page.locator('input[type="file"]');
   await fileInputs.nth(0).setInputFiles(resolve(FIXTURES, 'dog.jpg'));
-  log('  → uploaded dog.jpg into bucket 0 (Admission photos)');
   await fileInputs.nth(1).setInputFiles(resolve(FIXTURES, 'video-large.mp4'));
-  log('  → uploading 8.4 MB video-large.mp4 (chunked) into bucket 1 (Admission videos) …');
-
-  // Wait for in-flight uploads to clear.
-  await page.waitForFunction(() => !document.body.innerText.match(/Uploading\s+\d+/), null, {
-    timeout: 120_000,
-  });
-  log('  ✓ first two uploads completed');
+  log('  → started photos + video uploads (concurrent)');
+  await page.waitForFunction(
+    () => document.querySelectorAll('button[aria-label^="Remove "]').length >= 2,
+    null,
+    { timeout: 120_000 },
+  );
+  log(`  ✓ both uploads landed (count=${await tileCount()})`);
 
   await shoot(page, 'upload/step4-filled');
 
   await fileInputs.nth(2).setInputFiles(resolve(FIXTURES, 'wound.jpg'));
   await fileInputs.nth(3).setInputFiles(resolve(FIXTURES, 'xray.jpg'));
-  await page.waitForFunction(() => !document.body.innerText.match(/Uploading\s+\d+/), null, {
-    timeout: 60_000,
-  });
+  await page.waitForFunction(
+    () => document.querySelectorAll('button[aria-label^="Remove "]').length >= 4,
+    null,
+    { timeout: 60_000 },
+  );
+  log(`  ✓ all four uploads landed (count=${await tileCount()})`);
 
   await page.getByRole('button', { name: 'Continue' }).click();
 
@@ -217,7 +225,9 @@ async function phase2Uploads(ctx: BrowserContext) {
   await page.getByRole('button', { name: 'Blood test' }).click();
   await page.getByRole('button', { name: 'Admit animal' }).click();
 
-  await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 30_000 });
+  // Match a real CUID-style id, NOT the wizard URL "/patients/new" — the
+  // old regex `[a-z0-9]+$` matched "new" too and falsely reported success.
+  await page.waitForURL(/\/patients\/c[a-z0-9]{24}$/, { timeout: 30_000 });
   await page.waitForTimeout(800);
   const url = page.url();
   const animalId = url.split('/').pop()!;

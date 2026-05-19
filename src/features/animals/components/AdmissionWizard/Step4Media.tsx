@@ -47,10 +47,19 @@ export function Step4Media({ form }: Props) {
   });
 
   const handleBucketChange = (key: BucketDef['key']) => (next: UploadedAsset[]) => {
-    const merged: BucketState = { ...buckets, [key]: next };
-    setBuckets(merged);
-    const allIds = ([] as string[]).concat(...BUCKETS.map((b) => merged[b.key].map((a) => a.id)));
-    form.setValue('mediaAssetIds', allIds);
+    // Functional setState — the previous closure-based merge captured
+    // `buckets` at render time, so two concurrent uploads in different
+    // buckets would each compute `merged` from the same stale snapshot
+    // and clobber each other.  Reproducible by dropping a photo into
+    // "Admission photos" and a video into "Admission videos" at the
+    // same instant: only one survived.  Fix: derive merged inside the
+    // setter, then mirror into RHF using the same fresh value.
+    setBuckets((prev) => {
+      const merged: BucketState = { ...prev, [key]: next };
+      const allIds = ([] as string[]).concat(...BUCKETS.map((b) => merged[b.key].map((a) => a.id)));
+      form.setValue('mediaAssetIds', allIds);
+      return merged;
+    });
   };
 
   return (
