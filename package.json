@@ -19,6 +19,7 @@
     "db:studio": "dotenv -e .env.local -- prisma studio",
     "db:push": "dotenv -e .env.local -- prisma db push",
     "db:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "prepare": "husky"
   },
   "dependencies": {
