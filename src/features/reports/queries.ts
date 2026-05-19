@@ -73,9 +73,13 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
   }));
 }
 
+// Tag segmentation: the today timeline has its own `today-timeline` tag
+// so non-surgery activity creates don't also bust the dashboard counts
+// cache (which still listens on `today-counts`).  `animals` stays so a
+// patient rename / avatar change refreshes the timeline rows.
 const _listTodayActivitiesCached = unstable_cache(_listTodayActivitiesRaw, ['today-timeline'], {
   revalidate: 30,
-  tags: ['today-counts', 'animals'],
+  tags: ['today-timeline', 'animals'],
 });
 
 export async function listTodayActivities(): Promise<TodayTimelineItem[]> {

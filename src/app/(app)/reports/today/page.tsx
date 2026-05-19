@@ -23,6 +23,7 @@ export default async function TodayReportPage({
         <p className="mt-1 text-muted text-sm">Activity logs and per-animal case histories</p>
       </div>
       <ReportsNav active="today" />
+      <h2 className="font-display font-bold text-base">Daily activity report</h2>
       <Suspense>
         <DailyReport date={date} rows={rows} />
       </Suspense>

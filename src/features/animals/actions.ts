@@ -29,6 +29,7 @@ export async function createAnimalAction(input: CreateAnimalInput): Promise<Admi
     animalId = animal.id;
     revalidateTag('animals');
     revalidateTag('today-counts');
+    revalidateTag('today-timeline');
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     if (e instanceof ValidationError) return { ok: false, error: e.message };
@@ -55,6 +56,7 @@ export async function updateAnimalAction(
     await updateAnimal(actor, animalId, patch);
     revalidateTag('animals');
     revalidateTag('today-counts');
+    revalidateTag('today-timeline');
     return { ok: true };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };

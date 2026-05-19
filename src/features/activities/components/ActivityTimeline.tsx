@@ -198,9 +198,14 @@ function formatDayHeader(iso: string): string {
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-  const date = d.toLocaleDateString(undefined, { day: '2-digit', month: 'short' });
-  return `${time} · ${date}`;
+  const diff = Date.now() - d.getTime();
+  const HOUR = 60 * 60 * 1000;
+  // Recent activities (< 6h) get a relative stamp — doctors scan the
+  // timeline much faster when "20m ago" / "3h ago" replaces "10:41 PM".
+  // Older same-day activities show clock time; older days show clock
+  // time only (the day-grouping header already supplies the date).
+  if (diff >= 0 && diff < 6 * HOUR) return relativeTime(d);
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
 function ActivityBody({ type, data }: { type: ActivityType; data: Record<string, unknown> | null }) {

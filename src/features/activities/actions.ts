@@ -24,13 +24,25 @@ export interface ActivityActionResult {
   error?: string;
 }
 
+// Tag map for activity mutations:
+//   - 'today-timeline'  — the today-page timeline cache (always bust)
+//   - 'activities'      — ⌘K search cache (always bust)
+//   - 'today-counts'    — dashboard counts cache.  Only SURGERY changes
+//                         a count; routine ROUND/TREATMENT/FOOD/etc.
+//                         saves no longer bust this, so the counts
+//                         stay cached for the full 60s revalidate.
+function bustForActivityMutation(type?: string) {
+  revalidateTag('today-timeline');
+  revalidateTag('activities');
+  if (type === 'SURGERY') revalidateTag('today-counts');
+}
+
 export async function createActivityAction(input: CreateActivityInput): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
     const parsed = CreateActivitySchema.parse(input);
     const activity = await createActivity(actor, parsed);
-    revalidateTag('today-counts');
-    revalidateTag('activities');
+    bustForActivityMutation(parsed.type);
     return { ok: true, activityId: activity.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -45,9 +57,8 @@ export async function createActivityAction(input: CreateActivityInput): Promise<
 export async function deleteActivityAction(activityId: string): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
-    await softDeleteActivity(actor, activityId);
-    revalidateTag('today-counts');
-    revalidateTag('activities');
+    const result = await softDeleteActivity(actor, activityId);
+    bustForActivityMutation(result.type);
     return { ok: true };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -58,9 +69,8 @@ export async function deleteActivityAction(activityId: string): Promise<Activity
 export async function restoreActivityAction(activityId: string): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
-    await restoreActivity(actor, activityId);
-    revalidateTag('today-counts');
-    revalidateTag('activities');
+    const result = await restoreActivity(actor, activityId);
+    bustForActivityMutation(result.type);
     return { ok: true, activityId };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -130,8 +140,7 @@ export async function updateActivityAction(
   try {
     const actor = await requireActor();
     const updated = await updateActivity(actor, activityId, patch);
-    revalidateTag('today-counts');
-    revalidateTag('activities');
+    bustForActivityMutation(updated.type);
     return { ok: true, activityId: updated.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -147,8 +156,7 @@ export async function duplicateActivityAction(activityId: string): Promise<Activ
   try {
     const actor = await requireActor();
     const created = await duplicateActivity(actor, activityId);
-    revalidateTag('today-counts');
-    revalidateTag('activities');
+    bustForActivityMutation(created.type);
     return { ok: true, activityId: created.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };

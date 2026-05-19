@@ -23,6 +23,7 @@ export async function dischargeAction(input: DischargeInput): Promise<LifecycleR
     await dischargeAnimal(actor, parsed);
     revalidateTag('animals');
     revalidateTag('today-counts');
+    revalidateTag('today-timeline');
     return { ok: true };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -41,6 +42,7 @@ export async function deathAction(input: DeathInput): Promise<LifecycleResult> {
     await recordDeath(actor, parsed);
     revalidateTag('animals');
     revalidateTag('today-counts');
+    revalidateTag('today-timeline');
     return { ok: true };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
