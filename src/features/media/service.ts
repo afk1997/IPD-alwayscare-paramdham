@@ -195,17 +195,50 @@ export interface MediaForRead {
   size: number;
 }
 
-/** Look up a media asset for read; throws if the user can't access it. */
+/**
+ * Look up a media asset for read; throws RbacError if the actor isn't
+ * allowed to view it.  An actor may read an asset when:
+ *   1. they uploaded it (covers pending + in-progress flows), OR
+ *   2. it's linked to at least one Animal/Activity/Document (i.e. it has
+ *      been adopted into the medical record), OR
+ *   3. they have audit-read access (ADMIN).
+ *
+ * Without rule (2) any authenticated user could stream any uploaded file
+ * by guessing its id — including X-rays / death certificates / postmortem
+ * reports — which was the bug C2 from the review.
+ */
 export async function getMediaForRead(actor: Actor, assetId: string): Promise<MediaForRead> {
   const asset = await prisma.mediaAsset.findUnique({
     where: { id: assetId },
-    select: { id: true, status: true, storageKey: true, mimeType: true, size: true },
+    select: {
+      id: true,
+      status: true,
+      storageKey: true,
+      mimeType: true,
+      size: true,
+      uploadedById: true,
+      _count: {
+        select: { animalMedia: true, activityMedia: true, documents: true },
+      },
+    },
   });
   if (!asset) throw new NotFoundError('MediaAsset', assetId);
-  // All authenticated users can read; row-level access is enforced by the
-  // owning Activity / Animal / Document layer downstream.
-  void actor;
-  return asset;
+
+  const isOwner = asset.uploadedById === actor.id;
+  const isLinked = asset._count.animalMedia + asset._count.activityMedia + asset._count.documents > 0;
+  const isAuditor = can(actor, 'audit.read.all');
+
+  if (!(isOwner || isLinked || isAuditor)) {
+    throw new RbacError('media.read');
+  }
+
+  return {
+    id: asset.id,
+    status: asset.status,
+    storageKey: asset.storageKey,
+    mimeType: asset.mimeType,
+    size: asset.size,
+  };
 }
 
 export interface ClassifiedMedia {

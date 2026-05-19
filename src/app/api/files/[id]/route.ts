@@ -40,6 +40,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     'content-type': asset.mimeType,
     'cache-control': 'private, max-age=86400',
     etag: `"${asset.id}"`,
+    // Hardening: don't let browsers sniff content they weren't told to.
+    // Combined with finalize-time mime-family check this closes the
+    // SVG-as-image stored-XSS path on the same origin.
+    'x-content-type-options': 'nosniff',
+    'content-security-policy': "default-src 'none'; img-src 'self'; media-src 'self'",
+    'referrer-policy': 'no-referrer',
   };
   if (size > 0) headers['content-length'] = String(size);
 
