@@ -57,9 +57,10 @@ export async function POST(req: Request) {
     if (e instanceof RbacError) return NextResponse.json({ error: e.message }, { status: 403 });
     if (e instanceof NotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof ValidationError) return NextResponse.json({ error: e.message }, { status: 400 });
-    return NextResponse.json(
-      { error: 'initiate failed', detail: e instanceof Error ? e.message : String(e) },
-      { status: 502 },
-    );
+    // H5-s: never echo the raw upstream error back to the client.  Drive
+    // exceptions sometimes contain internal folder IDs, OAuth context,
+    // and rate-limit details that have no business in the wire response.
+    console.error('[api/files/initiate] upstream failure', e);
+    return NextResponse.json({ error: 'initiate failed' }, { status: 502 });
   }
 }

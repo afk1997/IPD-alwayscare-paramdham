@@ -42,6 +42,30 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
   const before = await prisma.user.findUnique({ where: { id: parsed.id } });
   if (!before) throw new NotFoundError('User', parsed.id);
 
+  // H3-s: refuse self-role-change.  Without this, an ADMIN editing their
+  // own row could downgrade to STAFF and lose access mid-shift; worse,
+  // they could accidentally make themselves the only person who can no
+  // longer fix it.
+  if (actor.id === parsed.id && parsed.role !== undefined && parsed.role !== before.role) {
+    throw new RbacError('cannot change your own role');
+  }
+
+  // H2-s: refuse to deactivate or demote the LAST active admin.  This
+  // protects the clinic from locking itself out of the admin surface
+  // (user management, audit log, recovery).
+  const wouldRemoveAdmin =
+    before.role === 'ADMIN' &&
+    ((parsed.role !== undefined && parsed.role !== 'ADMIN') ||
+      (parsed.active !== undefined && parsed.active === false));
+  if (wouldRemoveAdmin) {
+    const otherActiveAdmins = await prisma.user.count({
+      where: { role: 'ADMIN', active: true, id: { not: parsed.id } },
+    });
+    if (otherActiveAdmins === 0) {
+      throw new RbacError('cannot remove the last active admin');
+    }
+  }
+
   const updateData: { name?: string; role?: PrismaRole; active?: boolean } = {};
   if (parsed.name !== undefined) updateData.name = parsed.name;
   if (parsed.role !== undefined) updateData.role = parsed.role as PrismaRole;

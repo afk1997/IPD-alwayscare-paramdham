@@ -33,6 +33,8 @@ export async function POST(req: Request) {
     if (e instanceof RbacError) return NextResponse.json({ error: e.message }, { status: 403 });
     if (e instanceof NotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof ValidationError) return NextResponse.json({ error: e.message }, { status: 400 });
-    throw e;
+    // H5-s: log the raw Drive error server-side, return a generic 502.
+    console.error('[api/files/finalize] upstream failure', e);
+    return NextResponse.json({ error: 'finalize failed' }, { status: 502 });
   }
 }
