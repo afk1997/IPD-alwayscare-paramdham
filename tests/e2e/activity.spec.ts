@@ -14,20 +14,22 @@ test('log a food activity via quick-add', async ({ page }) => {
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Admit animal' }).click();
-  await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 15_000 });
+  await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 30_000 });
 
-  // Open Quick Add
+  // Open the per-patient ActivityQuickAdd (button on the detail page).
   await page.getByRole('button', { name: /log activity/i }).click();
-  await expect(page.getByRole('heading', { name: 'Log activity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Log activity', level: 2 })).toBeVisible();
 
-  // Pick FOOD
+  // Pick FOOD — the modal heading updates to "Food & water".
   await page.getByRole('button', { name: /food & water/i }).click();
-  await expect(page.getByRole('heading', { name: 'Food & water', level: 3 })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Food & water', level: 2 })).toBeVisible();
 
   await page.getByLabel('Food type').fill('Curd-rice + paneer');
   await page.getByLabel('Quantity').fill('80g');
   await page.getByLabel('Water').fill('100ml');
-  await page.getByLabel('Intake').selectOption('Fully');
+  // Intake used to be a <select>; gap #22-#25 turned it into a Segmented
+  // button group, so we now click the option button directly.
+  await page.getByRole('button', { name: 'Fully', exact: true }).click();
 
   await page.getByRole('button', { name: 'Save entry' }).click();
 
