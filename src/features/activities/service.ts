@@ -1,10 +1,10 @@
 import { writeAuditLog } from '@/lib/audit';
-import { NotFoundError, RbacError } from '@/lib/errors';
+import { NotFoundError, RbacError, ValidationError } from '@/lib/errors';
 import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan, can } from '@/lib/rbac';
 import type { Prisma, ActivityType as PrismaActivityType } from '@prisma/client';
-import { type CreateActivityInput, CreateActivitySchema } from './schema';
+import { ACTIVITY_DATA_SCHEMAS, type CreateActivityInput, CreateActivitySchema } from './schema';
 
 const CLINICAL_TYPES: PrismaActivityType[] = ['ROUND', 'DIAGNOSTIC', 'SURGERY'];
 
@@ -71,7 +71,16 @@ export async function updateActivity(
     editedBy: { connect: { id: actor.id } },
   };
   if (patch.remarks !== undefined) updateData.remarks = patch.remarks;
-  if (patch.data !== undefined) updateData.data = patch.data as Prisma.InputJsonValue;
+  if (patch.data !== undefined) {
+    // C3: validate the patch's `data` against the stored row's type.  Without
+    // this, a STAFF user editing their own FOOD entry could swap the JSON
+    // for an arbitrary shape (fake surgery findings, broken summarizer
+    // inputs, etc.).  Build a one-shape schema keyed by the row's type.
+    const schema = ACTIVITY_DATA_SCHEMAS[before.type as keyof typeof ACTIVITY_DATA_SCHEMAS];
+    if (!schema) throw new ValidationError(`unknown activity type: ${before.type}`);
+    const parsed = schema.parse(patch.data);
+    updateData.data = parsed as unknown as Prisma.InputJsonValue;
+  }
   if (patch.occurredAt !== undefined) updateData.occurredAt = new Date(patch.occurredAt);
   if (patch.byName !== undefined && patch.byName.trim().length > 0) {
     updateData.byName = patch.byName.trim();

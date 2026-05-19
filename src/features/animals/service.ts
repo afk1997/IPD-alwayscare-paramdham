@@ -4,7 +4,12 @@ import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan } from '@/lib/rbac';
 import type { AnimalStatus, Gender, Prisma, TestKind, Vaccination } from '@prisma/client';
-import { type CreateAnimalInput, CreateAnimalSchema } from './schema';
+import {
+  type CreateAnimalInput,
+  CreateAnimalSchema,
+  type UpdateAnimalInput,
+  UpdateAnimalSchema,
+} from './schema';
 
 function nz(v: string | undefined | null): string | null {
   if (v === '' || v === undefined || v === null) return null;
@@ -112,34 +117,14 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
   return created;
 }
 
-export interface UpdateAnimalPatch {
-  name?: string;
-  breed?: string | null;
-  ageText?: string | null;
-  color?: string | null;
-  weightKg?: number | null;
-  vaccination?: Vaccination;
-  sterilized?: boolean;
-  aggressive?: boolean;
-  rescuer?: string | null;
-  rescuerPhone?: string | null;
-  address?: string | null;
-  ngo?: string | null;
-  broughtBy?: string | null;
-  complaint?: string | null;
-  injuryType?: string | null;
-  history?: string | null;
-  diagnosis?: string | null;
-  immediateTreatment?: string | null;
-  surgeryRequired?: string | null;
-  contagious?: boolean;
-  status?: AnimalStatus;
-  ward?: string | null;
-}
+export type UpdateAnimalPatch = UpdateAnimalInput;
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: applies many optional patch fields one by one
 export async function updateAnimal(actor: Actor, animalId: string, patch: UpdateAnimalPatch) {
   assertCan(actor, 'animal.update');
+  // Validate the patch — without this, `animal.update` callers could write
+  // a multi-MB name or an invalid enum straight to the DB (H1-s).
+  const parsed = UpdateAnimalSchema.parse(patch);
   const before = await prisma.animal.findUnique({ where: { id: animalId } });
   if (!before) throw new NotFoundError('Animal', animalId);
 
@@ -147,28 +132,28 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
     editedAt: new Date(),
     editedById: actor.id,
   };
-  if (patch.name !== undefined) data.name = patch.name;
-  if (patch.breed !== undefined) data.breed = patch.breed;
-  if (patch.ageText !== undefined) data.ageText = patch.ageText;
-  if (patch.color !== undefined) data.color = patch.color;
-  if (patch.weightKg !== undefined) data.weightKg = patch.weightKg;
-  if (patch.vaccination !== undefined) data.vaccination = patch.vaccination;
-  if (patch.sterilized !== undefined) data.sterilized = patch.sterilized;
-  if (patch.aggressive !== undefined) data.aggressive = patch.aggressive;
-  if (patch.rescuer !== undefined) data.rescuer = patch.rescuer;
-  if (patch.rescuerPhone !== undefined) data.rescuerPhone = patch.rescuerPhone;
-  if (patch.address !== undefined) data.address = patch.address;
-  if (patch.ngo !== undefined) data.ngo = patch.ngo;
-  if (patch.broughtBy !== undefined) data.broughtBy = patch.broughtBy;
-  if (patch.complaint !== undefined) data.complaint = patch.complaint;
-  if (patch.injuryType !== undefined) data.injuryType = patch.injuryType;
-  if (patch.history !== undefined) data.history = patch.history;
-  if (patch.diagnosis !== undefined) data.diagnosis = patch.diagnosis;
-  if (patch.immediateTreatment !== undefined) data.immediateTreatment = patch.immediateTreatment;
-  if (patch.surgeryRequired !== undefined) data.surgeryRequired = patch.surgeryRequired;
-  if (patch.contagious !== undefined) data.contagious = patch.contagious;
-  if (patch.status !== undefined) data.status = patch.status;
-  if (patch.ward !== undefined) data.ward = patch.ward;
+  if (parsed.name !== undefined) data.name = parsed.name;
+  if (parsed.breed !== undefined) data.breed = parsed.breed;
+  if (parsed.ageText !== undefined) data.ageText = parsed.ageText;
+  if (parsed.color !== undefined) data.color = parsed.color;
+  if (parsed.weightKg !== undefined) data.weightKg = parsed.weightKg;
+  if (parsed.vaccination !== undefined) data.vaccination = parsed.vaccination;
+  if (parsed.sterilized !== undefined) data.sterilized = parsed.sterilized;
+  if (parsed.aggressive !== undefined) data.aggressive = parsed.aggressive;
+  if (parsed.rescuer !== undefined) data.rescuer = parsed.rescuer;
+  if (parsed.rescuerPhone !== undefined) data.rescuerPhone = parsed.rescuerPhone;
+  if (parsed.address !== undefined) data.address = parsed.address;
+  if (parsed.ngo !== undefined) data.ngo = parsed.ngo;
+  if (parsed.broughtBy !== undefined) data.broughtBy = parsed.broughtBy;
+  if (parsed.complaint !== undefined) data.complaint = parsed.complaint;
+  if (parsed.injuryType !== undefined) data.injuryType = parsed.injuryType;
+  if (parsed.history !== undefined) data.history = parsed.history;
+  if (parsed.diagnosis !== undefined) data.diagnosis = parsed.diagnosis;
+  if (parsed.immediateTreatment !== undefined) data.immediateTreatment = parsed.immediateTreatment;
+  if (parsed.surgeryRequired !== undefined) data.surgeryRequired = parsed.surgeryRequired;
+  if (parsed.contagious !== undefined) data.contagious = parsed.contagious;
+  if (parsed.status !== undefined) data.status = parsed.status;
+  if (parsed.ward !== undefined) data.ward = parsed.ward;
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.animal.update({ where: { id: animalId }, data });

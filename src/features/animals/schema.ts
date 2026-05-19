@@ -55,3 +55,37 @@ export const CreateAnimalSchema = z.object({
 });
 
 export type CreateAnimalInput = z.infer<typeof CreateAnimalSchema>;
+
+// Patch shape for `updateAnimal`. Each field is optional + (where the column
+// is nullable) nullable so callers can explicitly clear values. Enforces the
+// same max-length / enum constraints as CreateAnimalSchema — without this,
+// any signed-in user with `animal.update` could write an arbitrarily long
+// name or invalid status string straight to the row. Note: `name` is not
+// nullable (the column is `NOT NULL`); `species` is intentionally NOT in
+// the patch shape because species changes after admission are nonsensical.
+const nullableStr = (max: number) => z.string().max(max).nullable().optional();
+export const UpdateAnimalSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  breed: nullableStr(80),
+  ageText: nullableStr(40),
+  color: nullableStr(120),
+  weightKg: z.number().positive().max(2000).nullable().optional(),
+  vaccination: z.enum(VACCINATION).optional(),
+  sterilized: z.boolean().optional(),
+  aggressive: z.boolean().optional(),
+  rescuer: nullableStr(120),
+  rescuerPhone: nullableStr(40),
+  address: nullableStr(400),
+  ngo: nullableStr(120),
+  broughtBy: nullableStr(120),
+  complaint: nullableStr(2000),
+  injuryType: nullableStr(120),
+  history: nullableStr(2000),
+  diagnosis: nullableStr(2000),
+  immediateTreatment: nullableStr(2000),
+  surgeryRequired: nullableStr(200),
+  contagious: z.boolean().optional(),
+  status: z.enum(STATUSES).optional(),
+  ward: nullableStr(40),
+});
+export type UpdateAnimalInput = z.infer<typeof UpdateAnimalSchema>;

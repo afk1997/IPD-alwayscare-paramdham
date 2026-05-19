@@ -126,6 +126,21 @@ export const CreateActivitySchema = z.discriminatedUnion('type', [
 
 export type CreateActivityInput = z.infer<typeof CreateActivitySchema>;
 
+// Map a server-side ActivityType to the Zod schema for its `data` payload.
+// updateActivity uses this to validate the patch's `data` against the
+// stored row's type — without this, an edit could replace a FOOD entry's
+// data with arbitrary JSON (the original C3 bug).
+export const ACTIVITY_DATA_SCHEMAS = {
+  ADMISSION: AdmissionData,
+  TREATMENT: TreatmentData,
+  ROUND: RoundData,
+  DIAGNOSTIC: DiagnosticData,
+  SURGERY: SurgeryData,
+  FOOD: FoodData,
+  BATH: BathData,
+  WALK: WalkData,
+} as const;
+
 export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   ADMISSION: 'Admission',
   TREATMENT: 'Treatment',
