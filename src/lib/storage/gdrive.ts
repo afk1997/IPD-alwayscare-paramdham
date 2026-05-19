@@ -17,6 +17,7 @@ export interface InitiateResumableResult {
 export interface DriveMetadata {
   size?: number | null;
   mimeType?: string | null;
+  parents?: string[] | null;
   imageMediaMetadata?: { width?: number | null; height?: number | null } | null;
   videoMediaMetadata?: { durationMillis?: string | null } | null;
 }
@@ -185,7 +186,8 @@ export class GoogleDriveStorage implements FileStorage {
     const res = await drive.files.get({
       ...SHARED,
       fileId,
-      fields: 'size, mimeType, imageMediaMetadata(width, height), videoMediaMetadata(durationMillis)',
+      fields:
+        'size, mimeType, parents, imageMediaMetadata(width, height), videoMediaMetadata(durationMillis)',
     });
     return res.data as DriveMetadata;
   }

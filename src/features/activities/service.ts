@@ -19,6 +19,8 @@ export interface ActivityActor extends Actor {
 export async function createActivity(actor: ActivityActor, input: CreateActivityInput) {
   const parsed = CreateActivitySchema.parse(input);
   assertCan(actor, requiredAction(parsed.type) as 'activity.create' | 'activity.create.clinical');
+  const { assertOwnedReadyAssets } = await import('../media/service');
+  await assertOwnedReadyAssets(actor, parsed.mediaAssetIds);
 
   return prisma.$transaction(async (tx) => {
     const created = await tx.activity.create({

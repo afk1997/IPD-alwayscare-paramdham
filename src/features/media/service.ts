@@ -88,7 +88,10 @@ export async function initiateUpload(actor: Actor, input: InitiateInput): Promis
     origin: input.origin,
   });
 
-  // Insert the PENDING asset row.
+  // Insert the PENDING asset row.  We stash the expected Drive parent
+  // folder id inside `storageKey` (prefixed `pending:`) so finalize can
+  // verify the uploaded file actually landed there.  Once finalized,
+  // the same column flips to `gdrive:${fileId}`.
   const asset = await prisma.mediaAsset.create({
     data: {
       kind: classified.kind,
@@ -96,7 +99,7 @@ export async function initiateUpload(actor: Actor, input: InitiateInput): Promis
       originalFilename: input.filename,
       mimeType: input.mime,
       size: input.size,
-      storageKey: '',
+      storageKey: `pending:${parentId}`,
       status: 'PENDING',
       uploadedById: actor.id,
     },
@@ -132,12 +135,29 @@ export async function finalizeUpload(actor: Actor, input: FinalizeInput) {
     throw new ValidationError('gdrive storage required');
   }
 
+  // Verify the uploaded file actually landed in the parent folder we gave
+  // the client at initiate time.  Without this, any authenticated user
+  // could submit an arbitrary `driveFileId` and link our DB row to a file
+  // under the service account that they were never authorised to write.
+  const expectedParent = asset.storageKey.startsWith('pending:')
+    ? asset.storageKey.slice('pending:'.length)
+    : null;
+
   let width: number | null = null;
   let height: number | null = null;
   let durationSec: number | null = null;
   let size = asset.size;
   try {
     const meta = await storage.getFileMetadata(input.driveFileId);
+    if (expectedParent && !(meta.parents ?? []).includes(expectedParent)) {
+      throw new ValidationError('uploaded file does not match initiated session');
+    }
+    // Mime family must match what we classified at initiate time (image /
+    // video / pdf).  Catches the SVG-as-image stored-XSS vector.
+    const actualMime = meta.mimeType ?? asset.mimeType;
+    if (mimeFamily(actualMime) !== mimeFamily(asset.mimeType)) {
+      throw new ValidationError('uploaded file mime type does not match declared type');
+    }
     if (meta.imageMediaMetadata?.width) width = meta.imageMediaMetadata.width;
     if (meta.imageMediaMetadata?.height) height = meta.imageMediaMetadata.height;
     if (meta.videoMediaMetadata?.durationMillis) {
@@ -148,8 +168,10 @@ export async function finalizeUpload(actor: Actor, input: FinalizeInput) {
       const sz = Number(meta.size);
       if (Number.isFinite(sz) && sz > 0) size = sz;
     }
-  } catch {
-    // Best-effort metadata; the file is still usable without it.
+  } catch (e) {
+    // Validation errors must bubble up; only metadata-fetch hiccups are
+    // swallowed.
+    if (e instanceof ValidationError) throw e;
   }
 
   return prisma.mediaAsset.update({
@@ -211,6 +233,39 @@ export function classifyMedia(mime: string, size: number): Classify {
     return { kind: 'DOC' };
   }
   return { error: `unsupported mime: ${mime}` };
+}
+
+/**
+ * Reject any attempt to attach a media asset that the actor doesn't own or
+ * that isn't ready.  Stops a user from linking another user's just-uploaded
+ * asset (whose id they discovered) to their own animal / activity /
+ * document record — which would otherwise grant them a back-door read
+ * path via `/api/files/[id]`.
+ */
+export async function assertOwnedReadyAssets(actor: Actor, ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const rows = await prisma.mediaAsset.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, uploadedById: true, status: true },
+  });
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  for (const id of ids) {
+    const row = byId.get(id);
+    if (!row) throw new NotFoundError('MediaAsset', id);
+    if (row.uploadedById !== actor.id) {
+      throw new RbacError('cannot attach asset uploaded by another user');
+    }
+    if (row.status !== 'READY') {
+      throw new ValidationError('asset not finalized yet');
+    }
+  }
+}
+
+function mimeFamily(mime: string): 'image' | 'video' | 'pdf' | 'other' {
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime === 'application/pdf') return 'pdf';
+  return 'other';
 }
 
 function prettyBytes(b: number): string {

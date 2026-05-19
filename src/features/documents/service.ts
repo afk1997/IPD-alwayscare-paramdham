@@ -3,11 +3,13 @@ import { NotFoundError, RbacError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan, can } from '@/lib/rbac';
 import type { DocCategory } from '@prisma/client';
+import { assertOwnedReadyAssets } from '../media/service';
 import { type CreateDocumentInput, CreateDocumentSchema } from './schema';
 
 export async function createDocument(actor: Actor, input: CreateDocumentInput) {
   assertCan(actor, 'document.create');
   const parsed = CreateDocumentSchema.parse(input);
+  await assertOwnedReadyAssets(actor, [parsed.fileId]);
 
   return prisma.$transaction(async (tx) => {
     const created = await tx.document.create({

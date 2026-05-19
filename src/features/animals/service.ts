@@ -14,6 +14,9 @@ function nz(v: string | undefined | null): string | null {
 export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
   assertCan(actor, 'animal.create');
   const parsed = CreateAnimalSchema.parse(input);
+  // Refuse to adopt assets uploaded by another user — see media service.
+  const { assertOwnedReadyAssets } = await import('../media/service');
+  await assertOwnedReadyAssets(actor, parsed.mediaAssetIds);
 
   const data: Prisma.AnimalCreateInput = {
     name: parsed.name,
