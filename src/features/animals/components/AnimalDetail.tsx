@@ -1,3 +1,4 @@
+import { MediaGrid } from '@/components/media/MediaGrid';
 import { ActivityTimeline } from '@/features/activities/components/ActivityTimeline';
 import { listActivitiesForAnimal } from '@/features/activities/queries';
 import type { ActivityType } from '@/features/activities/schema';
@@ -5,12 +6,12 @@ import { DocumentList } from '@/features/documents/components/DocumentList';
 import { DocumentUploadDialog } from '@/features/documents/components/DocumentUploadDialog';
 import { listDocumentsForAnimal } from '@/features/documents/queries';
 import { FileText, Info } from 'lucide-react';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getAnimal } from '../queries';
 import { AnimalDetailActions } from './AnimalDetailActions';
 import { AnimalDetailTabs } from './AnimalDetailTabs';
 import { AnimalHero } from './AnimalHero';
+import { VisualRecords } from './VisualRecords';
 
 const TEST_LABELS: Record<string, string> = {
   XRAY: 'X-ray',
@@ -33,6 +34,37 @@ export async function AnimalDetail({ animalId }: Props) {
   ]);
   if (!animal) notFound();
   const lastActivityAt = activities[0]?.occurredAt ?? null;
+
+  // Aggregate every photo / x-ray / video the patient has — admission media,
+  // every activity's attached media, plus documents that are images.
+  // Surfaces in the Documents tab as the "Visual records" grid.
+  const visualItems = [
+    ...animal.media.map((m) => ({
+      id: m.asset.id,
+      kind: m.asset.kind as 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC',
+      filename: m.asset.filename,
+      label: m.label,
+    })),
+    ...activities.flatMap((a) =>
+      a.media.map((m) => ({
+        id: m.asset.id,
+        kind: m.asset.kind as 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC',
+        filename: m.asset.filename,
+        label: m.label ?? `${a.type.toLowerCase()} · ${m.asset.filename}`,
+      })),
+    ),
+    ...documents
+      .filter((d) => d.file !== null)
+      .map((d) => ({
+        // biome-ignore lint/style/noNonNullAssertion: filtered above
+        id: d.file!.id,
+        // biome-ignore lint/style/noNonNullAssertion: filtered above
+        kind: d.file!.kind as 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC',
+        // biome-ignore lint/style/noNonNullAssertion: filtered above
+        filename: d.file!.filename,
+        label: d.kind,
+      })),
+  ];
 
   const serializedActivities = activities.map((a) => ({
     id: a.id,
@@ -136,38 +168,33 @@ export async function AnimalDetail({ animalId }: Props) {
 
             {animal.media.length > 0 && (
               <DetailSection icon={FileText} title={`Admission media (${animal.media.length})`}>
-                <div className="grid grid-cols-3 gap-2 md:grid-cols-4">
-                  {animal.media.map((m) => (
-                    <div
-                      key={m.id}
-                      className="relative aspect-square overflow-hidden rounded-md border border-line"
-                    >
-                      <Image
-                        src={`/api/files/${m.asset.id}`}
-                        alt={m.label ?? m.asset.filename}
-                        fill
-                        sizes="180px"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    </div>
-                  ))}
-                </div>
+                <MediaGrid
+                  items={animal.media.map((m) => ({
+                    id: m.asset.id,
+                    kind: m.asset.kind as 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC',
+                    filename: m.asset.filename,
+                    label: m.label,
+                  }))}
+                  columns={4}
+                />
               </DetailSection>
             )}
           </div>
         }
         docs={
-          <section className="rounded-lg border border-line bg-paper p-5">
-            <header className="mb-4 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-muted" />
-                <h2 className="font-display text-base font-bold">Documents ({documents.length})</h2>
-              </div>
-              <DocumentUploadDialog animalId={animal.id} />
-            </header>
-            <DocumentList documents={documents} />
-          </section>
+          <div className="flex flex-col gap-4">
+            <VisualRecords items={visualItems} />
+            <section className="rounded-lg border border-line bg-paper p-5">
+              <header className="mb-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-muted" />
+                  <h2 className="font-display font-bold text-base">Documents ({documents.length})</h2>
+                </div>
+                <DocumentUploadDialog animalId={animal.id} />
+              </header>
+              <DocumentList documents={documents} />
+            </section>
+          </div>
         }
       />
     </div>
