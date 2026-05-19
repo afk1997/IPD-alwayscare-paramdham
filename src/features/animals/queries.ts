@@ -28,9 +28,21 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
   const { status, species, search, take = 30, cursor } = params;
   const where: Prisma.AnimalWhereInput = {
     deletedAt: null,
+    // Patient list shows currently-admitted animals only.  Discharged or
+    // deceased animals stay discoverable via per-animal reports.
+    dischargedAt: null,
+    deceasedAt: null,
     ...(status ? { status } : {}),
     ...(species ? { species } : {}),
-    ...(search ? { name: { contains: search, mode: 'insensitive' as const } } : {}),
+    ...(search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' as const } },
+            { breed: { contains: search, mode: 'insensitive' as const } },
+            { ward: { contains: search, mode: 'insensitive' as const } },
+          ],
+        }
+      : {}),
   };
 
   const rows = await prisma.animal.findMany({
