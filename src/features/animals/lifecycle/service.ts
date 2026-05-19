@@ -106,16 +106,16 @@ export async function recordDeath(actor: ActorWithName, input: DeathInput) {
       },
     });
 
-    if (parsed.postmortemFileId) {
-      await tx.document.create({
-        data: {
+    if (parsed.documentFileIds.length > 0) {
+      await tx.document.createMany({
+        data: parsed.documentFileIds.map((fileId) => ({
           animalId: parsed.animalId,
-          category: 'DEATH',
-          kind: 'Postmortem report',
-          name: 'Postmortem',
-          fileId: parsed.postmortemFileId,
+          category: 'DEATH' as const,
+          kind: 'Death record',
+          name: 'Death document',
+          fileId,
           uploadedById: actor.id,
-        },
+        })),
       });
     }
 

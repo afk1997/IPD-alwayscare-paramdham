@@ -1,9 +1,10 @@
 'use client';
 import { FormField, FormSection } from '@/components/forms/FormField';
+import { MediaUploader, type UploadedAsset } from '@/components/media/MediaUploader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
-import { resumableUpload } from '@/lib/upload/resumable';
+import { AlertTriangle } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { deathAction } from '../actions';
 
@@ -15,8 +16,7 @@ interface Props {
 export function DeathForm({ animalId, onDone }: Props) {
   const [causeOfDeath, setCauseOfDeath] = useState('');
   const [bodyHandedOverTo, setBodyHandedOverTo] = useState('');
-  const [postmortemFile, setPostmortemFile] = useState<File | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
+  const [docs, setDocs] = useState<UploadedAsset[]>([]);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -24,30 +24,14 @@ export function DeathForm({ animalId, onDone }: Props) {
     e.preventDefault();
     setError(null);
     start(async () => {
-      try {
-        let postmortemFileId: string | undefined;
-        if (postmortemFile) {
-          setProgress(0);
-          const asset = await resumableUpload({
-            file: postmortemFile,
-            context: { kind: 'document', animalId, category: 'DEATH' },
-            onProgress: (p) => setProgress(p.fraction),
-          });
-          postmortemFileId = asset.id;
-        }
-        const result = await deathAction({
-          animalId,
-          causeOfDeath,
-          bodyHandedOverTo,
-          postmortemFileId,
-        });
-        if (!result.ok) setError(result.error ?? 'Failed to record death');
-        else onDone();
-      } catch (e2) {
-        setError(e2 instanceof Error ? e2.message : 'Postmortem upload failed');
-      } finally {
-        setProgress(null);
-      }
+      const result = await deathAction({
+        animalId,
+        causeOfDeath,
+        bodyHandedOverTo,
+        documentFileIds: docs.map((d) => d.id),
+      });
+      if (!result.ok) setError(result.error ?? 'Failed to record death');
+      else onDone();
     });
   };
 
@@ -74,27 +58,23 @@ export function DeathForm({ animalId, onDone }: Props) {
             />
           )}
         </FormField>
-        <FormField label="Postmortem report (optional)">
-          {(id) => (
-            <Input
-              id={id}
-              type="file"
-              accept="image/*,application/pdf"
-              onChange={(e) => setPostmortemFile(e.target.files?.[0] ?? null)}
-              disabled={pending}
-            />
-          )}
-        </FormField>
+        <MediaUploader
+          value={docs}
+          onChange={setDocs}
+          context={{ kind: 'document', animalId, category: 'DEATH' }}
+          label="Death certificate · postmortem · body handover"
+          accept="image/*,application/pdf"
+        />
       </FormSection>
-      {progress !== null && (
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-2">
-          <div
-            className="h-full bg-accent transition-all"
-            style={{ width: `${Math.round(progress * 100)}%` }}
-          />
-        </div>
-      )}
-      {error && <div className="text-sm text-critical">{error}</div>}
+
+      <div className="flex items-start gap-2.5 rounded-xl border border-critical/30 bg-critical-bg/60 p-3.5">
+        <AlertTriangle size={18} className="mt-0.5 shrink-0 text-critical" />
+        <p className="text-[12.5px] text-critical leading-relaxed">
+          This will mark the animal as deceased and remove it from active IPD. Records are kept permanently.
+        </p>
+      </div>
+
+      {error && <div className="text-critical text-sm">{error}</div>}
       <div className="flex justify-end">
         <Button type="submit" variant="danger" disabled={pending}>
           {pending ? 'Recording…' : 'Record death'}
