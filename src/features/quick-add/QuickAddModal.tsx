@@ -145,6 +145,9 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
             </button>
           )}
           <h2 className="flex-1 font-display font-bold text-[17px] text-text">{title}</h2>
+          <kbd className="hidden rounded border border-line bg-paper-2 px-1.5 py-0.5 font-mono text-[10px] text-soft md:inline">
+            esc
+          </kbd>
           <button
             type="button"
             onClick={onClose}

@@ -69,9 +69,13 @@ export function SideNav({ isAdmin, user }: Props) {
         type="button"
         onClick={() => open()}
         className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 font-semibold text-accent-fg text-sm shadow-sm transition hover:opacity-90"
+        title="Press N to open"
       >
         <Plus size={16} strokeWidth={2.4} />
-        New entry
+        <span className="flex-1 text-left">New entry</span>
+        <kbd className="rounded border border-accent-fg/30 bg-accent-fg/10 px-1.5 py-0.5 font-mono text-[10px] text-accent-fg/80">
+          N
+        </kbd>
       </button>
 
       <nav className="flex flex-1 flex-col gap-0.5 px-2.5">
