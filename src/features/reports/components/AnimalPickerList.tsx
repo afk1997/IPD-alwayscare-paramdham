@@ -54,7 +54,7 @@ export function AnimalPickerList({ selectedId }: Props) {
 
       {results.length === 0 ? (
         <p className="text-[12.5px] text-muted">
-          {query ? `No matches for "${query}".` : 'No active patients.'}
+          {query ? `No matches for "${query}".` : includePast ? 'No patients.' : 'No active patients.'}
         </p>
       ) : (
         <ul className="flex flex-col rounded-2xl border border-line bg-paper">
