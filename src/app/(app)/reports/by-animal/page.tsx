@@ -1,4 +1,4 @@
-import { AnimalPicker } from '@/features/reports/components/AnimalPicker';
+import { AnimalPickerList } from '@/features/reports/components/AnimalPickerList';
 import { PerAnimalReportView } from '@/features/reports/components/PerAnimalReportView';
 import { ReportsNav } from '@/features/reports/components/ReportsNav';
 import { getPerAnimalReport } from '@/features/reports/queries';
@@ -19,16 +19,11 @@ export default async function ByAnimalReportPage({
         <p className="mt-1 text-muted text-sm">Activity logs and per-animal case histories</p>
       </div>
       <ReportsNav active="by-animal" />
-      <AnimalPicker selectedId={animalId} />
+      <AnimalPickerList selectedId={animalId} />
       {animalId && !report && (
         <p className="text-critical text-sm">Animal not found, deleted, or you don't have access.</p>
       )}
       {report && <PerAnimalReportView report={report} />}
-      {!animalId && (
-        <p className="text-muted text-sm">
-          Pick an animal above to see a full case history with activity totals.
-        </p>
-      )}
     </div>
   );
 }
