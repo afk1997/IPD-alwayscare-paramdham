@@ -163,3 +163,45 @@ export async function duplicateActivityAction(activityId: string): Promise<Activ
     throw e;
   }
 }
+
+export interface ActivityShareTextResult {
+  ok: boolean;
+  text?: string;
+  error?: string;
+}
+
+export async function getActivityShareTextAction(activityId: string): Promise<ActivityShareTextResult> {
+  try {
+    await requireActor();
+    const { prisma } = await import('@/lib/prisma');
+    const { formatActivityShareText } = await import('./shareText');
+    const row = await prisma.activity.findUnique({
+      where: { id: activityId },
+      select: {
+        type: true,
+        occurredAt: true,
+        data: true,
+        remarks: true,
+        byName: true,
+        animal: { select: { name: true, species: true, ward: true } },
+        _count: { select: { media: true } },
+      },
+    });
+    if (!row) return { ok: false, error: 'Activity not found' };
+    const text = formatActivityShareText({
+      animalName: row.animal.name,
+      animalSpecies: row.animal.species,
+      animalWard: row.animal.ward,
+      type: row.type,
+      occurredAt: row.occurredAt,
+      data: row.data,
+      remarks: row.remarks,
+      byName: row.byName,
+      mediaCount: row._count.media,
+    });
+    return { ok: true, text };
+  } catch (e) {
+    if (e instanceof RbacError) return { ok: false, error: e.message };
+    throw e;
+  }
+}
