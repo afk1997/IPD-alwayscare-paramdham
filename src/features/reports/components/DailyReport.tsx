@@ -1,11 +1,13 @@
 'use client';
 import { Input } from '@/components/ui/Input';
+import { useToast } from '@/components/ui/Toast';
 import { ACTIVITY_LABELS, ACTIVITY_TYPES, type ActivityType } from '@/features/activities/schema';
 import { clockTime } from '@/lib/time';
-import { Download } from 'lucide-react';
+import { Download, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState } from 'react';
+import { formatDailyReportText } from '../dailyReportText';
 import type { ActivityRow } from '../queries';
 
 interface Props {
@@ -29,7 +31,34 @@ const SELECTABLE: ActivityType[] = [
 export function DailyReport({ date, rows }: Props) {
   const router = useRouter();
   const params = useSearchParams();
+  const { showToast } = useToast();
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
+
+  const onShare = async () => {
+    // Spec rule: Share always copies the full day, never the filtered
+    // view.  Use `rows` (untouched prop), not `filtered`.
+    const text = formatDailyReportText(date, rows);
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast({ message: 'Daily report copied — paste in WhatsApp / Slack / etc.' });
+    } catch {
+      // Safari iframes / non-https origins block the Clipboard API.
+      // Fall back to the old textarea trick so the action still works.
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast({ message: 'Daily report copied (fallback)' });
+      } finally {
+        document.body.removeChild(ta);
+      }
+    }
+  };
 
   const onDateChange = (value: string) => {
     const q = new URLSearchParams(params);
@@ -91,15 +120,26 @@ export function DailyReport({ date, rows }: Props) {
             {typeFilter !== 'ALL' && ` · ${ACTIVITY_LABELS[typeFilter]}`}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={downloadCsv}
-          disabled={filtered.length === 0}
-          className="flex items-center gap-1.5 self-end rounded-md border border-line bg-paper px-3 py-1.5 font-semibold text-[12.5px] text-text transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Download size={14} />
-          Export CSV
-        </button>
+        <div className="flex items-center gap-2 self-end">
+          <button
+            type="button"
+            onClick={onShare}
+            disabled={rows.length === 0}
+            className="flex items-center gap-1.5 rounded-md border border-line bg-paper px-3 py-1.5 font-semibold text-[12.5px] text-text transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Share2 size={14} />
+            Share
+          </button>
+          <button
+            type="button"
+            onClick={downloadCsv}
+            disabled={filtered.length === 0}
+            className="flex items-center gap-1.5 rounded-md border border-line bg-paper px-3 py-1.5 font-semibold text-[12.5px] text-text transition hover:bg-paper-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
