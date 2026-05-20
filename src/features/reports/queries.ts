@@ -199,6 +199,48 @@ export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
   }));
 }
 
+// Same shape + ordering as listActivitiesOnDate but scoped to one
+// animal — feeds the per-patient daily Share button.
+export async function listActivitiesOnDateForAnimal(date: Date, animalId: string): Promise<ActivityRow[]> {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const rows = await prisma.activity.findMany({
+    where: {
+      animalId,
+      occurredAt: { gte: start, lt: end },
+      deletedAt: null,
+    },
+    orderBy: { occurredAt: 'desc' },
+    take: ACTIVITIES_ON_DATE_CAP,
+    select: {
+      id: true,
+      animalId: true,
+      type: true,
+      occurredAt: true,
+      byName: true,
+      remarks: true,
+      data: true,
+      animal: { select: { name: true, species: true, ward: true } },
+      _count: { select: { media: { where: { asset: { status: 'READY' } } } } },
+    },
+  });
+  return rows.map((r) => ({
+    id: r.id,
+    animalId: r.animalId,
+    animalName: r.animal.name,
+    animalSpecies: r.animal.species,
+    animalWard: r.animal.ward,
+    type: r.type,
+    occurredAt: r.occurredAt,
+    byName: r.byName,
+    summary: summarizeActivity({ type: r.type, data: r.data, remarks: r.remarks }),
+    detailLines: activityDetailLines({ type: r.type, data: r.data, remarks: r.remarks }),
+    mediaCount: r._count.media,
+  }));
+}
+
 // ── Per-animal report (used by /reports/by-animal) ────────────────────────
 
 export interface AnimalActivitySummary {
