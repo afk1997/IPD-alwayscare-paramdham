@@ -3,8 +3,10 @@ import { FormField, FormSection } from '@/components/forms/FormField';
 import { MediaUploader, type UploadedAsset } from '@/components/media/MediaUploader';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { useToast } from '@/components/ui/Toast';
+import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { useMemo, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { createActivityAction } from '../actions';
@@ -71,7 +73,8 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
   const [pending, start] = useTransition();
   const [media, setMedia] = useState<UploadedAsset[]>([]);
   const [occurredAtLocal, setOccurredAtLocal] = useState(() => localDatetimeInputValue(new Date()));
-  const [byNameOverride, setByNameOverride] = useState('');
+  const { users: activeUsers, currentUserName } = useActiveUsers();
+  const [byNameSelected, setByNameSelected] = useState(currentUserName);
 
   const form = useForm<CreateActivityInput>({
     // biome-ignore lint/suspicious/noExplicitAny: discriminated union typing is intentionally relaxed at the form layer
@@ -96,7 +99,7 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
         type,
         mediaAssetIds: media.map((m) => m.id),
         occurredAt: occurredAtISO,
-        byName: byNameOverride.trim() || undefined,
+        byName: byNameSelected,
       } as CreateActivityInput);
       if (!result.ok) setError(result.error ?? 'Failed to log');
       else {
@@ -126,15 +129,17 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
         </FormField>
         <FormField
           label="Logged by"
-          hint="Defaults to your name — override if logging on someone else's behalf"
+          required
+          hint="Defaults to your name — pick someone else if logging on their behalf"
         >
           {(id) => (
-            <Input
-              id={id}
-              value={byNameOverride}
-              onChange={(e) => setByNameOverride(e.target.value)}
-              placeholder="Defaults to current user"
-            />
+            <Select id={id} value={byNameSelected} onChange={(e) => setByNameSelected(e.target.value)}>
+              {activeUsers.map((u) => (
+                <option key={u.id} value={u.name}>
+                  {u.name}
+                </option>
+              ))}
+            </Select>
           )}
         </FormField>
         <MediaUploader
