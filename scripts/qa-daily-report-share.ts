@@ -43,7 +43,8 @@ async function main() {
   const text = await page.evaluate(() => navigator.clipboard.readText());
   process.stdout.write(`Clipboard contents (${text.length} chars):\n${text}\n`);
 
-  if (!text.startsWith('🏥 Arham Always Care —')) {
+  // Header is bold-wrapped in WhatsApp markdown (*…*).
+  if (!text.startsWith('*🏥 Arham Always Care —')) {
     throw new Error('Clipboard text does not start with the expected header');
   }
   const secondLine = text.split('\n')[1] ?? '';
