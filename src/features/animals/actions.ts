@@ -65,7 +65,7 @@ export async function updateAnimalAction(
   }
 }
 
-export async function searchAnimalsAction(query: string): Promise<ActiveAnimalLite[]> {
+export async function searchAnimalsAction(query: string, includePast = false): Promise<ActiveAnimalLite[]> {
   await requireActor();
-  return searchActiveAnimals(query);
+  return searchActiveAnimals(query, 50, includePast);
 }

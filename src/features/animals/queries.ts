@@ -118,12 +118,17 @@ export interface ActiveAnimalLite {
   status: AnimalStatus;
 }
 
-async function _searchActiveAnimalsRaw(query: string, take: number): Promise<ActiveAnimalLite[]> {
+async function _searchActiveAnimalsRaw(
+  query: string,
+  take: number,
+  includePast: boolean,
+): Promise<ActiveAnimalLite[]> {
   const q = query.trim();
   const where: Prisma.AnimalWhereInput = {
     deletedAt: null,
-    dischargedAt: null,
-    deceasedAt: null,
+    // When includePast=false, restrict to currently admitted animals.
+    // When true, return everyone — including discharged + deceased.
+    ...(includePast ? {} : { dischargedAt: null, deceasedAt: null }),
     ...(q
       ? {
           OR: [
@@ -142,16 +147,19 @@ async function _searchActiveAnimalsRaw(query: string, take: number): Promise<Act
   });
 }
 
-// Cached: return shape is plain strings only — no Date / Decimal — so the
-// default JSON cache survives the round-trip cleanly. Cache key includes
-// `query` + `take` so every distinct search is memoized separately.
+// Cached.  unstable_cache uses (keys, args) as the cache key, so the
+// additional includePast arg automatically separates entries.
 const _searchActiveAnimalsCached = unstable_cache(_searchActiveAnimalsRaw, ['search-active-animals'], {
   revalidate: 30,
   tags: ['animals'],
 });
 
-export async function searchActiveAnimals(query: string, take = 20): Promise<ActiveAnimalLite[]> {
-  return _searchActiveAnimalsCached(query, take);
+export async function searchActiveAnimals(
+  query: string,
+  take = 20,
+  includePast = false,
+): Promise<ActiveAnimalLite[]> {
+  return _searchActiveAnimalsCached(query, take, includePast);
 }
 
 export const getCachedTodayCounts = unstable_cache(
