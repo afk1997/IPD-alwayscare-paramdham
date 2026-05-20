@@ -138,25 +138,29 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   };
 
   return (
-    <button
-      type="button"
-      aria-label="Close"
-      onClick={onClose}
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-end md:items-stretch"
+      style={{ animation: 'fadeIn 0.15s ease-out' }}
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
-      className="fixed inset-0 z-40 flex items-end justify-end bg-black/45 md:items-stretch"
-      style={{ animation: 'fadeIn 0.15s ease-out' }}
     >
+      {/* Backdrop is a SIBLING button, not a parent — otherwise the Close
+          button inside <Header> would be a nested <button>, which is invalid
+          HTML and triggers a React hydration warning. */}
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default bg-black/45"
+      />
       <div
         ref={dialogRef}
-        // biome-ignore lint/a11y/useSemanticElements: nested inside <button> backdrop
+        // biome-ignore lint/a11y/useSemanticElements: pattern shared with QuickAddModal
         role="dialog"
         aria-modal="true"
         aria-label={ACTIVITY_LABELS[activity.type]}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
-        className="flex h-[88vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-2xl bg-paper shadow-xl md:h-full md:max-h-none md:rounded-none md:border-l md:border-line"
+        className="relative flex h-[88vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-2xl bg-paper shadow-xl md:h-full md:max-h-none md:rounded-none md:border-l md:border-line"
         style={swipe.style}
       >
         {/* Drag-to-dismiss grabber, mobile only. */}
@@ -229,7 +233,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
           )}
         </footer>
       </div>
-    </button>
+    </div>
   );
 }
 
