@@ -126,6 +126,21 @@ export const CreateActivitySchema = z.discriminatedUnion('type', [
 
 export type CreateActivityInput = z.infer<typeof CreateActivitySchema>;
 
+// Patch shape for `updateActivity`.  Each field is optional so callers
+// can change one thing at a time, but each field individually carries
+// the same shape constraints as the create-time field — closes the
+// gap where the update path used a loose `{ byName?: string }`
+// signature with no max-length / non-empty guard.  `data` is left
+// `unknown` here because its shape depends on the stored row's type;
+// the service validates it against `ACTIVITY_DATA_SCHEMAS[before.type]`.
+export const UpdateActivitySchema = z.object({
+  remarks: z.string().nullable().optional(),
+  data: z.unknown().optional(),
+  occurredAt: z.string().optional(),
+  byName: z.string().min(1).max(120).optional(),
+});
+export type UpdateActivityInput = z.infer<typeof UpdateActivitySchema>;
+
 // Map a server-side ActivityType to the Zod schema for its `data` payload.
 // updateActivity uses this to validate the patch's `data` against the
 // stored row's type — without this, an edit could replace a FOOD entry's

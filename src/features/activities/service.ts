@@ -4,7 +4,13 @@ import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan, can } from '@/lib/rbac';
 import type { Prisma, ActivityType as PrismaActivityType } from '@prisma/client';
-import { ACTIVITY_DATA_SCHEMAS, type CreateActivityInput, CreateActivitySchema } from './schema';
+import {
+  ACTIVITY_DATA_SCHEMAS,
+  type CreateActivityInput,
+  CreateActivitySchema,
+  type UpdateActivityInput,
+  UpdateActivitySchema,
+} from './schema';
 
 const CLINICAL_TYPES: PrismaActivityType[] = ['ROUND', 'DIAGNOSTIC', 'SURGERY'];
 
@@ -53,11 +59,13 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
   });
 }
 
-export async function updateActivity(
-  actor: ActivityActor,
-  activityId: string,
-  patch: { remarks?: string | null; data?: unknown; occurredAt?: string; byName?: string },
-) {
+export async function updateActivity(actor: ActivityActor, activityId: string, patch: UpdateActivityInput) {
+  // Parse the patch once — closes the gap where the prior loose
+  // signature accepted empty `byName`, arbitrary-length `byName`, and
+  // any string for `occurredAt`.  `data` is left as unknown here and
+  // validated per-type below against the stored row's discriminator.
+  const parsed = UpdateActivitySchema.parse(patch);
+
   const before = await prisma.activity.findUnique({ where: { id: activityId } });
   if (!before) throw new NotFoundError('Activity', activityId);
 
@@ -70,34 +78,48 @@ export async function updateActivity(
     editedAt: new Date(),
     editedBy: { connect: { id: actor.id } },
   };
-  if (patch.remarks !== undefined) updateData.remarks = patch.remarks;
-  if (patch.data !== undefined) {
+  if (parsed.remarks !== undefined) updateData.remarks = parsed.remarks;
+  if (parsed.data !== undefined) {
     // C3: validate the patch's `data` against the stored row's type.  Without
     // this, a STAFF user editing their own FOOD entry could swap the JSON
     // for an arbitrary shape (fake surgery findings, broken summarizer
     // inputs, etc.).  Build a one-shape schema keyed by the row's type.
     const schema = ACTIVITY_DATA_SCHEMAS[before.type as keyof typeof ACTIVITY_DATA_SCHEMAS];
     if (!schema) throw new ValidationError(`unknown activity type: ${before.type}`);
-    const parsed = schema.parse(patch.data);
-    updateData.data = parsed as unknown as Prisma.InputJsonValue;
+    const dataParsed = schema.parse(parsed.data);
+    updateData.data = dataParsed as unknown as Prisma.InputJsonValue;
   }
-  if (patch.occurredAt !== undefined) updateData.occurredAt = new Date(patch.occurredAt);
-  if (patch.byName !== undefined && patch.byName.trim().length > 0) {
-    updateData.byName = patch.byName.trim();
-  }
+  if (parsed.occurredAt !== undefined) updateData.occurredAt = new Date(parsed.occurredAt);
+  // UpdateActivitySchema already enforces `min(1).max(120)` for byName,
+  // so the prior `.trim().length > 0` defensive check is no longer
+  // necessary.  Still trim to normalise whitespace.
+  if (parsed.byName !== undefined) updateData.byName = parsed.byName.trim();
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.activity.update({
       where: { id: activityId },
       data: updateData,
     });
+    // Audit diff now captures byName + occurredAt alongside the existing
+    // remarks/data.  A re-attribution edit ("by Dr. Mehta" → "by Dr. Iyer")
+    // and an occurredAt back-fill both leave a trail.
     await writeAuditLog(tx, {
       actorId: actor.id,
       action: 'update',
       entityType: 'Activity',
       entityId: activityId,
-      before: { remarks: before.remarks, data: before.data as Prisma.InputJsonValue },
-      after: { remarks: updated.remarks, data: updated.data as Prisma.InputJsonValue },
+      before: {
+        remarks: before.remarks,
+        data: before.data as Prisma.InputJsonValue,
+        byName: before.byName,
+        occurredAt: before.occurredAt.toISOString(),
+      },
+      after: {
+        remarks: updated.remarks,
+        data: updated.data as Prisma.InputJsonValue,
+        byName: updated.byName,
+        occurredAt: updated.occurredAt.toISOString(),
+      },
     });
     return updated;
   });

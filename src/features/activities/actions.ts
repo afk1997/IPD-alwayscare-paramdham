@@ -2,7 +2,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { RbacError } from '@/lib/errors';
 import { revalidateTag, unstable_cache } from 'next/cache';
-import { type CreateActivityInput, CreateActivitySchema } from './schema';
+import { type CreateActivityInput, CreateActivitySchema, type UpdateActivityInput } from './schema';
 import {
   type ActivityActor,
   createActivity,
@@ -135,7 +135,7 @@ export async function searchActivitiesAction(query: string): Promise<ActivitySea
 
 export async function updateActivityAction(
   activityId: string,
-  patch: { remarks?: string | null; data?: unknown; occurredAt?: string; byName?: string },
+  patch: UpdateActivityInput,
 ): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
