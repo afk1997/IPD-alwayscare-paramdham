@@ -7,9 +7,10 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { useToast } from '@/components/ui/Toast';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
+import { copyToClipboard } from '@/lib/clipboard';
 import { useMemo, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
-import { createActivityAction } from '../actions';
+import { createActivityAction, getActivityShareTextAction } from '../actions';
 import { ACTIVITY_LABELS, type ActivityType, type CreateActivityInput } from '../schema';
 import { AdmissionCreateFields } from '../types/admission/CreateFields';
 import { BathCreateFields } from '../types/bath/CreateFields';
@@ -112,11 +113,35 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
         occurredAt: occurredAtISO,
         byName: byNameSelected,
       } as CreateActivityInput);
-      if (!result.ok) setError(result.error ?? 'Failed to log');
-      else {
-        showToast({ message: `${ACTIVITY_LABELS[type]} saved` });
-        onDone();
+      if (!result.ok) {
+        setError(result.error ?? 'Failed to log');
+        return;
       }
+
+      // Fetch the formatted share-text and attach it as a Share action
+      // on the success toast.  If the fetch fails for any reason the
+      // form still closes with a plain "saved" toast.
+      const activityId = result.activityId;
+      const share = activityId ? await getActivityShareTextAction(activityId) : null;
+      const shareText = share?.ok ? share.text : undefined;
+      showToast({
+        message: `${ACTIVITY_LABELS[type]} saved`,
+        duration: 8000,
+        ...(shareText
+          ? {
+              action: {
+                label: 'Share',
+                onClick: () =>
+                  copyToClipboard(shareText, {
+                    onSuccess: () =>
+                      showToast({ message: 'Activity copied — paste in WhatsApp / Slack / etc.' }),
+                    onFallback: () => showToast({ message: 'Activity copied (fallback)' }),
+                  }),
+              },
+            }
+          : {}),
+      });
+      onDone();
     });
   });
 
