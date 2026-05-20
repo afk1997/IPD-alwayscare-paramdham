@@ -56,9 +56,9 @@ describe('formatDailyReportText', () => {
         '3 entries',
         '',
         '🐶 Bruno (Dog)',
-        '• 09:15  Doctor round — Stable  (Dr. Mehta)',
-        '• 09:30  Treatment — Amoxiclav 20mg/kg Oral  (Dr. Mehta)',
-        '• 12:30  Food & water — Kibble · Fully  (Nurse Pooja)',
+        '• *09:15  Doctor round* — Stable  (Dr. Mehta)',
+        '• *09:30  Treatment* — Amoxiclav 20mg/kg Oral  (Dr. Mehta)',
+        '• *12:30  Food & water* — Kibble · Fully  (Nurse Pooja)',
       ].join('\n'),
     );
   });
@@ -95,10 +95,10 @@ describe('formatDailyReportText', () => {
         '2 entries',
         '',
         '🐶 bruno (Dog · Surgery-1)',
-        '• 09:15  Doctor round — Stable  (Dr. Mehta)',
+        '• *09:15  Doctor round* — Stable  (Dr. Mehta)',
         '',
         '🐱 Milo (Cat · ISO-A)',
-        '• 09:00  Doctor round — Improving  (Dr. Iyer)',
+        '• *09:00  Doctor round* — Improving  (Dr. Iyer)',
       ].join('\n'),
     );
   });
@@ -125,7 +125,7 @@ describe('formatDailyReportText', () => {
         '1 entry',
         '',
         '🐶 Bruno (Dog)',
-        '• 09:30  Doctor round — Stable, 38.5°C  (Dr. Mehta)',
+        '• *09:30  Doctor round* — Stable, 38.5°C  (Dr. Mehta)',
         '   ↳ Temp: 38.5°C',
         '   ↳ Appetite: Partial',
         '   ↳ Hydration: OK',

@@ -81,10 +81,11 @@ export function formatDailyReportText(date: string, rows: ActivityRow[]): string
       const time = clockHHMM(r.occurredAt);
       const label = ACTIVITY_LABELS[r.type as ActivityType];
       const tag = r.mediaCount > 0 ? '  📎' : '';
-      lines.push(`• ${time}  ${label} — ${r.summary}  (${r.byName})${tag}`);
-      // Each populated field becomes an indented sub-bullet — "no field
-      // dropped" per spec.  Blank string fields are already filtered
-      // out upstream in `activityDetailLines`.
+      // WhatsApp / Slack render `*text*` as bold.  Wrap the time+label
+      // so it stands out when scrolling through a long handover paste.
+      lines.push(`• *${time}  ${label}* — ${r.summary}  (${r.byName})${tag}`);
+      // Each populated field that ISN'T already in the headline becomes
+      // an indented sub-bullet (see `activityDetailLines`).
       for (const detail of r.detailLines) lines.push(`   ↳ ${detail}`);
     }
   }
