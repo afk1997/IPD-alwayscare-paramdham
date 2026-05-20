@@ -43,13 +43,15 @@ export function summarizeActivity(a: ActivityShape): string {
 }
 
 // Per-type expanded detail for the daily-report Share / Copy output.
-// Returns one string per populated field — the spec rule is "no fields
-// dropped".  String fields left blank are skipped; boolean fields are
-// always emitted as `yes`/`no` because absence carries information
-// (e.g. `Vomiting: no` is a clinically meaningful confirmation).
+// Returns one string per populated field that ISN'T already represented
+// in the row's headline summary, so the WhatsApp paste reads cleanly
+// (no duplicates like "Temp 38.5°C" in the headline AND "Temp: 38.5°C"
+// in the sub-bullets).
 //
-// `summarizeActivity` is intentionally kept terse for the at-a-glance
-// timeline; this sibling is the verbose handover form.
+// String fields left blank are skipped.  Boolean fields render as
+// `yes`/`no` only when the value isn't already implied by the headline
+// (e.g. summary already says "vomited" when vomiting=true; we emit
+// "Vomiting: no" only when false, since "no" isn't in summary).
 //
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: flat switch over 8 activity types, each branch is independent
 export function activityDetailLines(a: ActivityShape): string[] {
@@ -61,67 +63,61 @@ export function activityDetailLines(a: ActivityShape): string[] {
     if (s.length === 0) return;
     out.push(`${label}: ${s}`);
   };
-  const pushBool = (label: string, v: unknown) => out.push(`${label}: ${v ? 'yes' : 'no'}`);
 
   switch (a.type) {
-    case 'TREATMENT': {
-      const meds = (d.meds ?? []) as Array<{ name: string; dose: string; route: string }>;
-      meds.forEach((m, i) => out.push(`Med ${i + 1}: ${m.name} · ${m.dose} · ${m.route}`));
+    case 'TREATMENT':
+      // Summary already lists every med (name dose route, …).
+      // Only activity-level remarks remain.
       break;
-    }
-    case 'ROUND':
-      pushIf('Temp', d.temp);
+    case 'ROUND': {
+      // Summary uses temp / pain / progress; falls back to notes only
+      // when ALL three are empty.  Detail emits the other fields, plus
+      // notes when it isn't already serving as the summary fallback.
       pushIf('Appetite', d.appetite);
       pushIf('Hydration', d.hydration);
-      pushIf('Pain', d.pain);
       pushIf('Wound', d.wound);
       pushIf('Stool', d.stool);
-      pushIf('Progress', d.progress);
-      pushIf('Notes', d.notes);
-      break;
-    case 'DIAGNOSTIC': {
-      const tests = (d.tests ?? []) as string[];
-      if (tests.length > 0) out.push(`Tests: ${tests.join(', ')}`);
-      pushIf('Findings', d.findings);
-      pushIf('Interpretation', d.interpretation);
+      const summaryUsedNotesFallback = !d.temp && !d.pain && !d.progress;
+      if (!summaryUsedNotesFallback) pushIf('Notes', d.notes);
       break;
     }
+    case 'DIAGNOSTIC':
+      // Summary covers tests + findings.  Only interpretation is new.
+      pushIf('Interpretation', d.interpretation);
+      break;
     case 'SURGERY':
-      pushIf('Surgery name', d.surgeryName);
-      pushIf('Surgeon', d.surgeon);
+      // Summary covers surgery name, duration, surgeon.
       pushIf('Anesthesia', d.anesthesia);
-      pushIf('Duration', d.duration);
       pushIf('Findings', d.findings);
       pushIf('Complications', d.complications);
       pushIf('Post-op', d.postOp);
       break;
     case 'FOOD':
-      pushIf('Food type', d.foodType);
-      pushIf('Quantity', d.qty);
+      // Summary already has foodType, qty, intake, and "vomited" if
+      // true.  Water is never in summary — emit when present.
       pushIf('Water', d.water);
-      pushIf('Intake', d.intake);
-      pushBool('Vomiting', d.vomiting);
+      // When vomiting is false the summary doesn't mention it; emit the
+      // explicit "no" so the reader sees the negative.
+      if (!d.vomiting) out.push('Vomiting: no');
       break;
     case 'BATH':
-      pushIf('Bath type', d.bathType);
+      // Summary is just bathType.  groomingBy and bath-internal remarks
+      // are new.
       pushIf('Grooming by', d.groomingBy);
       pushIf('Bath notes', d.remarks);
       break;
     case 'WALK':
-      pushIf('Duration', d.duration);
-      pushIf('Mobility', d.mobility);
-      pushBool('Urinated', d.urination);
-      pushBool('Stool', d.stool);
-      pushBool('Assisted', d.assisted);
+      // Summary covers duration, mobility, assisted/independent.
+      // Urinated + (post-walk) stool are new.
+      out.push(`Urinated: ${d.urination ? 'yes' : 'no'}`);
+      out.push(`Stool: ${d.stool ? 'yes' : 'no'}`);
       break;
     case 'ADMISSION':
-      pushIf('Summary', d.summary);
+      // Summary === data.summary verbatim; nothing left to add.
       break;
   }
 
-  // Activity-level remarks land last regardless of type.  For BATH the
-  // bath-internal `data.remarks` is labelled "Bath notes" above so the
-  // two don't collide.
+  // Activity-level remarks land last regardless of type.
   if (a.remarks && a.remarks.trim().length > 0) {
     out.push(`Remarks: ${a.remarks.trim()}`);
   }
