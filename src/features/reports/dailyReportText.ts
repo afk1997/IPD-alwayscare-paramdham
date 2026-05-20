@@ -2,6 +2,12 @@ import { ACTIVITY_LABELS } from '@/features/activities/schema';
 import type { ActivityType } from '@prisma/client';
 import type { ActivityRow } from './queries';
 
+// The clinic is in India; pin all formatting to Asia/Kolkata so the
+// copy reads the same whether the server is running locally (IST), on
+// Vercel (UTC), or in CI (UTC).  Without this, `toLocale*` uses the
+// runtime's local TZ — tests passed on a dev Mac and failed in CI.
+const REPORT_TZ = 'Asia/Kolkata';
+
 const SPECIES_EMOJI: Record<string, string> = {
   Dog: '🐶',
   Cat: '🐱',
@@ -17,14 +23,16 @@ function speciesEmoji(species: string): string {
 }
 
 function headerDate(dateStr: string): string {
-  // dateStr is YYYY-MM-DD.  Format as "EEE, d MMM yyyy" (en-GB) so it
-  // looks the same regardless of viewer locale.
-  const d = new Date(`${dateStr}T00:00:00`);
+  // dateStr is YYYY-MM-DD.  Anchor it at noon Asia/Kolkata so the
+  // calendar date doesn't drift across midnight under DST or
+  // non-IST runtime locales (CI runs UTC).
+  const d = new Date(`${dateStr}T12:00:00+05:30`);
   return d.toLocaleDateString('en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+    timeZone: REPORT_TZ,
   });
 }
 
@@ -33,6 +41,7 @@ function clockHHMM(d: Date): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+    timeZone: REPORT_TZ,
   });
 }
 
