@@ -1,7 +1,9 @@
 'use client';
 import { FormField } from '@/components/forms/FormField';
 import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
+import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import type { ActivityType } from '../schema';
 import { AdmissionEditFields } from '../types/admission/EditFields';
 import { BathEditFields } from '../types/bath/EditFields';
@@ -38,6 +40,16 @@ const PER_TYPE: Record<ActivityType, (p: EditFieldsProps) => React.ReactNode> = 
 };
 
 export function ActivityEditFields({ type, value, onChange }: Props) {
+  const { users: activeUsers } = useActiveUsers();
+  // If the row's current byName matches an active user, the <select> picks
+  // it up via the `value` prop.  If not (e.g. the user was deactivated
+  // after this row was logged), inject a single "— inactive" option at
+  // the top so the form can still be saved without losing the historical
+  // attribution.
+  const matchesActive = activeUsers.some((u) => u.name === value.byName);
+  const optionList = matchesActive
+    ? activeUsers
+    : [{ id: '__inactive__', name: value.byName, inactive: true as const }, ...activeUsers];
   const setData = (patch: Data) => onChange({ ...value, data: { ...value.data, ...patch } });
   const Body = PER_TYPE[type];
 
@@ -54,14 +66,19 @@ export function ActivityEditFields({ type, value, onChange }: Props) {
             />
           )}
         </FormField>
-        <FormField label="Logged by">
+        <FormField label="Logged by" required>
           {(id) => (
-            <Input
+            <Select
               id={id}
               value={value.byName}
               onChange={(e) => onChange({ ...value, byName: e.target.value })}
-              placeholder="Staff member"
-            />
+            >
+              {optionList.map((u) => (
+                <option key={u.id} value={u.name}>
+                  {'inactive' in u && u.inactive ? `${u.name} — inactive` : u.name}
+                </option>
+              ))}
+            </Select>
           )}
         </FormField>
       </div>
