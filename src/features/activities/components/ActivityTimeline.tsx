@@ -29,7 +29,7 @@ export interface SerializedActivity {
   editedAt: string | null;
   // biome-ignore lint/suspicious/noExplicitAny: server-erased data shape
   data: any;
-  media: { id: string; assetId: string; label: string | null }[];
+  media: { id: string; assetId: string; kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC'; label: string | null }[];
 }
 
 interface Props {
@@ -112,7 +112,20 @@ export function ActivityTimeline({ activities }: Props) {
 function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; onClick: () => void }) {
   const meta = TYPE_META[a.type];
   const Icon = meta.icon;
-  const firstPhoto = a.media[0];
+  // Prefer a real photo for the row thumbnail; if the only attached
+  // media is a video / doc, fall back to a generic placeholder driven
+  // by `Photo`'s `kind` prop (it renders a play badge for video, a
+  // document strip for doc, etc.).  The old `a.media[0]` blindly fed
+  // an mp4 URL into an <img>, which 404'd visually with the palette
+  // brown background.
+  const firstStill = a.media.find((m) => m.kind === 'PHOTO' || m.kind === 'XRAY');
+  const firstAny = firstStill ?? a.media[0];
+  const firstPhoto = firstAny
+    ? {
+        ...firstAny,
+        usePlaceholder: !firstStill,
+      }
+    : null;
 
   return (
     <li>
@@ -126,7 +139,16 @@ function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; o
             <>
               <Photo
                 seed={firstPhoto.assetId}
-                src={`/api/files/${firstPhoto.assetId}`}
+                src={firstPhoto.usePlaceholder ? undefined : `/api/files/${firstPhoto.assetId}`}
+                kind={
+                  firstPhoto.kind === 'VIDEO'
+                    ? 'video'
+                    : firstPhoto.kind === 'XRAY'
+                      ? 'xray'
+                      : firstPhoto.kind === 'DOC'
+                        ? 'doc'
+                        : 'photo'
+                }
                 alt=""
                 rounded={11}
                 className="h-12 w-12 ring-2"

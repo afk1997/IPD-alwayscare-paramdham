@@ -67,7 +67,12 @@ export async function AnimalDetail({ animalId }: Props) {
     remarks: a.remarks,
     editedAt: a.editedAt ? a.editedAt.toISOString() : null,
     data: a.data,
-    media: a.media.map((m) => ({ id: m.id, assetId: m.assetId, label: m.label })),
+    media: a.media.map((m) => ({
+      id: m.id,
+      assetId: m.assetId,
+      kind: m.asset.kind,
+      label: m.label,
+    })),
   }));
 
   return (

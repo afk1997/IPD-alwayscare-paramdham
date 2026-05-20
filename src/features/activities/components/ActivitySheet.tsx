@@ -27,7 +27,11 @@ export interface ActivitySummary {
   // biome-ignore lint/suspicious/noExplicitAny: server-erased shape
   data: any;
   editedAt: Date | null;
-  media: { id: string; assetId: string; label: string | null }[];
+  // `kind` is required so the sheet renders <video> for VIDEO assets
+  // and <Photo> for PHOTO/XRAY/DOC.  Previously every media tile was
+  // rendered as an <img>, which broke for mp4s — the browser showed
+  // the placeholder palette colour where the video should play.
+  media: { id: string; assetId: string; kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC'; label: string | null }[];
 }
 
 interface Props {
@@ -280,16 +284,29 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
     <div className="flex flex-col gap-4 p-4">
       {activity.media.length > 0 && (
         <div className="grid gap-2" style={mediaGridStyle(activity.media.length)}>
-          {activity.media.map((m) => (
-            <Photo
-              key={m.id}
-              src={`/api/files/${m.assetId}`}
-              seed={m.assetId}
-              alt={m.label ?? ''}
-              rounded={12}
-              className="aspect-square w-full"
-            />
-          ))}
+          {activity.media.map((m) =>
+            m.kind === 'VIDEO' ? (
+              <video
+                key={m.id}
+                src={`/api/files/${m.assetId}`}
+                controls
+                preload="metadata"
+                className="aspect-square w-full rounded-[12px] bg-black object-cover"
+              >
+                <track kind="captions" />
+              </video>
+            ) : (
+              <Photo
+                key={m.id}
+                src={`/api/files/${m.assetId}`}
+                seed={m.assetId}
+                kind={m.kind === 'XRAY' ? 'xray' : m.kind === 'DOC' ? 'doc' : 'photo'}
+                alt={m.label ?? ''}
+                rounded={12}
+                className="aspect-square w-full"
+              />
+            ),
+          )}
         </div>
       )}
 
