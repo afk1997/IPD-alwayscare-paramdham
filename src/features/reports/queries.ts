@@ -21,11 +21,25 @@ export interface TodayTimelineItem {
   type: ActivityType;
   occurredAt: Date;
   byName: string;
+  remarks: string | null;
+  // biome-ignore lint/suspicious/noExplicitAny: per-type activity payload erased at the cache boundary
+  data: any;
+  editedAt: Date | null;
+  // Media attached to THIS activity (for the in-row thumbnail and the
+  // ActivitySheet's image / video viewer).  Excludes pending uploads —
+  // PENDING / FAILED would 425 / 410 through /api/files/[id].
+  media: Array<{
+    id: string;
+    assetId: string;
+    kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
+    label: string | null;
+  }>;
   summary: string;
 }
 
-interface TodayTimelineItemCached extends Omit<TodayTimelineItem, 'occurredAt'> {
+interface TodayTimelineItemCached extends Omit<TodayTimelineItem, 'occurredAt' | 'editedAt'> {
   occurredAt: string;
+  editedAt: string | null;
 }
 
 async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
@@ -56,6 +70,20 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
       byName: true,
       remarks: true,
       data: true,
+      editedAt: true,
+      // The activity's own attached media — for the row thumbnail and
+      // the ActivitySheet's media grid.  Skip PENDING/FAILED so the
+      // wire payload doesn't reference an asset the API would 425/410.
+      media: {
+        where: { asset: { status: 'READY' } },
+        orderBy: { id: 'asc' },
+        select: {
+          id: true,
+          assetId: true,
+          label: true,
+          asset: { select: { kind: true } },
+        },
+      },
       animal: {
         select: {
           name: true,
@@ -82,6 +110,15 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
     type: r.type,
     occurredAt: r.occurredAt.toISOString(),
     byName: r.byName,
+    remarks: r.remarks,
+    data: r.data,
+    editedAt: r.editedAt ? r.editedAt.toISOString() : null,
+    media: r.media.map((m) => ({
+      id: m.id,
+      assetId: m.assetId,
+      kind: m.asset.kind,
+      label: m.label,
+    })),
     summary: summarizeActivity({ type: r.type, data: r.data, remarks: r.remarks }),
   }));
 }
@@ -97,7 +134,11 @@ const _listTodayActivitiesCached = unstable_cache(_listTodayActivitiesRaw, ['tod
 
 export async function listTodayActivities(): Promise<TodayTimelineItem[]> {
   const items = await _listTodayActivitiesCached();
-  return items.map((i) => ({ ...i, occurredAt: new Date(i.occurredAt) }));
+  return items.map((i) => ({
+    ...i,
+    occurredAt: new Date(i.occurredAt),
+    editedAt: i.editedAt ? new Date(i.editedAt) : null,
+  }));
 }
 
 // ── Daily report (used by /reports/today) ─────────────────────────────────
