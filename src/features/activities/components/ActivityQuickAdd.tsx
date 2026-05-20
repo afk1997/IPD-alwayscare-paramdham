@@ -11,6 +11,7 @@ import {
   Stethoscope,
   X,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import { ActivityForm } from './ActivityForm';
@@ -34,9 +35,20 @@ interface Props {
 }
 
 export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
+  const router = useRouter();
   const [selected, setSelected] = useState<ActivityType | null>(null);
 
   if (!open) return null;
+
+  // After a successful save: close the modal, reset the type, AND
+  // router.refresh() so the patient page's ActivityTimeline picks up
+  // the new row immediately.  Without the refresh the user has to
+  // navigate away and back to see what they just logged.
+  const handleSaved = () => {
+    setSelected(null);
+    onClose();
+    router.refresh();
+  };
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/45 md:items-center">
@@ -64,14 +76,7 @@ export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
           {selected ? (
-            <ActivityForm
-              animalId={animalId}
-              type={selected}
-              onDone={() => {
-                setSelected(null);
-                onClose();
-              }}
-            />
+            <ActivityForm animalId={animalId} type={selected} onDone={handleSaved} />
           ) : (
             <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
               {SELECTABLE.map((t) => {

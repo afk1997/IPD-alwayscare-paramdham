@@ -1,6 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/Button';
 import { Plus, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { DocumentUpload } from './DocumentUpload';
 
@@ -9,7 +10,12 @@ interface Props {
 }
 
 export function DocumentUploadDialog({ animalId }: Props) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const handleSaved = () => {
+    setOpen(false);
+    router.refresh();
+  };
   return (
     <>
       <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
@@ -30,7 +36,7 @@ export function DocumentUploadDialog({ animalId }: Props) {
                 <X size={16} />
               </button>
             </div>
-            <DocumentUpload animalId={animalId} onDone={() => setOpen(false)} />
+            <DocumentUpload animalId={animalId} onDone={handleSaved} />
           </div>
         </div>
       )}
