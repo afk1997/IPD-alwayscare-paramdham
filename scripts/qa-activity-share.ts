@@ -53,8 +53,12 @@ async function main() {
 
   await page.getByRole('button', { name: 'Save entry' }).click();
 
-  // Wait for the success toast with a Share action button.
-  const shareInToast = page.getByRole('button', { name: /^Share$/ });
+  // Wait for the success toast with a Share action button.  Scope the
+  // lookup to the toast region (<output aria-live>) so it doesn't match
+  // the patient-page Share button now rendered in AnimalDetailActions.
+  const toast = page.locator('output[aria-live="polite"]');
+  await toast.getByText(/Treatment saved/i).waitFor({ timeout: 10_000 });
+  const shareInToast = toast.getByRole('button', { name: /^Share$/ });
   await shareInToast.waitFor({ state: 'visible', timeout: 10_000 });
   await shareInToast.click();
 
