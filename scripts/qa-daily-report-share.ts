@@ -11,7 +11,7 @@ import { chromium } from '@playwright/test';
 async function main() {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
     viewport: { width: 1280, height: 800 },
     permissions: ['clipboard-read', 'clipboard-write'],
   });
