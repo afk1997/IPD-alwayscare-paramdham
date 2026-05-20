@@ -29,14 +29,24 @@ interface TodayTimelineItemCached extends Omit<TodayTimelineItem, 'occurredAt'> 
 }
 
 async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
+  const now = new Date();
   const start = new Date();
   start.setHours(0, 0, 0, 0);
+  // Cap the upper bound at "now" — future-dated entries (a doctor pre-
+  // logging a 14:00 surgery at 09:00) shouldn't appear in "today's
+  // activities" until they've actually happened.  Also defends the page
+  // from accidental future timestamps in seed/test data.
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
+  const upper = now < end ? now : end;
 
   const rows = await prisma.activity.findMany({
-    where: { occurredAt: { gte: start, lt: end }, deletedAt: null },
-    orderBy: { occurredAt: 'desc' },
+    where: { occurredAt: { gte: start, lte: upper }, deletedAt: null },
+    // Order by `createdAt` desc, not occurredAt — the timeline is a
+    // "latest entries logged today" feed.  Sorting by occurredAt pushed
+    // future-occurring entries to the top and buried the rows the user
+    // had just logged seconds ago.
+    orderBy: { createdAt: 'desc' },
     take: TODAY_TIMELINE_CAP,
     select: {
       id: true,
