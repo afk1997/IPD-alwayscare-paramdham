@@ -75,6 +75,17 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
   const [occurredAtLocal, setOccurredAtLocal] = useState(() => localDatetimeInputValue(new Date()));
   const { users: activeUsers, currentUserName } = useActiveUsers();
   const [byNameSelected, setByNameSelected] = useState(currentUserName);
+  // Memoise the <option> list so React doesn't rebuild it on every
+  // keystroke in the other fields.
+  const loggedByOptions = useMemo(
+    () =>
+      activeUsers.map((u) => (
+        <option key={u.id} value={u.name}>
+          {u.name}
+        </option>
+      )),
+    [activeUsers],
+  );
 
   const form = useForm<CreateActivityInput>({
     // biome-ignore lint/suspicious/noExplicitAny: discriminated union typing is intentionally relaxed at the form layer
@@ -133,12 +144,13 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
           hint="Defaults to your name — pick someone else if logging on their behalf"
         >
           {(id) => (
-            <Select id={id} value={byNameSelected} onChange={(e) => setByNameSelected(e.target.value)}>
-              {activeUsers.map((u) => (
-                <option key={u.id} value={u.name}>
-                  {u.name}
-                </option>
-              ))}
+            <Select
+              id={id}
+              required
+              value={byNameSelected}
+              onChange={(e) => setByNameSelected(e.target.value)}
+            >
+              {loggedByOptions}
             </Select>
           )}
         </FormField>

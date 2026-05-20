@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
+import { useMemo } from 'react';
 import type { ActivityType } from '../schema';
 import { AdmissionEditFields } from '../types/admission/EditFields';
 import { BathEditFields } from '../types/bath/EditFields';
@@ -46,10 +47,18 @@ export function ActivityEditFields({ type, value, onChange }: Props) {
   // after this row was logged), inject a single "— inactive" option at
   // the top so the form can still be saved without losing the historical
   // attribution.
-  const matchesActive = activeUsers.some((u) => u.name === value.byName);
-  const optionList = matchesActive
-    ? activeUsers
-    : [{ id: '__inactive__', name: value.byName, inactive: true as const }, ...activeUsers];
+  const loggedByOptions = useMemo(() => {
+    const matchesActive = activeUsers.some((u) => u.name === value.byName);
+    const list = matchesActive
+      ? activeUsers
+      : [{ id: '__inactive__', name: value.byName, inactive: true as const }, ...activeUsers];
+    return list.map((u) => (
+      <option key={u.id} value={u.name}>
+        {'inactive' in u && u.inactive ? `${u.name} — inactive` : u.name}
+      </option>
+    ));
+  }, [activeUsers, value.byName]);
+
   const setData = (patch: Data) => onChange({ ...value, data: { ...value.data, ...patch } });
   const Body = PER_TYPE[type];
 
@@ -70,14 +79,11 @@ export function ActivityEditFields({ type, value, onChange }: Props) {
           {(id) => (
             <Select
               id={id}
+              required
               value={value.byName}
               onChange={(e) => onChange({ ...value, byName: e.target.value })}
             >
-              {optionList.map((u) => (
-                <option key={u.id} value={u.name}>
-                  {'inactive' in u && u.inactive ? `${u.name} — inactive` : u.name}
-                </option>
-              ))}
+              {loggedByOptions}
             </Select>
           )}
         </FormField>

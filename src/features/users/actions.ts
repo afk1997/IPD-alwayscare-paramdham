@@ -1,7 +1,7 @@
 'use server';
 import { getCurrentUser } from '@/lib/auth';
 import { RbacError, ValidationError } from '@/lib/errors';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { type InviteUserInput, InviteUserSchema, type UpdateUserInput, UpdateUserSchema } from './schema';
 import { deactivateUser, inviteUser, updateUser } from './service';
@@ -24,6 +24,9 @@ export async function inviteUserAction(input: InviteUserInput): Promise<UserActi
     const parsed = InviteUserSchema.parse(input);
     const user = await inviteUser(actor, parsed);
     revalidatePath('/admin/users');
+    // Logged-by dropdown listens on this tag — invite/update/deactivate
+    // all change the active-users projection.
+    revalidateTag('active-users');
     return { ok: true, userId: user.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -42,6 +45,9 @@ export async function updateUserAction(input: UpdateUserInput): Promise<UserActi
     const parsed = UpdateUserSchema.parse(input);
     await updateUser(actor, parsed);
     revalidatePath('/admin/users');
+    // Logged-by dropdown listens on this tag — invite/update/deactivate
+    // all change the active-users projection.
+    revalidateTag('active-users');
     return { ok: true, userId: parsed.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
@@ -55,6 +61,9 @@ export async function deactivateUserAction(userId: string): Promise<UserActionRe
     const actor = await requireActor();
     await deactivateUser(actor, userId);
     revalidatePath('/admin/users');
+    // Logged-by dropdown listens on this tag — invite/update/deactivate
+    // all change the active-users projection.
+    revalidateTag('active-users');
     return { ok: true, userId };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { unstable_cache } from 'next/cache';
 
 export async function listUsers() {
   return prisma.user.findMany({
@@ -36,14 +37,24 @@ export interface ActiveUserLite {
   name: string;
 }
 
-// Thin projection for the activity-form "Logged by" dropdown.  Sorted
-// by name (case-insensitive via Postgres collation) so the menu reads
-// alphabetically.  Cheap query (~5 ms for ~10 rows), called once per
-// layout render and surfaced via ActiveUsersProvider.
-export async function listActiveUsers(): Promise<ActiveUserLite[]> {
+async function _listActiveUsersRaw(): Promise<ActiveUserLite[]> {
   return prisma.user.findMany({
     where: { active: true },
     orderBy: { name: 'asc' },
     select: { id: true, name: true },
   });
+}
+
+// Thin projection for the activity-form "Logged by" dropdown.  Cached
+// for 5 minutes; invalidated by every user mutation via the
+// `active-users` tag (see inviteUserAction / updateUserAction /
+// deactivateUserAction).  Without the cache, every page render hits
+// Postgres for the same ~10 rows.
+const _listActiveUsersCached = unstable_cache(_listActiveUsersRaw, ['active-users'], {
+  revalidate: 300,
+  tags: ['active-users'],
+});
+
+export async function listActiveUsers(): Promise<ActiveUserLite[]> {
+  return _listActiveUsersCached();
 }
