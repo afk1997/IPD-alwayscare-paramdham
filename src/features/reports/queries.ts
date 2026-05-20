@@ -147,9 +147,13 @@ export interface ActivityRow {
   id: string;
   animalId: string;
   animalName: string;
+  animalSpecies: string;
+  animalWard: string | null;
   type: ActivityType;
   occurredAt: Date;
   byName: string;
+  summary: string;
+  mediaCount: number;
 }
 
 export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
@@ -161,15 +165,31 @@ export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
     where: { occurredAt: { gte: start, lt: end }, deletedAt: null },
     orderBy: { occurredAt: 'desc' },
     take: ACTIVITIES_ON_DATE_CAP,
-    include: { animal: { select: { name: true } } },
+    select: {
+      id: true,
+      animalId: true,
+      type: true,
+      occurredAt: true,
+      byName: true,
+      remarks: true,
+      data: true,
+      animal: { select: { name: true, species: true, ward: true } },
+      // Count only READY assets — PENDING / FAILED would 425/410 through
+      // /api/files and shouldn't claim the 📎 indicator in the copy.
+      _count: { select: { media: { where: { asset: { status: 'READY' } } } } },
+    },
   });
   return rows.map((r) => ({
     id: r.id,
     animalId: r.animalId,
     animalName: r.animal.name,
+    animalSpecies: r.animal.species,
+    animalWard: r.animal.ward,
     type: r.type,
     occurredAt: r.occurredAt,
     byName: r.byName,
+    summary: summarizeActivity({ type: r.type, data: r.data, remarks: r.remarks }),
+    mediaCount: r._count.media,
   }));
 }
 
