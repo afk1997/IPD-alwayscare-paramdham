@@ -130,6 +130,7 @@ async function probeConcurrentWrites() {
           animalId: animal.id,
           remarks: `concurrent #${i}`,
           mediaAssetIds: [],
+          byName: doctor.name,
           data: { notes: `parallel ${i}` },
         },
       ),

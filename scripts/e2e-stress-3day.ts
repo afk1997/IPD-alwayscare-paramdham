@@ -261,10 +261,16 @@ async function main() {
 
   async function logActivity(
     actor: { id: string; role: 'ADMIN' | 'DOCTOR' | 'STAFF'; name: string },
-    input: CreateActivityInput,
+    input: Omit<CreateActivityInput, 'byName'> & { byName?: string },
   ) {
     try {
-      const a = await createActivity(actor, input);
+      // byName is now required by the schema; default to the actor's
+      // name when the test data doesn't override it (matches what the
+      // UI does for an unmodified dropdown).
+      const a = await createActivity(actor, {
+        ...input,
+        byName: input.byName ?? actor.name,
+      } as CreateActivityInput);
       activityIds.push(a.id);
       return a;
     } catch (e) {

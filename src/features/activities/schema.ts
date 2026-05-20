@@ -110,7 +110,7 @@ const Base = z.object({
   // Optional override for the "logged by" name shown in the timeline.
   // Defaults to the signed-in actor's name.  byUserId always tracks the
   // actual user who saved the row (for audit + RBAC ownership).
-  byName: z.string().min(1).max(120).optional(),
+  byName: z.string().min(1).max(120),
 });
 
 export const CreateActivitySchema = z.discriminatedUnion('type', [
