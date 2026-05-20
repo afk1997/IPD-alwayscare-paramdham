@@ -73,6 +73,10 @@ export function formatDailyReportText(date: string, rows: ActivityRow[]): string
       const label = ACTIVITY_LABELS[r.type as ActivityType];
       const tag = r.mediaCount > 0 ? '  📎' : '';
       lines.push(`• ${time}  ${label} — ${r.summary}  (${r.byName})${tag}`);
+      // Each populated field becomes an indented sub-bullet — "no field
+      // dropped" per spec.  Blank string fields are already filtered
+      // out upstream in `activityDetailLines`.
+      for (const detail of r.detailLines) lines.push(`   ↳ ${detail}`);
     }
   }
 

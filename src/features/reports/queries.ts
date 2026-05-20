@@ -1,4 +1,4 @@
-import { summarizeActivity } from '@/features/activities/summary';
+import { activityDetailLines, summarizeActivity } from '@/features/activities/summary';
 import { prisma } from '@/lib/prisma';
 import type { ActivityType } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
@@ -153,6 +153,11 @@ export interface ActivityRow {
   occurredAt: Date;
   byName: string;
   summary: string;
+  // Verbose per-field detail for the daily-report Share output.  One
+  // entry per populated field (string fields are skipped when blank;
+  // boolean fields render as `yes`/`no` because the negative is
+  // clinically meaningful).
+  detailLines: string[];
   mediaCount: number;
 }
 
@@ -189,6 +194,7 @@ export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
     occurredAt: r.occurredAt,
     byName: r.byName,
     summary: summarizeActivity({ type: r.type, data: r.data, remarks: r.remarks }),
+    detailLines: activityDetailLines({ type: r.type, data: r.data, remarks: r.remarks }),
     mediaCount: r._count.media,
   }));
 }

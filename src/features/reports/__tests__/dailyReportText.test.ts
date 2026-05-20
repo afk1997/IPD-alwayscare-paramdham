@@ -13,6 +13,7 @@ function row(over: Partial<ActivityRow>): ActivityRow {
     occurredAt: new Date('2026-05-20T09:30:00+05:30'),
     byName: 'Dr. Mehta',
     summary: 'Amoxiclav 20mg/kg Oral',
+    detailLines: [],
     mediaCount: 0,
     ...over,
   };
@@ -98,6 +99,39 @@ describe('formatDailyReportText', () => {
         '',
         '🐱 Milo (Cat · ISO-A)',
         '• 09:00  Doctor round — Improving  (Dr. Iyer)',
+      ].join('\n'),
+    );
+  });
+
+  it('renders detailLines as indented sub-bullets after the headline', () => {
+    const rows: ActivityRow[] = [
+      row({
+        type: 'ROUND',
+        summary: 'Stable, 38.5°C',
+        detailLines: [
+          'Temp: 38.5°C',
+          'Appetite: Partial',
+          'Hydration: OK',
+          'Progress: Stable',
+          'Notes: responsive but reluctant to walk',
+          'Remarks: dose adjusted today',
+        ],
+      }),
+    ];
+    const out = formatDailyReportText('2026-05-20', rows);
+    expect(out).toBe(
+      [
+        '🏥 Arham Always Care — Wed, 20 May 2026',
+        '1 entry',
+        '',
+        '🐶 Bruno (Dog)',
+        '• 09:30  Doctor round — Stable, 38.5°C  (Dr. Mehta)',
+        '   ↳ Temp: 38.5°C',
+        '   ↳ Appetite: Partial',
+        '   ↳ Hydration: OK',
+        '   ↳ Progress: Stable',
+        '   ↳ Notes: responsive but reluctant to walk',
+        '   ↳ Remarks: dose adjusted today',
       ].join('\n'),
     );
   });

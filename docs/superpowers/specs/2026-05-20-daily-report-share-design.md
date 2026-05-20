@@ -64,7 +64,33 @@ Full row template:
 
 ```
 • HH:MM  {ActivityLabel} — {summary}  ({byName}){ 📎 if mediaCount > 0}
+   ↳ {detailLine1}
+   ↳ {detailLine2}
+   …
 ```
+
+Each row carries every populated field as an indented `↳` sub-bullet
+after the headline. **No fields are dropped** — the spec name is
+"everything the doctor logged". String fields that the doctor left
+blank are skipped (no `Field: —` noise). Boolean fields (e.g.
+vomiting, urination, stool-after-walk, assisted) are always emitted
+as `yes`/`no` because "no" is clinically meaningful information on
+a handover, not absence.
+
+Detail-line formatter `activityDetailLines(type, data, remarks)` lives
+in `src/features/activities/summary.ts` alongside the existing
+`summarizeActivity`. Returns `string[]`. Per-type field mapping:
+
+| Type | Lines emitted (when present) |
+|---|---|
+| TREATMENT | `Med N: name · dose · route` (one line per med), `Remarks: …` |
+| ROUND | `Temp: …`, `Appetite: …`, `Hydration: …`, `Pain: …`, `Wound: …`, `Stool: …`, `Progress: …`, `Notes: …`, `Remarks: …` |
+| DIAGNOSTIC | `Tests: …` (joined), `Findings: …`, `Interpretation: …`, `Remarks: …` |
+| SURGERY | `Surgery name: …`, `Surgeon: …`, `Anesthesia: …`, `Duration: …`, `Findings: …`, `Complications: …`, `Post-op: …`, `Remarks: …` |
+| FOOD | `Food type: …`, `Quantity: …`, `Water: …`, `Intake: …`, `Vomiting: yes/no`, `Remarks: …` |
+| BATH | `Bath type: …`, `Grooming by: …`, `Bath notes: …` (data.remarks), `Remarks: …` (activity remarks) |
+| WALK | `Duration: …`, `Mobility: …`, `Urinated: yes/no`, `Stool: yes/no`, `Assisted: yes/no`, `Remarks: …` |
+| ADMISSION | `Summary: …`, `Remarks: …` |
 
 Species emoji map: Dog 🐶 · Cat 🐱 · Cow 🐄 · Bird 🐦 · Goat 🐐 · Rabbit 🐰 ·
 Other 🐾.
