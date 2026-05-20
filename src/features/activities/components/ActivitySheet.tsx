@@ -2,14 +2,16 @@
 import { Photo } from '@/components/media/Photo';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
+import { copyToClipboard } from '@/lib/clipboard';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
 import { formatDateTime, relativeTime } from '@/lib/time';
-import { Copy, Pencil, Trash2, X } from 'lucide-react';
+import { Copy, Pencil, Share2, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
   deleteActivityAction,
   duplicateActivityAction,
+  getActivityShareTextAction,
   restoreActivityAction,
   updateActivityAction,
 } from '../actions';
@@ -129,6 +131,21 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
     });
   };
 
+  const share = () => {
+    const id = activity.id;
+    start(async () => {
+      const result = await getActivityShareTextAction(id);
+      if (!result.ok || !result.text) {
+        setError(result.error ?? 'Could not prepare share text');
+        return;
+      }
+      await copyToClipboard(result.text, {
+        onSuccess: () => showToast({ message: 'Activity copied — paste in WhatsApp / Slack / etc.' }),
+        onFallback: () => showToast({ message: 'Activity copied (fallback)' }),
+      });
+    });
+  };
+
   const dup = () => {
     start(async () => {
       const result = await duplicateActivityAction(activity.id);
@@ -205,6 +222,10 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
               <Button variant="ghost" size="sm" onClick={dup} disabled={pending}>
                 <Copy size={14} />
                 Duplicate
+              </Button>
+              <Button variant="ghost" size="sm" onClick={share} disabled={pending}>
+                <Share2 size={14} />
+                Share
               </Button>
               <div className="flex-1" />
               <Button size="sm" onClick={() => setMode('edit')} disabled={pending}>
