@@ -1,5 +1,6 @@
 import { Pill } from '@/components/ui/Pill';
 import { ACTIVITY_LABELS } from '@/features/activities/schema';
+import { PatientShareButton } from '@/features/animals/components/PatientShareButton';
 import { formatDateTime } from '@/lib/time';
 import type { ActivityType } from '@prisma/client';
 import {
@@ -118,12 +119,15 @@ export function PerAnimalReportView({ report }: Props) {
           <h2 className="font-bold text-[10.5px] text-muted uppercase tracking-[0.07em]">
             Complete history · {history.length}
           </h2>
-          <Link
-            href={`/patients/${animal.id}`}
-            className="font-semibold text-[12px] text-accent hover:underline"
-          >
-            Open patient page ›
-          </Link>
+          <div className="flex items-center gap-3">
+            <PatientShareButton animalId={animal.id} />
+            <Link
+              href={`/patients/${animal.id}`}
+              className="font-semibold text-[12px] text-accent hover:underline"
+            >
+              Open patient page ›
+            </Link>
+          </div>
         </div>
 
         {history.length === 0 ? (

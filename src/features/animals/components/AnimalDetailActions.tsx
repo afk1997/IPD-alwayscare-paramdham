@@ -4,6 +4,7 @@ import { ActivityQuickAdd } from '@/features/activities/components/ActivityQuick
 import { LogOut, MoreHorizontal, Pencil, Plus, Skull } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { PatientShareButton } from './PatientShareButton';
 
 interface Props {
   animalId: string;
@@ -29,6 +30,7 @@ export function AnimalDetailActions({ animalId }: Props) {
         <Plus size={14} />
         Log activity
       </Button>
+      <PatientShareButton animalId={animalId} />
       <button
         type="button"
         onClick={() => setMenuOpen((v) => !v)}
