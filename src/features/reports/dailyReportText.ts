@@ -47,7 +47,8 @@ function clockHHMM(d: Date): string {
 
 export function formatDailyReportText(date: string, rows: ActivityRow[]): string {
   const lines: string[] = [];
-  lines.push(`🏥 Arham Always Care — ${headerDate(date)}`);
+  // Title row is bold; the entry-count line below stays regular weight.
+  lines.push(`*🏥 Arham Always Care — ${headerDate(date)}*`);
   lines.push(`${rows.length} ${rows.length === 1 ? 'entry' : 'entries'}`);
 
   if (rows.length === 0) return lines.join('\n');
@@ -75,7 +76,9 @@ export function formatDailyReportText(date: string, rows: ActivityRow[]): string
   for (const g of sortedGroups) {
     lines.push(''); // blank line before each animal block
     const wardPart = g.ward ? ` · ${g.ward}` : '';
-    lines.push(`${speciesEmoji(g.species)} ${g.name} (${g.species}${wardPart})`);
+    // Animal name bolded; species + ward stay regular weight so the
+    // emphasis lands cleanly on the patient identifier.
+    lines.push(`${speciesEmoji(g.species)} *${g.name}* (${g.species}${wardPart})`);
     const sortedRows = g.rows.slice().sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
     for (const r of sortedRows) {
       const time = clockHHMM(r.occurredAt);

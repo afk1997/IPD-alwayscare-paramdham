@@ -22,7 +22,7 @@ function row(over: Partial<ActivityRow>): ActivityRow {
 describe('formatDailyReportText', () => {
   it('returns header + "0 entries" when rows is empty', () => {
     const out = formatDailyReportText('2026-05-20', []);
-    expect(out).toBe('🏥 Arham Always Care — Wed, 20 May 2026\n0 entries');
+    expect(out).toBe('*🏥 Arham Always Care — Wed, 20 May 2026*\n0 entries');
   });
 
   it('groups rows under a single animal block sorted by time', () => {
@@ -52,10 +52,10 @@ describe('formatDailyReportText', () => {
     const out = formatDailyReportText('2026-05-20', rows);
     expect(out).toBe(
       [
-        '🏥 Arham Always Care — Wed, 20 May 2026',
+        '*🏥 Arham Always Care — Wed, 20 May 2026*',
         '3 entries',
         '',
-        '🐶 Bruno (Dog)',
+        '🐶 *Bruno* (Dog)',
         '• *09:15  Doctor round* — Stable  (Dr. Mehta)',
         '• *09:30  Treatment* — Amoxiclav 20mg/kg Oral  (Dr. Mehta)',
         '• *12:30  Food & water* — Kibble · Fully  (Nurse Pooja)',
@@ -91,13 +91,13 @@ describe('formatDailyReportText', () => {
     const out = formatDailyReportText('2026-05-20', rows);
     expect(out).toBe(
       [
-        '🏥 Arham Always Care — Wed, 20 May 2026',
+        '*🏥 Arham Always Care — Wed, 20 May 2026*',
         '2 entries',
         '',
-        '🐶 bruno (Dog · Surgery-1)',
+        '🐶 *bruno* (Dog · Surgery-1)',
         '• *09:15  Doctor round* — Stable  (Dr. Mehta)',
         '',
-        '🐱 Milo (Cat · ISO-A)',
+        '🐱 *Milo* (Cat · ISO-A)',
         '• *09:00  Doctor round* — Improving  (Dr. Iyer)',
       ].join('\n'),
     );
@@ -121,10 +121,10 @@ describe('formatDailyReportText', () => {
     const out = formatDailyReportText('2026-05-20', rows);
     expect(out).toBe(
       [
-        '🏥 Arham Always Care — Wed, 20 May 2026',
+        '*🏥 Arham Always Care — Wed, 20 May 2026*',
         '1 entry',
         '',
-        '🐶 Bruno (Dog)',
+        '🐶 *Bruno* (Dog)',
         '• *09:30  Doctor round* — Stable, 38.5°C  (Dr. Mehta)',
         '   ↳ Temp: 38.5°C',
         '   ↳ Appetite: Partial',
@@ -146,7 +146,7 @@ describe('formatDailyReportText', () => {
       }),
     ];
     const out = formatDailyReportText('2026-05-20', rows);
-    expect(out).toContain('🐾 Bruno (Goldfish)');
+    expect(out).toContain('🐾 *Bruno* (Goldfish)');
     expect(out).toMatch(/Medicated bath {2}\(Dr\. Mehta\) {2}📎$/);
   });
 });
