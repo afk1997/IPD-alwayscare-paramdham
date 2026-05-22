@@ -4,18 +4,16 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import NextAuth from 'next-auth';
 import type { Adapter } from 'next-auth/adapters';
 import Credentials from 'next-auth/providers/credentials';
+import { writeAuditLog } from './audit';
+import { authConfig } from './auth.config';
 import { prisma } from './prisma';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma) as Adapter,
-  session: { strategy: 'jwt', maxAge: 60 * 60 * 8 },
-  pages: { signIn: '/login' },
   providers: [
     Credentials({
-      credentials: {
-        email: {},
-        password: {},
-      },
+      credentials: { email: {}, password: {} },
       async authorize(raw) {
         const parsed = LoginSchema.safeParse(raw);
         if (!parsed.success) return null;
@@ -23,20 +21,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = (user as { role: string }).role;
+  events: {
+    async signIn({ user }) {
+      if (!user?.id) return;
+      try {
+        await writeAuditLog(prisma, {
+          actorId: user.id,
+          action: 'login',
+          entityType: 'User',
+          entityId: user.id,
+        });
+      } catch (e) {
+        console.error('[auth] signIn audit failed', e instanceof Error ? e.message : 'unknown');
       }
-      return token;
     },
-    session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.role = (token.role as string) ?? 'STAFF';
+    async signOut(message) {
+      const userId = 'token' in message ? message.token?.id : undefined;
+      if (!userId || typeof userId !== 'string') return;
+      try {
+        await writeAuditLog(prisma, {
+          actorId: userId,
+          action: 'logout',
+          entityType: 'User',
+          entityId: userId,
+        });
+      } catch (e) {
+        console.error('[auth] signOut audit failed', e instanceof Error ? e.message : 'unknown');
       }
-      return session;
     },
   },
 });
@@ -51,10 +62,15 @@ export interface CurrentUser {
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, email: true, name: true, role: true, active: true },
+  });
+  if (!dbUser || !dbUser.active) return null;
   return {
-    id: session.user.id,
-    email: session.user.email ?? '',
-    name: session.user.name ?? '',
-    role: (session.user.role ?? 'STAFF') as CurrentUser['role'],
+    id: dbUser.id,
+    email: dbUser.email,
+    name: dbUser.name,
+    role: dbUser.role,
   };
 }

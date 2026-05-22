@@ -52,7 +52,15 @@ export function Step1Basics({ form }: Props) {
           <Input id="ageText" {...register('ageText')} />
         </FormField>
         <FormField label="Weight (kg)" htmlFor="weightKg">
-          <Input id="weightKg" type="number" step="0.1" {...register('weightKg' as const)} />
+          <Input
+            id="weightKg"
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9]*[.,]?[0-9]*"
+            {...register('weightKg' as const, {
+              setValueAs: (v) => (typeof v === 'string' ? v.replace(',', '.') : v),
+            })}
+          />
         </FormField>
       </div>
 

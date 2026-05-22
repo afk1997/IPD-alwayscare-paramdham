@@ -97,6 +97,7 @@ const _searchActivitiesCached = unstable_cache(
     const rows = await prisma.activity.findMany({
       where: {
         deletedAt: null,
+        animal: { deletedAt: null },
         OR: [
           { remarks: { contains: q, mode: 'insensitive' } },
           { byName: { contains: q, mode: 'insensitive' } },
@@ -128,7 +129,9 @@ const _searchActivitiesCached = unstable_cache(
 
 export async function searchActivitiesAction(query: string): Promise<ActivitySearchResult[]> {
   await requireActor();
-  const q = query.trim();
+  // ACT-4: clamp the cache key length so unique-query DOS can't grow the
+  // unstable_cache key set unbounded.
+  const q = query.trim().slice(0, 64).toLowerCase();
   if (q.length < 2) return [];
   return _searchActivitiesCached(q);
 }
@@ -172,11 +175,17 @@ export interface ActivityShareTextResult {
 
 export async function getActivityShareTextAction(activityId: string): Promise<ActivityShareTextResult> {
   try {
-    await requireActor();
+    const actor = await requireActor();
+    const { assertCan } = await import('@/lib/rbac');
+    assertCan(actor, 'animal.read');
+    const { z } = await import('zod');
+    const idParsed = z.string().cuid().safeParse(activityId);
+    if (!idParsed.success) return { ok: false, error: 'Invalid activity id' };
+
     const { prisma } = await import('@/lib/prisma');
     const { formatActivityShareText } = await import('./shareText');
-    const row = await prisma.activity.findUnique({
-      where: { id: activityId },
+    const row = await prisma.activity.findFirst({
+      where: { id: idParsed.data, deletedAt: null, animal: { deletedAt: null } },
       select: {
         type: true,
         occurredAt: true,
@@ -202,6 +211,10 @@ export async function getActivityShareTextAction(activityId: string): Promise<Ac
     return { ok: true, text };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
-    throw e;
+    console.error(
+      '[activities/actions] getActivityShareTextAction',
+      e instanceof Error ? e.message : 'unknown',
+    );
+    return { ok: false, error: 'Could not generate share text' };
   }
 }

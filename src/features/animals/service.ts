@@ -173,3 +173,53 @@ type AnimalLike = { name: string; status: AnimalStatus; ward: string | null; com
 function pickAuditFields(a: AnimalLike) {
   return { name: a.name, status: a.status, ward: a.ward, complaint: a.complaint };
 }
+
+export async function softDeleteAnimal(actor: Actor, animalId: string) {
+  assertCan(actor, 'animal.delete');
+  const before = await prisma.animal.findUnique({ where: { id: animalId } });
+  if (!before) throw new NotFoundError('Animal', animalId);
+  if (before.deletedAt) return before;
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.animal.update({
+      where: { id: animalId },
+      data: { deletedAt: new Date(), editedAt: new Date(), editedById: actor.id },
+    });
+    await writeAuditLog(tx, {
+      actorId: actor.id,
+      action: 'delete',
+      entityType: 'Animal',
+      entityId: animalId,
+      before: {
+        name: before.name,
+        species: before.species,
+        status: before.status,
+        ward: before.ward,
+        admittedAt: before.admittedAt.toISOString(),
+      },
+    });
+    return updated;
+  });
+}
+
+export async function restoreAnimal(actor: Actor, animalId: string) {
+  assertCan(actor, 'animal.restore');
+  const before = await prisma.animal.findUnique({ where: { id: animalId } });
+  if (!before) throw new NotFoundError('Animal', animalId);
+  if (!before.deletedAt) return before;
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.animal.update({
+      where: { id: animalId },
+      data: { deletedAt: null, editedAt: new Date(), editedById: actor.id },
+    });
+    await writeAuditLog(tx, {
+      actorId: actor.id,
+      action: 'restore',
+      entityType: 'Animal',
+      entityId: animalId,
+      after: { name: updated.name, species: updated.species, status: updated.status },
+    });
+    return updated;
+  });
+}

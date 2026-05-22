@@ -78,7 +78,7 @@ export async function AnimalDetail({ animalId }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end">
-        <AnimalDetailActions animalId={animal.id} />
+        <AnimalDetailActions animalId={animal.id} status={animal.status} />
       </div>
 
       <AnimalHero

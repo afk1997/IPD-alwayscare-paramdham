@@ -23,10 +23,28 @@ async function main() {
     process.exit(1);
   }
 
+  // STO-4: hard guards to stop a runaway destructive operation.
+  if (process.env.NODE_ENV === 'production' && process.env.I_KNOW_WHAT_IM_DOING !== 'yes') {
+    process.stderr.write('Refusing to run in NODE_ENV=production without I_KNOW_WHAT_IM_DOING=yes\n');
+    process.exit(1);
+  }
+  const confirmRoot = process.argv
+    .slice(2)
+    .find((a) => a.startsWith('--confirm='))
+    ?.slice('--confirm='.length);
+  if (confirmRoot !== rootId) {
+    process.stderr.write(
+      `Refusing to clear: pass --confirm=<rootFolderId> to acknowledge.\n  Target root: ${rootId}\n  Re-run with --confirm=<that exact id> if you really want to trash every direct child.\n`,
+    );
+    process.exit(1);
+  }
+  process.stdout.write(`Will trash children of ${rootId}. Starting in 5s… (Ctrl+C to abort)\n`);
+  await new Promise((r) => setTimeout(r, 5_000));
+
   const creds = JSON.parse(Buffer.from(keyB64, 'base64').toString('utf-8'));
   const auth = new google.auth.GoogleAuth({
     credentials: creds,
-    scopes: ['https://www.googleapis.com/auth/drive'],
+    scopes: ['https://www.googleapis.com/auth/drive.file'],
   });
   const drive = google.drive({ version: 'v3', auth });
 

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { type Actor, assertCan } from '@/lib/rbac';
 import type { Prisma } from '@prisma/client';
 
 export interface AuditQuery {
@@ -9,7 +10,11 @@ export interface AuditQuery {
   take?: number;
 }
 
-export async function listAuditLog(q: AuditQuery = {}) {
+export async function listAuditLog(actor: Actor, q: AuditQuery = {}) {
+  // RBAC-8: belt-and-suspenders. The admin layout already redirects
+  // non-admins, but defense in depth: never return the audit log
+  // without an explicit gate.
+  assertCan(actor, 'audit.read.all');
   const where: Prisma.AuditLogWhereInput = {};
   if (q.entityType) where.entityType = q.entityType;
   if (q.actorId) where.actorId = q.actorId;

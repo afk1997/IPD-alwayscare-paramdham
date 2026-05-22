@@ -1,7 +1,7 @@
 'use server';
 import { getCurrentUser } from '@/lib/auth';
-import { RbacError } from '@/lib/errors';
-import { revalidateTag } from 'next/cache';
+import { RbacError, ValidationError } from '@/lib/errors';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { type DeathInput, DeathSchema, type DischargeInput, DischargeSchema } from './schema';
 import { dischargeAnimal, recordDeath } from './service';
 
@@ -16,6 +16,17 @@ export interface LifecycleResult {
   error?: string;
 }
 
+function genericError(action: string, e: unknown): LifecycleResult {
+  if (e instanceof RbacError) return { ok: false, error: e.message };
+  if (e instanceof ValidationError) return { ok: false, error: e.message };
+  if (e && typeof e === 'object' && 'issues' in e) {
+    const z = e as { issues?: Array<{ message?: string }> };
+    return { ok: false, error: z.issues?.[0]?.message ?? 'Invalid input' };
+  }
+  console.error(`[lifecycle/${action}]`, e instanceof Error ? e.message : 'unknown');
+  return { ok: false, error: `Could not ${action}` };
+}
+
 export async function dischargeAction(input: DischargeInput): Promise<LifecycleResult> {
   try {
     const actor = await requireActor();
@@ -24,14 +35,10 @@ export async function dischargeAction(input: DischargeInput): Promise<LifecycleR
     revalidateTag('animals');
     revalidateTag('today-counts');
     revalidateTag('today-timeline');
+    revalidatePath(`/patients/${parsed.animalId}`);
     return { ok: true };
   } catch (e) {
-    if (e instanceof RbacError) return { ok: false, error: e.message };
-    if (e && typeof e === 'object' && 'issues' in e) {
-      const z = e as { issues?: Array<{ message?: string }> };
-      return { ok: false, error: z.issues?.[0]?.message ?? 'Invalid input' };
-    }
-    throw e;
+    return genericError('discharge', e);
   }
 }
 
@@ -43,13 +50,9 @@ export async function deathAction(input: DeathInput): Promise<LifecycleResult> {
     revalidateTag('animals');
     revalidateTag('today-counts');
     revalidateTag('today-timeline');
+    revalidatePath(`/patients/${parsed.animalId}`);
     return { ok: true };
   } catch (e) {
-    if (e instanceof RbacError) return { ok: false, error: e.message };
-    if (e && typeof e === 'object' && 'issues' in e) {
-      const z = e as { issues?: Array<{ message?: string }> };
-      return { ok: false, error: z.issues?.[0]?.message ?? 'Invalid input' };
-    }
-    throw e;
+    return genericError('record death', e);
   }
 }

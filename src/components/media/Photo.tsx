@@ -1,6 +1,6 @@
 'use client';
 import Image from 'next/image';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 type Kind = 'photo' | 'video' | 'xray' | 'doc';
 
@@ -97,7 +97,8 @@ export function Photo({
     boxShadow: 'inset 0 0 0 0.5px rgba(0,0,0,0.18)',
   };
 
-  if (src) {
+  const [imageFailed, setImageFailed] = useState(false);
+  if (src && !imageFailed) {
     return (
       <div
         className={className}
@@ -106,14 +107,25 @@ export function Photo({
         onKeyDown={
           onClick
             ? (e) => {
-                if (e.key === 'Enter') onClick();
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onClick();
+                }
               }
             : undefined
         }
         role={onClick ? 'button' : undefined}
         tabIndex={onClick ? 0 : undefined}
       >
-        <Image src={src} alt={alt} fill sizes="200px" className="object-cover" unoptimized />
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes="200px"
+          className="object-cover"
+          unoptimized
+          onError={() => setImageFailed(true)}
+        />
         {label && showLabel && <LabelBand label={label} />}
         {time && <TimePill time={time} />}
       </div>

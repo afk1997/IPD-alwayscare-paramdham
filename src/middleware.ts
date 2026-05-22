@@ -1,5 +1,14 @@
-import { auth } from '@/lib/auth';
+import { authConfig } from '@/lib/auth.config';
+import NextAuth from 'next-auth';
 import { NextResponse } from 'next/server';
+
+const { auth } = NextAuth(authConfig);
+
+function isSafeNextPath(p: string): boolean {
+  if (!p.startsWith('/')) return false;
+  if (p.startsWith('//') || p.startsWith('/\\')) return false;
+  return true;
+}
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
@@ -7,7 +16,8 @@ export default auth((req) => {
 
   if (!isLoggedIn && !isAuthPage) {
     const loginUrl = new URL('/login', req.nextUrl.origin);
-    loginUrl.searchParams.set('next', req.nextUrl.pathname);
+    const rawNext = req.nextUrl.pathname + (req.nextUrl.search || '');
+    if (isSafeNextPath(rawNext)) loginUrl.searchParams.set('next', rawNext);
     return NextResponse.redirect(loginUrl);
   }
   if (isLoggedIn && isAuthPage) {
@@ -16,5 +26,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|gif|svg|ico)$).*)'],
+  matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico).*)'],
 };

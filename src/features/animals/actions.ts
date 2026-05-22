@@ -61,11 +61,20 @@ export async function updateAnimalAction(
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     if (e instanceof ValidationError) return { ok: false, error: e.message };
-    throw e;
+    if (e && typeof e === 'object' && 'issues' in e) {
+      const z = e as { issues?: Array<{ message?: string }> };
+      return { ok: false, error: z.issues?.[0]?.message ?? 'Invalid input' };
+    }
+    console.error('[animals/actions] updateAnimalAction', e instanceof Error ? e.message : 'unknown');
+    return { ok: false, error: 'Could not update animal' };
   }
 }
 
 export async function searchAnimalsAction(query: string, includePast = false): Promise<ActiveAnimalLite[]> {
   await requireActor();
-  return searchActiveAnimals(query, 50, includePast);
+  // ACT-5: enforce a minimum query length so empty searches don't dump
+  // the entire patient roster (including past patients).
+  const q = query.trim().slice(0, 64);
+  if (q.length < 2) return [];
+  return searchActiveAnimals(q, 50, includePast);
 }

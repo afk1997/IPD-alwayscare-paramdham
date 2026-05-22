@@ -21,10 +21,19 @@ export function DeathForm({ animalId, onDone }: Props) {
   const [docs, setDocs] = useState<UploadedAsset[]>([]);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    if (!causeOfDeath.trim()) {
+      setError('Cause of death is required');
+      return;
+    }
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
     start(async () => {
       const result = await deathAction({
         animalId,
@@ -32,8 +41,10 @@ export function DeathForm({ animalId, onDone }: Props) {
         bodyHandedOverTo,
         documentFileIds: docs.map((d) => d.id),
       });
-      if (!result.ok) setError(result.error ?? 'Failed to record death');
-      else {
+      if (!result.ok) {
+        setError(result.error ?? 'Failed to record death');
+        setConfirming(false);
+      } else {
         showToast({ message: 'Death recorded' });
         onDone();
       }
@@ -84,9 +95,14 @@ export function DeathForm({ animalId, onDone }: Props) {
           {error}
         </div>
       )}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {confirming && !pending && (
+          <Button type="button" onClick={() => setConfirming(false)}>
+            Cancel
+          </Button>
+        )}
         <Button type="submit" variant="danger" disabled={pending}>
-          {pending ? 'Recording…' : 'Record death'}
+          {pending ? 'Recording…' : confirming ? 'Confirm death record' : 'Record death'}
         </Button>
       </div>
     </form>

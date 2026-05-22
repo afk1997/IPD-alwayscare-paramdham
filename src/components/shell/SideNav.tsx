@@ -1,6 +1,6 @@
 'use client';
 import { useQuickAdd } from '@/features/quick-add/QuickAddProvider';
-import { CalendarRange, FileText, History, Home, PawPrint, Plus, Users } from 'lucide-react';
+import { CalendarRange, FileText, History, Home, PawPrint, Plus, Trash2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -22,6 +22,7 @@ const nav: NavItem[] = [
 const adminNav: NavItem[] = [
   { href: '/admin/users', label: 'Users', icon: Users },
   { href: '/admin/audit-log', label: 'Audit log', icon: History },
+  { href: '/admin/trash', label: 'Trash', icon: Trash2 },
 ];
 
 interface Props {

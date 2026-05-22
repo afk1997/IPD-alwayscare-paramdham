@@ -1,3 +1,4 @@
+import { assertOwnedReadyAssets } from '@/features/media/service';
 import { writeAuditLog } from '@/lib/audit';
 import { NotFoundError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
@@ -12,9 +13,18 @@ interface ActorWithName extends Actor {
 export async function dischargeAnimal(actor: ActorWithName, input: DischargeInput) {
   assertCan(actor, 'animal.discharge');
   const parsed = DischargeSchema.parse(input);
+  // RBAC-2: verify the caller actually uploaded the document files being
+  // attached. Without this, anyone with discharge rights could attach an
+  // arbitrary MediaAsset id (including PENDING ones or another user's
+  // uploads), giving them a back-door read path via /api/files/[id].
+  if (parsed.documentFileIds.length > 0) {
+    await assertOwnedReadyAssets(actor, parsed.documentFileIds);
+  }
 
   return prisma.$transaction(async (tx) => {
-    const animal = await tx.animal.findUnique({ where: { id: parsed.animalId } });
+    const animal = await tx.animal.findFirst({
+      where: { id: parsed.animalId, deletedAt: null },
+    });
     if (!animal) throw new NotFoundError('Animal', parsed.animalId);
     const now = new Date();
 
@@ -79,9 +89,14 @@ export async function dischargeAnimal(actor: ActorWithName, input: DischargeInpu
 export async function recordDeath(actor: ActorWithName, input: DeathInput) {
   assertCan(actor, 'animal.death');
   const parsed = DeathSchema.parse(input);
+  if (parsed.documentFileIds.length > 0) {
+    await assertOwnedReadyAssets(actor, parsed.documentFileIds);
+  }
 
   return prisma.$transaction(async (tx) => {
-    const animal = await tx.animal.findUnique({ where: { id: parsed.animalId } });
+    const animal = await tx.animal.findFirst({
+      where: { id: parsed.animalId, deletedAt: null },
+    });
     if (!animal) throw new NotFoundError('Animal', parsed.animalId);
     const now = new Date();
 

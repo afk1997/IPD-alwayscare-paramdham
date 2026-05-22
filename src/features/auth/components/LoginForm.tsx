@@ -4,10 +4,17 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { loginAction } from '../actions';
 
+function safeNext(p: string | null): string {
+  if (!p) return '/';
+  if (!p.startsWith('/')) return '/';
+  if (p.startsWith('//') || p.startsWith('/\\')) return '/';
+  return p;
+}
+
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') ?? '/';
+  const next = safeNext(params.get('next'));
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 

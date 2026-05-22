@@ -55,7 +55,7 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
   const upper = now < end ? now : end;
 
   const rows = await prisma.activity.findMany({
-    where: { occurredAt: { gte: start, lte: upper }, deletedAt: null },
+    where: { occurredAt: { gte: start, lte: upper }, deletedAt: null, animal: { deletedAt: null } },
     // Order by `createdAt` desc, not occurredAt — the timeline is a
     // "latest entries logged today" feed.  Sorting by occurredAt pushed
     // future-occurring entries to the top and buried the rows the user
@@ -167,7 +167,7 @@ export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
   const rows = await prisma.activity.findMany({
-    where: { occurredAt: { gte: start, lt: end }, deletedAt: null },
+    where: { occurredAt: { gte: start, lt: end }, deletedAt: null, animal: { deletedAt: null } },
     orderBy: { occurredAt: 'desc' },
     take: ACTIVITIES_ON_DATE_CAP,
     select: {
@@ -211,6 +211,7 @@ export async function listActivitiesOnDateForAnimal(date: Date, animalId: string
       animalId,
       occurredAt: { gte: start, lt: end },
       deletedAt: null,
+      animal: { deletedAt: null },
     },
     orderBy: { occurredAt: 'desc' },
     take: ACTIVITIES_ON_DATE_CAP,

@@ -19,10 +19,20 @@ export function DischargeForm({ animalId, onDone }: Props) {
   const [docs, setDocs] = useState<UploadedAsset[]>([]);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // UI-2: two-step confirm — destructive action cannot fire on a single click.
+  const [confirming, setConfirming] = useState(false);
 
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    if (!summary.trim()) {
+      setError('Summary is required');
+      return;
+    }
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
     start(async () => {
       const result = await dischargeAction({
         animalId,
@@ -30,8 +40,10 @@ export function DischargeForm({ animalId, onDone }: Props) {
         instructions,
         documentFileIds: docs.map((d) => d.id),
       });
-      if (!result.ok) setError(result.error ?? 'Failed to discharge');
-      else {
+      if (!result.ok) {
+        setError(result.error ?? 'Failed to discharge');
+        setConfirming(false);
+      } else {
         showToast({ message: 'Patient discharged' });
         onDone();
       }
@@ -75,9 +87,14 @@ export function DischargeForm({ animalId, onDone }: Props) {
           {error}
         </div>
       )}
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-3">
+        {confirming && !pending && (
+          <Button type="button" onClick={() => setConfirming(false)}>
+            Cancel
+          </Button>
+        )}
         <Button type="submit" disabled={pending}>
-          {pending ? 'Discharging…' : 'Discharge animal'}
+          {pending ? 'Discharging…' : confirming ? 'Confirm discharge' : 'Discharge animal'}
         </Button>
       </div>
     </form>

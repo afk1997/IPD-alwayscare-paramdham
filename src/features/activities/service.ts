@@ -25,6 +25,14 @@ export interface ActivityActor extends Actor {
 export async function createActivity(actor: ActivityActor, input: CreateActivityInput) {
   const parsed = CreateActivitySchema.parse(input);
   assertCan(actor, requiredAction(parsed.type) as 'activity.create' | 'activity.create.clinical');
+  // ACT-3: confirm the animal exists and is not soft-deleted before
+  // writing the activity.  Without this, a user could attach activities
+  // to deleted patients (whose queries filter on Animal.deletedAt).
+  const animal = await prisma.animal.findFirst({
+    where: { id: parsed.animalId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!animal) throw new NotFoundError('Animal', parsed.animalId);
   const { assertOwnedReadyAssets } = await import('../media/service');
   await assertOwnedReadyAssets(actor, parsed.mediaAssetIds);
 
@@ -66,7 +74,9 @@ export async function updateActivity(actor: ActivityActor, activityId: string, p
   // validated per-type below against the stored row's discriminator.
   const parsed = UpdateActivitySchema.parse(patch);
 
-  const before = await prisma.activity.findUnique({ where: { id: activityId } });
+  const before = await prisma.activity.findFirst({
+    where: { id: activityId, deletedAt: null, animal: { deletedAt: null } },
+  });
   if (!before) throw new NotFoundError('Activity', activityId);
 
   const owns = before.byUserId === actor.id;
@@ -184,12 +194,20 @@ export async function softDeleteActivity(actor: Actor, activityId: string) {
 }
 
 export async function restoreActivity(actor: Actor, activityId: string) {
-  if (!can(actor, 'activity.delete')) throw new RbacError('activity.restore');
+  // RBAC-3: the matrix now has a dedicated `activity.restore` action
+  // (ADMIN-only for use from the Trash page), but the in-toast Undo
+  // flow that triggers immediately after a delete needs to work for any
+  // user who could delete it. So we accept either delete OR restore
+  // privileges — whichever the caller holds.
+  if (!can(actor, 'activity.delete') && !can(actor, 'activity.restore')) {
+    throw new RbacError('activity.restore');
+  }
   const activity = await prisma.activity.findUnique({
     where: { id: activityId },
     include: { media: { include: { asset: true } } },
   });
   if (!activity) throw new NotFoundError('Activity', activityId);
+  if (!activity.deletedAt) return activity;
 
   const updated = await prisma.$transaction(async (tx) => {
     const u = await tx.activity.update({
@@ -201,6 +219,7 @@ export async function restoreActivity(actor: Actor, activityId: string) {
       action: 'restore',
       entityType: 'Activity',
       entityId: activityId,
+      after: { type: activity.type, animalId: activity.animalId },
     });
     return u;
   });

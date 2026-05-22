@@ -117,10 +117,11 @@ export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
             {(id) => (
               <Input
                 id={id}
-                type="number"
-                step="0.1"
+                type="text"
+                inputMode="decimal"
+                pattern="[0-9]*[.,]?[0-9]*"
                 value={form.weightKg ?? ''}
-                onChange={(e) => onField('weightKg', e.target.value)}
+                onChange={(e) => onField('weightKg', e.target.value.replace(',', '.'))}
               />
             )}
           </FormField>

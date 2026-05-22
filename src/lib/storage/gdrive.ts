@@ -38,9 +38,16 @@ export class GoogleDriveStorage implements FileStorage {
   ) {
     if (!serviceAccountJson) throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is required');
     if (!rootFolderId) throw new Error('GOOGLE_DRIVE_FOLDER_ID is required');
-    // Parse once at construction — the JSON is ~2 KB and decoding it on
-    // every Drive call wastes CPU + adds GC pressure under load.
-    this.creds = JSON.parse(Buffer.from(serviceAccountJson, 'base64').toString('utf-8')) as ServiceAccountKey;
+    // STO-5: redacted error path — never include any fragment of the
+    // (possibly half-decoded) key material in the surfaced exception.
+    let parsed: unknown;
+    try {
+      const decoded = Buffer.from(serviceAccountJson, 'base64').toString('utf-8');
+      parsed = JSON.parse(decoded);
+    } catch {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY is not valid base64-encoded JSON');
+    }
+    this.creds = parsed as ServiceAccountKey;
     if (!this.creds.client_email || !this.creds.private_key) {
       throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY missing client_email or private_key');
     }
@@ -54,7 +61,7 @@ export class GoogleDriveStorage implements FileStorage {
     if (this.driveClient) return this.driveClient;
     const auth = new google.auth.GoogleAuth({
       credentials: this.creds as unknown as Record<string, unknown>,
-      scopes: ['https://www.googleapis.com/auth/drive'],
+      scopes: ['https://www.googleapis.com/auth/drive.file'],
     });
     this.driveClient = google.drive({ version: 'v3', auth });
     return this.driveClient;
@@ -68,7 +75,7 @@ export class GoogleDriveStorage implements FileStorage {
     const jwt = new google.auth.JWT({
       email: this.creds.client_email,
       key: this.creds.private_key,
-      scopes: ['https://www.googleapis.com/auth/drive'],
+      scopes: ['https://www.googleapis.com/auth/drive.file'],
     });
     const { access_token, expiry_date } = await jwt.authorize();
     if (!access_token) throw new Error('Drive token exchange returned no access_token');
@@ -82,7 +89,9 @@ export class GoogleDriveStorage implements FileStorage {
   // ── Folder ops ────────────────────────────────────────────────────────────
   async ensureFolder(parentId: string, name: string): Promise<string> {
     const drive = this.drive();
-    const escName = name.replace(/'/g, "\\'");
+    // STO-7: escape both `\` and `'` for the Drive Files: list query
+    // grammar. Backslash must be escaped first or it eats the quote.
+    const escName = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const existing = await drive.files.list({
       ...SHARED,
       q: `name = '${escName}' and mimeType = '${FOLDER_MIME}' and trashed = false and '${parentId}' in parents`,

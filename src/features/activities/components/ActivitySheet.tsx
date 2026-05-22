@@ -117,6 +117,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
         onClose();
         showToast({
           message: `${typeLabel} deleted`,
+          duration: 12000,
           action: {
             label: 'Undo',
             onClick: async () => {
@@ -202,7 +203,10 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
               <div className="font-display text-base font-semibold">
                 Delete this {ACTIVITY_LABELS[activity.type].toLowerCase()}?
               </div>
-              <p className="text-sm text-muted">Soft delete — an admin can restore it from the audit log.</p>
+              <p className="text-sm text-muted">
+                Soft delete — undo is available for a few seconds on the next toast, and an admin can restore
+                it later from the Trash page.
+              </p>
             </div>
           )}
           {error && (

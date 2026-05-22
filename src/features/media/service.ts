@@ -57,7 +57,10 @@ export async function initiateUpload(actor: Actor, input: InitiateInput): Promis
   const folders = folderResolver();
   let parentId: string;
   if (input.context.kind === 'staging') {
-    parentId = await folders.stagingFolder(input.context.sessionId);
+    // RBAC-1: scope the staging sessionId by actor so user B cannot write
+    // into user A's staging folder by guessing A's sessionId.
+    const scopedSession = `${actor.id}:${input.context.sessionId}`;
+    parentId = await folders.stagingFolder(scopedSession);
   } else {
     const animal = await prisma.animal.findUnique({
       where: { id: input.context.animalId },
@@ -113,14 +116,68 @@ export interface FinalizeInput {
   driveFileId: string;
 }
 
-export async function finalizeUpload(actor: Actor, input: FinalizeInput) {
-  const asset = await prisma.mediaAsset.findUnique({ where: { id: input.assetId } });
-  if (!asset) throw new NotFoundError('MediaAsset', input.assetId);
-  if (asset.uploadedById !== actor.id && !can(actor, 'audit.read.all')) {
-    throw new RbacError('finalize.notOwner');
-  }
+import type { DriveMetadata as DriveMeta } from '@/lib/storage/gdrive';
 
+async function fetchDriveMetadata(driveFileId: string): Promise<DriveMeta> {
+  // STO-3: do NOT swallow metadata fetch failures.  An attacker could
+  // otherwise force getFileMetadata to throw and the original code would
+  // skip both the parent and mime-family checks.
+  const storage = getStorage();
+  if (!isGoogleDriveStorage(storage)) {
+    throw new ValidationError('gdrive storage required');
+  }
+  try {
+    return await storage.getFileMetadata(driveFileId);
+  } catch (e) {
+    if (e instanceof ValidationError) throw e;
+    throw new ValidationError('could not verify uploaded file');
+  }
+}
+
+function verifyDriveMetadata(
+  meta: DriveMeta,
+  expectedParent: string | null,
+  declaredMime: string,
+): { width: number | null; height: number | null; durationSec: number | null; size: number | null } {
+  if (expectedParent && !(meta.parents ?? []).includes(expectedParent)) {
+    throw new ValidationError('uploaded file does not match initiated session');
+  }
+  const actualMime = meta.mimeType ?? declaredMime;
+  if (mimeFamily(actualMime) !== mimeFamily(declaredMime)) {
+    throw new ValidationError('uploaded file mime type does not match declared type');
+  }
+  const width = meta.imageMediaMetadata?.width ?? null;
+  const height = meta.imageMediaMetadata?.height ?? null;
+  let durationSec: number | null = null;
+  if (meta.videoMediaMetadata?.durationMillis) {
+    const ms = Number(meta.videoMediaMetadata.durationMillis);
+    if (Number.isFinite(ms) && ms > 0) durationSec = Math.round(ms / 1000);
+  }
+  let size: number | null = null;
+  if (meta.size) {
+    const sz = Number(meta.size);
+    if (Number.isFinite(sz) && sz > 0) size = sz;
+  }
+  return { width, height, durationSec, size };
+}
+
+async function assertCanFinalize(actor: Actor, assetId: string, expectedKey: string) {
+  const asset = await prisma.mediaAsset.findUnique({ where: { id: assetId } });
+  if (!asset) throw new NotFoundError('MediaAsset', assetId);
+  // RBAC-10: only the original uploader can finalize.
+  if (asset.uploadedById !== actor.id) throw new RbacError('finalize.notOwner');
+  // STO-1: reject if any OTHER asset already points at this Drive file.
+  const replay = await prisma.mediaAsset.findFirst({
+    where: { storageKey: expectedKey, NOT: { id: asset.id } },
+    select: { id: true },
+  });
+  if (replay) throw new ValidationError('driveFileId already claimed by another asset');
+  return asset;
+}
+
+export async function finalizeUpload(actor: Actor, input: FinalizeInput) {
   const expectedKey = `gdrive:${input.driveFileId}`;
+  const asset = await assertCanFinalize(actor, input.assetId, expectedKey);
 
   // Idempotent: same key on a READY asset is a noop. Different key → reject.
   if (asset.status === 'READY') {
@@ -130,59 +187,21 @@ export async function finalizeUpload(actor: Actor, input: FinalizeInput) {
     return asset;
   }
 
-  const storage = getStorage();
-  if (!isGoogleDriveStorage(storage)) {
-    throw new ValidationError('gdrive storage required');
-  }
-
-  // Verify the uploaded file actually landed in the parent folder we gave
-  // the client at initiate time.  Without this, any authenticated user
-  // could submit an arbitrary `driveFileId` and link our DB row to a file
-  // under the service account that they were never authorised to write.
   const expectedParent = asset.storageKey.startsWith('pending:')
     ? asset.storageKey.slice('pending:'.length)
     : null;
-
-  let width: number | null = null;
-  let height: number | null = null;
-  let durationSec: number | null = null;
-  let size = asset.size;
-  try {
-    const meta = await storage.getFileMetadata(input.driveFileId);
-    if (expectedParent && !(meta.parents ?? []).includes(expectedParent)) {
-      throw new ValidationError('uploaded file does not match initiated session');
-    }
-    // Mime family must match what we classified at initiate time (image /
-    // video / pdf).  Catches the SVG-as-image stored-XSS vector.
-    const actualMime = meta.mimeType ?? asset.mimeType;
-    if (mimeFamily(actualMime) !== mimeFamily(asset.mimeType)) {
-      throw new ValidationError('uploaded file mime type does not match declared type');
-    }
-    if (meta.imageMediaMetadata?.width) width = meta.imageMediaMetadata.width;
-    if (meta.imageMediaMetadata?.height) height = meta.imageMediaMetadata.height;
-    if (meta.videoMediaMetadata?.durationMillis) {
-      const ms = Number(meta.videoMediaMetadata.durationMillis);
-      if (Number.isFinite(ms) && ms > 0) durationSec = Math.round(ms / 1000);
-    }
-    if (meta.size) {
-      const sz = Number(meta.size);
-      if (Number.isFinite(sz) && sz > 0) size = sz;
-    }
-  } catch (e) {
-    // Validation errors must bubble up; only metadata-fetch hiccups are
-    // swallowed.
-    if (e instanceof ValidationError) throw e;
-  }
+  const meta = await fetchDriveMetadata(input.driveFileId);
+  const verified = verifyDriveMetadata(meta, expectedParent, asset.mimeType);
 
   return prisma.mediaAsset.update({
     where: { id: input.assetId },
     data: {
       storageKey: expectedKey,
       status: 'READY',
-      size,
-      width,
-      height,
-      durationSec,
+      size: verified.size ?? asset.size,
+      width: verified.width,
+      height: verified.height,
+      durationSec: verified.durationSec,
     },
   });
 }
@@ -217,16 +236,34 @@ export async function getMediaForRead(actor: Actor, assetId: string): Promise<Me
       mimeType: true,
       size: true,
       uploadedById: true,
-      _count: {
-        select: { animalMedia: true, activityMedia: true, documents: true },
-      },
     },
   });
   if (!asset) throw new NotFoundError('MediaAsset', assetId);
 
   const isOwner = asset.uploadedById === actor.id;
-  const isLinked = asset._count.animalMedia + asset._count.activityMedia + asset._count.documents > 0;
   const isAuditor = can(actor, 'audit.read.all');
+
+  let isLinked = false;
+  if (!isOwner && !isAuditor) {
+    // Soft-deleted parents (Activity.deletedAt / Animal.deletedAt /
+    // Document.deletedAt) must NOT grant read; that was the IDOR finding
+    // API-1 from the pre-launch review.
+    const [animalLink, activityLink, documentLink] = await Promise.all([
+      prisma.animalMedia.findFirst({
+        where: { assetId, animal: { deletedAt: null } },
+        select: { id: true },
+      }),
+      prisma.activityMedia.findFirst({
+        where: { assetId, activity: { deletedAt: null, animal: { deletedAt: null } } },
+        select: { id: true },
+      }),
+      prisma.document.findFirst({
+        where: { fileId: assetId, deletedAt: null, animal: { deletedAt: null } },
+        select: { id: true },
+      }),
+    ]);
+    isLinked = Boolean(animalLink || activityLink || documentLink);
+  }
 
   if (!(isOwner || isLinked || isAuditor)) {
     throw new RbacError('media.read');
@@ -247,6 +284,12 @@ export interface ClassifiedMedia {
 export type Classify = ClassifiedMedia | { error: string };
 
 export function classifyMedia(mime: string, size: number): Classify {
+  if (mime === 'image/svg+xml') {
+    // API-3: reject SVG outright — the bytes can carry script and
+    // foreignObject content that defeats nosniff + CSP combinations under
+    // legacy browsers.
+    return { error: 'SVG uploads are not allowed' };
+  }
   if (mime.startsWith('image/')) {
     if (size > SIZE_CAPS.image) {
       return { error: `image exceeds ${prettyBytes(SIZE_CAPS.image)}` };
