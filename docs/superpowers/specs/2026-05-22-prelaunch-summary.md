@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-22
 **Branch:** main
-**Build status:** `pnpm build` ✅ · `pnpm typecheck` ✅ · `pnpm test` ✅ (53/53) · `pnpm lint` (warnings only, no errors)
+**Build status:** `pnpm build` ✅ · `pnpm typecheck` ✅ · `pnpm test` ✅ (62/62) · `pnpm lint` (warnings only, no errors)
 
 ## What was done
 
@@ -134,19 +134,21 @@ ALLOW_PROD_SEED=yes pnpm exec dotenv -e .env.production.local -- tsx prisma/seed
 6. Sign out → confirm an audit row exists in `/admin/audit-log` for the login + logout.
 7. Try `/admin/trash` from a STAFF account → confirm redirect to `/`.
 
-## What was NOT fixed (deferred — see findings doc for full list)
+## What was NOT fixed (deferred — small Low/Info polish only)
 
-These are tracked in `docs/superpowers/specs/2026-05-22-findings.md` but didn't make the launch cut. None block launch:
+After the wave-2 and wave-3 passes, the deferred set is now small and Low/Info-only:
 
-- **AUTH-9 / AUTH-10 / AUTH-11** — JWT idle vs absolute timeout distinction, stronger password policy, forced rotation on invite.
-- **API-2 / API-5** — PENDING orphan cleanup cron, cache-control on `/api/files/[id]` for ACL changes mid-cache.
-- **API-6** — Origin allowlist on `/api/files/initiate` (low impact, see findings).
-- **SD-7 / SD-10 / SD-13** — Lifecycle activity-type rationalisation, full per-field audit on Animal edits, audit-log "drive_op" action vs flat 'update'.
-- **STO-6 / STO-11 / STO-12** — p-retry Retry-After, finalize row-lock, orphan Drive file cleanup.
-- **UI-3 / UI-7 / UI-11..17** — lightbox swipe, form-validation parity across all forms, focus-trap on ActivityQuickAdd + DocumentUploadDialog, command-palette ARIA, etc.
-- **TST-7..12** — unit-test coverage gaps for users, animals, lifecycle, audit, quick-add reducer, RBAC negative paths.
+- **AUTH-11** — mustChangePassword flag on invite. Needs a DB column + a self-rotate UI surface; deferred until invite flow is exercised in production.
+- **STO-12** — orphan Drive files when an Animal is hard-deleted. Hard-delete is not exposed by code today; revisit if/when it is.
+- **UI-13** — `aria-haspopup` / `aria-expanded` shipped on `AnimalDetailActions`; some other dropdowns still missing it.
+- **UI-15** — PatientList filter debounce race; tiny UX papercut.
+- **UI-17** — Command palette still lacks `aria-activedescendant` for arrow-key navigation.
+- **TST-7 / TST-9** — Animals / lifecycle / users / quick-add features still missing dedicated unit tests. The negative-path RBAC suite (TST-8) is in; the rest are coverage gaps, not bugs.
+- **TST-10** — Global Prisma mock in `tests/setup.ts`. Individual tests mock per-file today; works but verbose.
+- **TST-12** — Playwright `webServer.url` health check still points at `/login`. Switch to a `/api/healthz` once that endpoint exists.
+- Misc **Low/Info** items in the findings doc (cosmetic copy, dead `mime` dep, etc.).
 
-The current set is enough for launch. After clinic use stabilises, work through the deferred list as a follow-up sweep.
+The 28 Critical + 42 High + all of the security-relevant Medium items were closed in this session.
 
 ## File map (everything new this session)
 
