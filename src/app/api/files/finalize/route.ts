@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 export const runtime = 'nodejs';
+export const maxDuration = 30;
 
 const BodySchema = z.object({
   assetId: z.string().min(1),
@@ -20,21 +21,28 @@ export async function POST(req: Request) {
 
   try {
     const asset = await finalizeUpload({ id: user.id, role: user.role }, parsed.data);
-    return NextResponse.json({
-      id: asset.id,
-      status: asset.status,
-      kind: asset.kind,
-      filename: asset.filename,
-      width: asset.width,
-      height: asset.height,
-      durationSec: asset.durationSec,
-    });
+    return NextResponse.json(
+      {
+        id: asset.id,
+        status: asset.status,
+        kind: asset.kind,
+        filename: asset.filename,
+        width: asset.width,
+        height: asset.height,
+        durationSec: asset.durationSec,
+      },
+      { headers: { 'cache-control': 'no-store' } },
+    );
   } catch (e) {
     if (e instanceof RbacError) return NextResponse.json({ error: e.message }, { status: 403 });
     if (e instanceof NotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof ValidationError) return NextResponse.json({ error: e.message }, { status: 400 });
-    // H5-s: log the raw Drive error server-side, return a generic 502.
-    console.error('[api/files/finalize] upstream failure', e);
+    // API-4 / VRC-12: redacted log — never the full Drive error object.
+    console.error(
+      '[api/files/finalize] code=%s msg=%s',
+      (e as { code?: string })?.code ?? 'unknown',
+      e instanceof Error ? e.message : 'unknown',
+    );
     return NextResponse.json({ error: 'finalize failed' }, { status: 502 });
   }
 }

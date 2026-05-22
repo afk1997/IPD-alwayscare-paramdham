@@ -69,15 +69,19 @@ export function PatientPicker({ onPick, onCancel }: Props) {
           <div className="grid place-items-center py-10 text-[12.5px] text-muted">Loading…</div>
         )}
         {initialised && results.length === 0 && (
-          <div className="grid place-items-center gap-2 py-8 text-center">
-            <p className="text-[13px] text-muted">{query ? 'No matches.' : 'No active patients yet.'}</p>
-            <Link
-              href="/patients/new"
-              onClick={onCancel}
-              className="text-[12.5px] font-semibold text-accent hover:underline"
-            >
-              Admit a new animal →
-            </Link>
+          <div className="grid place-items-center gap-3 py-8 text-center">
+            <p className="text-sm text-muted">
+              {query ? 'No matches. Try a different name?' : 'No active patients yet — admit one first.'}
+            </p>
+            {!query && (
+              <Link
+                href="/patients/new"
+                onClick={onCancel}
+                className="rounded-md bg-accent px-3 py-2 text-accent-fg text-sm font-semibold shadow-sm transition hover:opacity-90"
+              >
+                Admit a new animal →
+              </Link>
+            )}
           </div>
         )}
         {results.map((a) => (

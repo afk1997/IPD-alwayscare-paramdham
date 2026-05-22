@@ -148,7 +148,10 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
   return (
     <form onSubmit={submit} className="flex flex-col gap-5">
       <FormSection title={ACTIVITY_LABELS[type]}>
-        <FormField label="When did this happen?" hint="Defaults to now — adjust to back-fill missed entries">
+        <FormField
+          label="When did this happen?"
+          hint={'Defaults to now (your timezone) — adjust to back-fill missed entries'}
+        >
           {(id) => (
             <Input
               id={id}

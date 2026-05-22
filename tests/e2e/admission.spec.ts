@@ -53,6 +53,8 @@ test('patient list shows admitted animal', async ({ page }) => {
   await login(page);
   await page.goto('/patients');
   await expect(page.getByRole('heading', { name: 'Patients' })).toBeVisible();
-  // After previous test, TestBruno should appear (sometimes; not guaranteed across projects)
-  // Just verify the list page renders.
+  // The admit test above just admitted TestBruno; Playwright runs specs
+  // serially (fullyParallel: false in playwright.config.ts) so this row
+  // is reliably present.
+  await expect(page.getByText('TestBruno').first()).toBeVisible({ timeout: 10_000 });
 });

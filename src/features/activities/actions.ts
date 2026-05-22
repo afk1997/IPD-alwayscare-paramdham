@@ -57,24 +57,32 @@ export async function createActivityAction(input: CreateActivityInput): Promise<
 export async function deleteActivityAction(activityId: string): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
-    const result = await softDeleteActivity(actor, activityId);
+    const { z } = await import('zod');
+    const id = z.string().cuid().safeParse(activityId);
+    if (!id.success) return { ok: false, error: 'Invalid activity id' };
+    const result = await softDeleteActivity(actor, id.data);
     bustForActivityMutation(result.type);
     return { ok: true };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
-    throw e;
+    console.error('[activities/actions] deleteActivity', e instanceof Error ? e.message : 'unknown');
+    return { ok: false, error: 'Could not delete activity' };
   }
 }
 
 export async function restoreActivityAction(activityId: string): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
-    const result = await restoreActivity(actor, activityId);
+    const { z } = await import('zod');
+    const id = z.string().cuid().safeParse(activityId);
+    if (!id.success) return { ok: false, error: 'Invalid activity id' };
+    const result = await restoreActivity(actor, id.data);
     bustForActivityMutation(result.type);
     return { ok: true, activityId };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
-    throw e;
+    console.error('[activities/actions] restoreActivity', e instanceof Error ? e.message : 'unknown');
+    return { ok: false, error: 'Could not restore activity' };
   }
 }
 
@@ -158,12 +166,16 @@ export async function updateActivityAction(
 export async function duplicateActivityAction(activityId: string): Promise<ActivityActionResult> {
   try {
     const actor = await requireActor();
-    const created = await duplicateActivity(actor, activityId);
+    const { z } = await import('zod');
+    const id = z.string().cuid().safeParse(activityId);
+    if (!id.success) return { ok: false, error: 'Invalid activity id' };
+    const created = await duplicateActivity(actor, id.data);
     bustForActivityMutation(created.type);
     return { ok: true, activityId: created.id };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
-    throw e;
+    console.error('[activities/actions] duplicate', e instanceof Error ? e.message : 'unknown');
+    return { ok: false, error: 'Could not duplicate activity' };
   }
 }
 

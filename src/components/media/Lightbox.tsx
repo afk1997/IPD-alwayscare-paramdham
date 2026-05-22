@@ -1,4 +1,5 @@
 'use client';
+import { useSwipeHorizontal } from '@/lib/hooks/useSwipeHorizontal';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect } from 'react';
@@ -29,15 +30,26 @@ export function Lightbox({ items, index, onClose, onChange }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [index, items.length, onClose, onChange]);
 
+  // UI-3: wire mobile swipe gestures. Hook is always invoked (rules of
+  // hooks); the early return below stops the render when closed.
+  const hasPrev = index !== null && index > 0;
+  const hasNext = index !== null && index < items.length - 1;
+  const swipe = useSwipeHorizontal({
+    threshold: 60,
+    onSwipeLeft: () => {
+      if (hasNext) onChange((index as number) + 1);
+    },
+    onSwipeRight: () => {
+      if (hasPrev) onChange((index as number) - 1);
+    },
+  });
+
   if (index === null) return null;
   const current = items[index];
   if (!current) return null;
 
-  const hasPrev = index > 0;
-  const hasNext = index < items.length - 1;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" {...swipe.bind}>
       <button
         type="button"
         aria-label="Close"
@@ -53,7 +65,10 @@ export function Lightbox({ items, index, onClose, onChange }: Props) {
         >
           <X size={14} /> Close
         </button>
-        <div className="flex w-full flex-1 items-center justify-center overflow-hidden">
+        {/* UI-16: explicit min-h-0 lets the flex item shrink so the
+            absolutely-positioned <Image fill> resolves to a non-zero
+            height inside Safari iOS's url-bar-aware flex container. */}
+        <div className="flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden">
           {current.kind === 'VIDEO' ? (
             // biome-ignore lint/a11y/useMediaCaption: caption track not yet authored for IPD-captured clinical videos
             <video

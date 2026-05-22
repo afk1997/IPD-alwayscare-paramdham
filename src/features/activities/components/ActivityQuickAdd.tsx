@@ -1,5 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/Button';
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import {
   Bath,
   Footprints,
@@ -12,7 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import { ActivityForm } from './ActivityForm';
 
@@ -37,6 +38,21 @@ interface Props {
 export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
   const router = useRouter();
   const [selected, setSelected] = useState<ActivityType | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
+
+  // UI-11: Escape closes the modal.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelected(null);
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -51,11 +67,27 @@ export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/45 md:items-center">
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center md:items-center"
+      aria-modal="true"
+      aria-label={selected ? ACTIVITY_LABELS[selected] : 'Log activity'}
+    >
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => {
+          setSelected(null);
+          onClose();
+        }}
+        className="absolute inset-0 cursor-default bg-black/45"
+      />
       {/* Cap the dialog at 92vh and let the body scroll.  Without this the
           Surgery form (10+ fields + uploader) overflows the viewport and
           the title / save button get clipped on small laptops. */}
-      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-lg bg-paper shadow-2xl md:rounded-lg">
+      <div
+        ref={dialogRef}
+        className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-lg bg-paper shadow-2xl md:rounded-lg"
+      >
         {/* Sticky header — title + close stay pinned while the form scrolls. */}
         <div className="flex shrink-0 items-center justify-between border-line border-b px-6 py-4">
           <h2 className="font-display font-bold text-lg">

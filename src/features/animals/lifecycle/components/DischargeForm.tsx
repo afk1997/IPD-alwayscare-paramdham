@@ -61,6 +61,8 @@ export function DischargeForm({ animalId, onDone }: Props) {
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
               placeholder="Recovered, treatment outcome…"
+              required
+              aria-required="true"
             />
           )}
         </FormField>

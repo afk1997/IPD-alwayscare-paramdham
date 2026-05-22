@@ -48,10 +48,11 @@ export async function softDeleteDocument(actor: Actor, documentId: string) {
   if (!can(actor, 'document.delete')) throw new RbacError('document.delete');
   const doc = await prisma.document.findFirst({
     where: { id: documentId, deletedAt: null },
+    include: { file: { select: { id: true, storageKey: true, filename: true } } },
   });
   if (!doc) throw new NotFoundError('Document', documentId);
-  return prisma.$transaction(async (tx) => {
-    const updated = await tx.document.update({
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.document.update({
       where: { id: documentId },
       data: { deletedAt: new Date() },
     });
@@ -68,17 +69,46 @@ export async function softDeleteDocument(actor: Actor, documentId: string) {
         fileId: doc.fileId,
       },
     });
-    return updated;
+    return u;
   });
+
+  // SD-11: mirror what softDeleteActivity does — rename the underlying
+  // Drive file with the [DELETED] prefix so an admin browsing Drive can
+  // tell what's tombstoned. Best-effort: if Drive fails, we audit and
+  // keep going. Local storage's NullResolver is a no-op.
+  if (doc.file?.storageKey) {
+    try {
+      const { folderResolver } = await import('@/lib/folders');
+      const resolver = folderResolver();
+      const newName = await resolver.markDeleted(doc.file.storageKey, doc.file.filename);
+      await prisma.mediaAsset.update({ where: { id: doc.file.id }, data: { filename: newName } });
+    } catch (e) {
+      await writeAuditLog(prisma, {
+        actorId: actor.id,
+        action: 'update',
+        entityType: 'Document',
+        entityId: documentId,
+        context: {
+          driveOp: 'markDeleted',
+          assetId: doc.file.id,
+          error: e instanceof Error ? e.message : 'unknown',
+        },
+      });
+    }
+  }
+  return updated;
 }
 
 export async function restoreDocument(actor: Actor, documentId: string) {
   if (!can(actor, 'document.restore')) throw new RbacError('document.restore');
-  const doc = await prisma.document.findUnique({ where: { id: documentId } });
+  const doc = await prisma.document.findUnique({
+    where: { id: documentId },
+    include: { file: { select: { id: true, storageKey: true, filename: true } } },
+  });
   if (!doc) throw new NotFoundError('Document', documentId);
   if (!doc.deletedAt) return doc;
-  return prisma.$transaction(async (tx) => {
-    const updated = await tx.document.update({
+  const updated = await prisma.$transaction(async (tx) => {
+    const u = await tx.document.update({
       where: { id: documentId },
       data: { deletedAt: null },
     });
@@ -87,8 +117,31 @@ export async function restoreDocument(actor: Actor, documentId: string) {
       action: 'restore',
       entityType: 'Document',
       entityId: documentId,
-      after: { category: updated.category, kind: updated.kind, animalId: updated.animalId },
+      after: { category: u.category, kind: u.kind, animalId: u.animalId },
     });
-    return updated;
+    return u;
   });
+
+  // SD-11 (mirror): reverse the [DELETED] rename if it was applied.
+  if (doc.file?.storageKey) {
+    try {
+      const { folderResolver } = await import('@/lib/folders');
+      const resolver = folderResolver();
+      const newName = await resolver.unmarkDeleted(doc.file.storageKey, doc.file.filename);
+      await prisma.mediaAsset.update({ where: { id: doc.file.id }, data: { filename: newName } });
+    } catch (e) {
+      await writeAuditLog(prisma, {
+        actorId: actor.id,
+        action: 'update',
+        entityType: 'Document',
+        entityId: documentId,
+        context: {
+          driveOp: 'unmarkDeleted',
+          assetId: doc.file.id,
+          error: e instanceof Error ? e.message : 'unknown',
+        },
+      });
+    }
+  }
+  return updated;
 }

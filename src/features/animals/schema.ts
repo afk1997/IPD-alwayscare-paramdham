@@ -69,7 +69,17 @@ export const UpdateAnimalSchema = z.object({
   breed: nullableStr(80),
   ageText: nullableStr(40),
   color: nullableStr(120),
-  weightKg: z.number().positive().max(2000).nullable().optional(),
+  // ACT-12: forms post numeric inputs as strings (`"4.5"`); accept both
+  // and coerce. Empty string → null so the user can clear the value.
+  weightKg: z
+    .union([z.number(), z.string(), z.null()])
+    .transform((v) => {
+      if (v === null || v === '') return null;
+      const n = typeof v === 'number' ? v : Number(v.replace(',', '.'));
+      return Number.isFinite(n) ? n : null;
+    })
+    .refine((v) => v === null || (v > 0 && v <= 2000), 'Weight must be between 0 and 2000 kg')
+    .optional(),
   vaccination: z.enum(VACCINATION).optional(),
   sterilized: z.boolean().optional(),
   aggressive: z.boolean().optional(),

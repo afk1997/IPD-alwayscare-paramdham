@@ -45,6 +45,7 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run lint
       - run: pnpm run test
+      - run: pnpm run build
       - run: pnpm exec playwright install --with-deps chromium
       - run: |
           echo "DATABASE_URL=$DATABASE_URL" > .env.local
@@ -55,3 +56,12 @@ jobs:
           echo "NODE_ENV=development" >> .env.local
       - run: pnpm run db:seed
       - run: pnpm exec playwright test
+      # Fast standalone probes — runs against the dev server Playwright
+      # already brought up via webServer.
+      - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-trash-page.ts
+      - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-trash-rbac.ts
+      - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-activity-share.ts
+      - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-by-animal-list.ts
+      - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-daily-report-share.ts
+      - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-logged-by-dropdown.ts
+      - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-patient-share.ts

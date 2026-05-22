@@ -201,13 +201,13 @@ model Activity {
   type             ActivityType
   occurredAt       DateTime     @default(now())
   byUserId         String?
-  byUser           User?        @relation("ActivityBy", fields: [byUserId], references: [id])
+  byUser           User?        @relation("ActivityBy", fields: [byUserId], references: [id], onDelete: Restrict)
   byName           String
   remarks          String?
   data             Json
   editedAt         DateTime?
   editedById       String?
-  editedBy         User?        @relation("ActivityEditedBy", fields: [editedById], references: [id])
+  editedBy         User?        @relation("ActivityEditedBy", fields: [editedById], references: [id], onDelete: Restrict)
   deletedAt        DateTime?
   duplicatedFromId String?
   createdAt        DateTime     @default(now())

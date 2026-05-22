@@ -36,13 +36,19 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
   const { assertOwnedReadyAssets } = await import('../media/service');
   await assertOwnedReadyAssets(actor, parsed.mediaAssetIds);
 
+  // RBAC-9: only DOCTOR/ADMIN may re-attribute via `byName`. STAFF
+  // entries are stamped with their own name regardless of payload so
+  // they cannot impersonate a doctor in the audit/timeline.
+  const canReattribute = can(actor, 'activity.update.any');
+  const finalByName = canReattribute && parsed.byName ? parsed.byName : actor.name;
+
   return prisma.$transaction(async (tx) => {
     const created = await tx.activity.create({
       data: {
         animalId: parsed.animalId,
         type: parsed.type,
         byUserId: actor.id,
-        byName: parsed.byName ?? actor.name,
+        byName: finalByName,
         remarks: parsed.remarks ?? null,
         data: parsed.data as Prisma.InputJsonValue,
         ...(parsed.occurredAt ? { occurredAt: new Date(parsed.occurredAt) } : {}),
@@ -100,10 +106,11 @@ export async function updateActivity(actor: ActivityActor, activityId: string, p
     updateData.data = dataParsed as unknown as Prisma.InputJsonValue;
   }
   if (parsed.occurredAt !== undefined) updateData.occurredAt = new Date(parsed.occurredAt);
-  // UpdateActivitySchema already enforces `min(1).max(120)` for byName,
-  // so the prior `.trim().length > 0` defensive check is no longer
-  // necessary.  Still trim to normalise whitespace.
-  if (parsed.byName !== undefined) updateData.byName = parsed.byName.trim();
+  // RBAC-9: STAFF cannot rename the author of an entry. Only DOCTOR/ADMIN
+  // (activity.update.any holders) may rewrite byName.
+  if (parsed.byName !== undefined && canEditAny) {
+    updateData.byName = parsed.byName.trim();
+  }
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.activity.update({
@@ -171,23 +178,47 @@ export async function softDeleteActivity(actor: Actor, activityId: string) {
   if (!activity) throw new NotFoundError('Activity', activityId);
   if (activity.deletedAt) return activity;
 
+  // RBAC-7: STAFF can only delete their own activity inside a 24h window.
+  // Past that, only DOCTOR/ADMIN (activity.delete) can remove clinical
+  // history. Mirrors the editing window already enforced in updateActivity.
   const owns = activity.byUserId === actor.id;
-  if (!owns && !can(actor, 'activity.delete')) throw new RbacError('activity.delete');
+  const withinWindow = Date.now() - new Date(activity.createdAt).getTime() < 24 * 60 * 60 * 1000;
+  const canDeleteAny = can(actor, 'activity.delete');
+  if (!canDeleteAny && !(owns && withinWindow)) throw new RbacError('activity.delete');
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const u = await tx.activity.update({
-      where: { id: activityId },
-      data: { deletedAt: new Date(), editedById: actor.id, editedAt: new Date() },
+  // ACT-8: race-safe — do the existence check inside the update by
+  // matching deletedAt: null, and treat P2025 (no rows updated) as
+  // "already deleted" rather than a hard error.
+  let updated: typeof activity;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      const u = await tx.activity.update({
+        where: { id: activityId, deletedAt: null },
+        data: { deletedAt: new Date(), editedById: actor.id, editedAt: new Date() },
+        include: { media: { include: { asset: true } } },
+      });
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'delete',
+        entityType: 'Activity',
+        entityId: activityId,
+        before: {
+          type: activity.type,
+          animalId: activity.animalId,
+          occurredAt: activity.occurredAt.toISOString(),
+          byName: activity.byName,
+        },
+      });
+      return u;
     });
-    await writeAuditLog(tx, {
-      actorId: actor.id,
-      action: 'delete',
-      entityType: 'Activity',
-      entityId: activityId,
-      before: { type: activity.type, animalId: activity.animalId },
-    });
-    return u;
-  });
+  } catch (e) {
+    // Prisma P2025 is the "record to update not found" error — race with
+    // a concurrent delete; treat as a no-op rather than surfacing.
+    if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'P2025') {
+      return activity;
+    }
+    throw e;
+  }
 
   await renameDriveFiles(actor.id, activity.media, 'delete');
   return updated;

@@ -1,8 +1,9 @@
 'use client';
 import { Button } from '@/components/ui/Button';
+import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { Plus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DocumentUpload } from './DocumentUpload';
 
 interface Props {
@@ -12,6 +13,19 @@ interface Props {
 export function DocumentUploadDialog({ animalId }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, open);
+
+  // UI-12: Escape closes the dialog.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   const handleSaved = () => {
     setOpen(false);
     router.refresh();
@@ -23,8 +37,21 @@ export function DocumentUploadDialog({ animalId }: Props) {
         Upload document
       </Button>
       {open && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/45 md:items-center">
-          <div className="w-full max-w-md rounded-t-lg bg-paper p-6 shadow-2xl md:rounded-lg">
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center md:items-center"
+          aria-modal="true"
+          aria-label="Upload document"
+        >
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 cursor-default bg-black/45"
+          />
+          <div
+            ref={dialogRef}
+            className="relative z-10 w-full max-w-md rounded-t-lg bg-paper p-6 shadow-2xl md:rounded-lg"
+          >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-display text-lg font-bold">Upload document</h2>
               <button

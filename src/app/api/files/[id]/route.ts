@@ -38,7 +38,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const headers: Record<string, string> = {
     'content-type': asset.mimeType,
-    'cache-control': 'private, max-age=86400',
+    // API-5: medical media ACLs can change (activity soft-delete, animal
+    // soft-delete, role demotion). A 24h cache let stale-ACL exposure
+    // linger. Switch to no-cache with revalidation — the ETag lets the
+    // client get a cheap 304 when the asset hasn't changed.
+    'cache-control': 'private, no-cache, max-age=0, must-revalidate',
+    vary: 'cookie',
     etag: `"${asset.id}"`,
     // Hardening: don't let browsers sniff content they weren't told to.
     // Combined with finalize-time mime-family check this closes the

@@ -27,3 +27,19 @@ CREATE INDEX IF NOT EXISTS "Activity_animalId_occurredAt_live_idx"
 CREATE INDEX IF NOT EXISTS "Document_animalId_live_idx"
   ON "Document" ("animalId", "createdAt" DESC)
   WHERE "deletedAt" IS NULL;
+
+-- DB-1: switch Activity.byUserId / Activity.editedById FKs from
+-- ON DELETE SET NULL to ON DELETE RESTRICT, so a future hard-delete of
+-- a User row cannot silently strip attribution. The application code
+-- already enforces deactivate-instead-of-delete; this matches the schema.
+ALTER TABLE "Activity"
+  DROP CONSTRAINT IF EXISTS "Activity_byUserId_fkey",
+  ADD CONSTRAINT "Activity_byUserId_fkey"
+    FOREIGN KEY ("byUserId") REFERENCES "User"("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE;
+
+ALTER TABLE "Activity"
+  DROP CONSTRAINT IF EXISTS "Activity_editedById_fkey",
+  ADD CONSTRAINT "Activity_editedById_fkey"
+    FOREIGN KEY ("editedById") REFERENCES "User"("id")
+    ON DELETE RESTRICT ON UPDATE CASCADE;

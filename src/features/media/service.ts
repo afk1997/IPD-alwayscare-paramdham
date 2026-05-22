@@ -52,6 +52,12 @@ export async function initiateUpload(actor: Actor, input: InitiateInput): Promis
 
   const classified = classifyMedia(input.mime, input.size);
   if ('error' in classified) throw new ValidationError(classified.error);
+  // API-7: sanitise the filename at the boundary so any control chars or
+  // Drive-hostile glyphs from the client are dropped before either Drive
+  // or the audit log sees them.
+  const { sanitizeFilename } = await import('@/lib/folders');
+  const cleanFilename = sanitizeFilename(input.filename);
+  if (!cleanFilename) throw new ValidationError('Invalid filename');
 
   // Resolve folder.
   const folders = folderResolver();
@@ -84,7 +90,7 @@ export async function initiateUpload(actor: Actor, input: InitiateInput): Promis
     throw new ValidationError('STORAGE_DRIVER must be gdrive for the resumable upload path');
   }
   const init = await storage.initiateResumable({
-    filename: input.filename,
+    filename: cleanFilename,
     mime: input.mime,
     size: input.size,
     parentId,
@@ -98,7 +104,7 @@ export async function initiateUpload(actor: Actor, input: InitiateInput): Promis
   const asset = await prisma.mediaAsset.create({
     data: {
       kind: classified.kind,
-      filename: input.filename,
+      filename: cleanFilename,
       originalFilename: input.filename,
       mimeType: input.mime,
       size: input.size,
@@ -143,7 +149,15 @@ function verifyDriveMetadata(
     throw new ValidationError('uploaded file does not match initiated session');
   }
   const actualMime = meta.mimeType ?? declaredMime;
-  if (mimeFamily(actualMime) !== mimeFamily(declaredMime)) {
+  // STO-10: for image/* require exact mime equality (was family-only).
+  // A client declaring `image/png` but actually uploading `image/svg+xml`
+  // was previously caught by the SVG ban + family check; this tightens
+  // it further so any image-family mismatch is rejected at finalize.
+  if (declaredMime.startsWith('image/') || actualMime.startsWith('image/')) {
+    if (actualMime !== declaredMime) {
+      throw new ValidationError('uploaded file mime type does not match declared type');
+    }
+  } else if (mimeFamily(actualMime) !== mimeFamily(declaredMime)) {
     throw new ValidationError('uploaded file mime type does not match declared type');
   }
   const width = meta.imageMediaMetadata?.width ?? null;
@@ -193,17 +207,29 @@ export async function finalizeUpload(actor: Actor, input: FinalizeInput) {
   const meta = await fetchDriveMetadata(input.driveFileId);
   const verified = verifyDriveMetadata(meta, expectedParent, asset.mimeType);
 
-  return prisma.mediaAsset.update({
-    where: { id: input.assetId },
-    data: {
-      storageKey: expectedKey,
-      status: 'READY',
-      size: verified.size ?? asset.size,
-      width: verified.width,
-      height: verified.height,
-      durationSec: verified.durationSec,
-    },
-  });
+  // STO-11: condition the update on the row still being PENDING so a
+  // concurrent finalize on the same assetId loses the race cleanly
+  // (Prisma throws P2025 if no row matches; we treat that as "another
+  // worker already finalized" and return the now-READY row).
+  try {
+    return await prisma.mediaAsset.update({
+      where: { id: input.assetId, status: 'PENDING' },
+      data: {
+        storageKey: expectedKey,
+        status: 'READY',
+        size: verified.size ?? asset.size,
+        width: verified.width,
+        height: verified.height,
+        durationSec: verified.durationSec,
+      },
+    });
+  } catch (e) {
+    if (e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'P2025') {
+      const winner = await prisma.mediaAsset.findUnique({ where: { id: input.assetId } });
+      if (winner && winner.status === 'READY') return winner;
+    }
+    throw e;
+  }
 }
 
 export interface MediaForRead {

@@ -114,6 +114,8 @@ export class GoogleDriveStorage implements FileStorage {
   async put(buf: Buffer, meta: { filename: string; mime: string; parentId?: string }): Promise<PutResult> {
     const drive = this.drive();
     const parents = [meta.parentId ?? this.rootFolderId];
+    // STO-6: don't amplify 429s. Only retry on transient (5xx/connection)
+    // errors; do not auto-retry on 4xx other than 429-with-Retry-After.
     const result = await pRetry(
       async () => {
         const res = await drive.files.create({
@@ -124,7 +126,19 @@ export class GoogleDriveStorage implements FileStorage {
         });
         return res.data;
       },
-      { retries: 3, factor: 2, minTimeout: 400 },
+      {
+        retries: 2,
+        factor: 2,
+        minTimeout: 400,
+        randomize: true,
+        shouldRetry: (err) => {
+          const status =
+            (err as { code?: number; status?: number })?.code ?? (err as { status?: number })?.status;
+          if (typeof status !== 'number') return true; // transport-level errors → retry
+          if (status >= 500) return true;
+          return status === 429;
+        },
+      },
     );
     if (!result.id) throw new Error('Drive upload returned no file id');
     return { key: `${PREFIX}${result.id}`, size: Number(result.size ?? buf.byteLength) };

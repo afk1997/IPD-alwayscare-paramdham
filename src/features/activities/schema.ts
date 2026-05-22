@@ -102,11 +102,15 @@ const Base = z.object({
   animalId: z.string().min(1),
   remarks: z.string().optional(),
   mediaAssetIds: z.array(z.string()).default([]),
-  // Optional override for when the activity actually happened — defaults
-  // server-side to the Prisma `@default(now())` if omitted.  Accepts any
-  // string parsable by `new Date()`; explicitly NOT validated as strict
-  // ISO so `<input type="datetime-local">`'s local-time string works.
-  occurredAt: z.string().optional(),
+  // ACT-13: refine to a string that `new Date()` can actually parse.
+  // `<input type="datetime-local">` posts `2026-05-22T14:30` (no Z) which
+  // Date treats as local time; we accept that. A garbage value like
+  // `not-a-date` is now rejected at the action boundary instead of
+  // surfacing as a Prisma error.
+  occurredAt: z
+    .string()
+    .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date/time')
+    .optional(),
   // Optional override for the "logged by" name shown in the timeline.
   // Defaults to the signed-in actor's name.  byUserId always tracks the
   // actual user who saved the row (for audit + RBAC ownership).

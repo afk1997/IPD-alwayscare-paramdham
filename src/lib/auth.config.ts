@@ -23,6 +23,15 @@ export const authConfig = {
       if (trigger === 'update' && token.id) {
         token.iat = Math.floor(Date.now() / 1000);
       }
+      // AUTH-9: absolute timeout. Even with updateAge:0 the cookie can
+      // hang around for `maxAge` seconds of inactivity, but once iat is
+      // older than 12h treat the token as expired regardless. Doctors
+      // hand off devices between shifts; the floor matters.
+      const issuedAt = typeof token.iat === 'number' ? token.iat : 0;
+      const ABSOLUTE_MAX_SEC = 12 * 60 * 60;
+      if (issuedAt > 0 && Date.now() / 1000 - issuedAt > ABSOLUTE_MAX_SEC) {
+        return {};
+      }
       return token;
     },
     session({ session, token }) {

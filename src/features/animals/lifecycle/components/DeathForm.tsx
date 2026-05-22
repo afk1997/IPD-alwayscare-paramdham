@@ -61,6 +61,8 @@ export function DeathForm({ animalId, onDone }: Props) {
               rows={3}
               value={causeOfDeath}
               onChange={(e) => setCauseOfDeath(e.target.value)}
+              required
+              aria-required="true"
             />
           )}
         </FormField>

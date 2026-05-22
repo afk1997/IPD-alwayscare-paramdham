@@ -1,16 +1,26 @@
 import { randomUUID } from 'node:crypto';
 import { createReadStream, statSync } from 'node:fs';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { extname, join, resolve } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
 import type { FileStorage, PutResult } from './index';
 
 const PREFIX = 'local:';
 
 export class LocalDiskStorage implements FileStorage {
-  constructor(private readonly root: string) {}
+  private readonly normalisedRoot: string;
+  constructor(private readonly root: string) {
+    this.normalisedRoot = resolve(this.root);
+  }
 
   private absolute(rel: string): string {
-    return resolve(this.root, rel);
+    const abs = resolve(this.normalisedRoot, rel);
+    // STO-9: assert the resolved path stays inside the configured root.
+    // Without this, a crafted storage key like 'local:../../etc/passwd'
+    // would escape to anywhere the process can read.
+    if (abs !== this.normalisedRoot && !abs.startsWith(this.normalisedRoot + sep)) {
+      throw new Error(`storage key escapes root: ${rel}`);
+    }
+    return abs;
   }
 
   private fromKey(key: string): string {

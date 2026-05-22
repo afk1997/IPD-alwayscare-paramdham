@@ -4,6 +4,7 @@ import { CalendarRange, FileText, Home, PawPrint, Plus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 interface NavItem {
   href: string;
@@ -18,13 +19,35 @@ const nav: NavItem[] = [
   { href: '/documents', label: 'Docs', icon: FileText },
 ];
 
+// UI-5: hide the BottomNav when the soft keyboard is open on mobile.
+// `visualViewport` shrinks by the keyboard height; treat anything >130px
+// of vertical viewport loss as "keyboard open".
+function useKeyboardOpen(): boolean {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    if (!vv) return;
+    const onResize = () => {
+      const delta = window.innerHeight - vv.height;
+      setOpen(delta > 130);
+    };
+    onResize();
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+  return open;
+}
+
 export function BottomNav() {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const { open } = useQuickAdd();
+  const keyboardOpen = useKeyboardOpen();
 
   const before = nav.slice(0, 2);
   const after = nav.slice(2);
+
+  if (keyboardOpen) return null;
 
   return (
     <nav className="fixed right-0 bottom-0 left-0 z-30 flex h-[64px] items-stretch border-line border-t bg-paper md:hidden">

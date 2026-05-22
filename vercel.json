@@ -4,6 +4,8 @@
   "functions": {
     "src/app/api/files/initiate/route.ts": { "maxDuration": 60 },
     "src/app/api/files/finalize/route.ts": { "maxDuration": 30 },
-    "src/app/api/files/[id]/route.ts": { "maxDuration": 60 }
-  }
+    "src/app/api/files/[id]/route.ts": { "maxDuration": 60 },
+    "src/app/api/cron/cleanup-pending-media/route.ts": { "maxDuration": 60 }
+  },
+  "crons": [{ "path": "/api/cron/cleanup-pending-media", "schedule": "0 18 * * *" }]
 }

@@ -21,6 +21,11 @@ let cached: FileStorage | null = null;
 export function getStorage(): FileStorage {
   if (cached) return cached;
   const driver = process.env.STORAGE_DRIVER ?? 'local';
+  // STO-13: in production, refuse `local` — it's ephemeral on Vercel
+  // (Lambda-isolated filesystem) so uploads "succeed" then disappear.
+  if (process.env.NODE_ENV === 'production' && driver === 'local') {
+    throw new Error('STORAGE_DRIVER=local is not allowed in production; set STORAGE_DRIVER=gdrive');
+  }
   if (driver === 'local') {
     cached = new LocalDiskStorage(process.env.LOCAL_UPLOAD_DIR ?? './uploads');
     return cached;

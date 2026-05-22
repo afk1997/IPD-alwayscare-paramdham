@@ -3,7 +3,6 @@ import { writeAuditLog } from '@/lib/audit';
 import { NotFoundError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan } from '@/lib/rbac';
-import type { Prisma } from '@prisma/client';
 import { type DeathInput, DeathSchema, type DischargeInput, DischargeSchema } from './schema';
 
 interface ActorWithName extends Actor {
@@ -61,25 +60,18 @@ export async function dischargeAnimal(actor: ActorWithName, input: DischargeInpu
       });
     }
 
-    await tx.activity.create({
-      data: {
-        animalId: parsed.animalId,
-        type: 'ADMISSION',
-        byUserId: actor.id,
-        byName: actor.name,
-        occurredAt: now,
-        remarks: 'Discharged',
-        data: { summary: parsed.summary, kind: 'DISCHARGE' } as Prisma.InputJsonValue,
-      },
-    });
-
+    // SD-7: Discharge previously fabricated an ADMISSION-typed activity
+    // row which polluted admission counts and clouded the audit. The
+    // discharge is now fully represented by DischargeRecord + the
+    // Animal.dischargedAt update + this audit row.
     await writeAuditLog(tx, {
       actorId: actor.id,
       action: 'update',
       entityType: 'Animal',
       entityId: parsed.animalId,
-      before: { status: animal.status },
-      after: { status: 'DISCHARGED', dischargedAt: now.toISOString() },
+      before: { status: animal.status, dischargedAt: animal.dischargedAt?.toISOString() ?? null },
+      after: { status: 'DISCHARGED', dischargedAt: now.toISOString(), summary: parsed.summary },
+      context: { lifecycle: 'discharge' },
     });
 
     return updated;
@@ -139,8 +131,9 @@ export async function recordDeath(actor: ActorWithName, input: DeathInput) {
       action: 'update',
       entityType: 'Animal',
       entityId: parsed.animalId,
-      before: { status: animal.status },
+      before: { status: animal.status, deceasedAt: animal.deceasedAt?.toISOString() ?? null },
       after: { status: 'DECEASED', causeOfDeath: parsed.causeOfDeath, diedAt: now.toISOString() },
+      context: { lifecycle: 'death' },
     });
 
     return updated;

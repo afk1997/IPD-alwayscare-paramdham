@@ -65,13 +65,14 @@ export function ActivityEditFields({ type, value, onChange }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 gap-3">
-        <FormField label="When did this happen?">
+        <FormField label="When did this happen?" hint="Your timezone">
           {(id) => (
             <Input
               id={id}
               type="datetime-local"
               value={value.occurredAtLocal}
               onChange={(e) => onChange({ ...value, occurredAtLocal: e.target.value })}
+              max={toLocalDatetime(new Date())}
             />
           )}
         </FormField>

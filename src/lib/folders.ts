@@ -26,6 +26,21 @@ function sanitize(s: string): string {
   return s.replace(/[\\/<>:"|?*]/g, '_').trim();
 }
 
+/**
+ * Sanitise a user-supplied filename before it's passed to Drive. Strips
+ * Drive-hostile characters plus control characters that could land in
+ * `Content-Disposition` headers (API-7).
+ */
+export function sanitizeFilename(s: string): string {
+  let out = '';
+  for (const ch of s) {
+    const code = ch.charCodeAt(0);
+    if (code < 0x20 || code === 0x7f) continue;
+    out += '\\/<>:"|?*'.includes(ch) ? '_' : ch;
+  }
+  return out.trim().slice(0, 200);
+}
+
 function animalFolderName(animal: { id: string; name: string }): string {
   const suffix = animal.id.slice(-6);
   return `${sanitize(animal.name)} (#${suffix})`;

@@ -157,21 +157,78 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.animal.update({ where: { id: animalId }, data });
-    await writeAuditLog(tx, {
-      actorId: actor.id,
-      action: 'update',
-      entityType: 'Animal',
-      entityId: animalId,
-      before: pickAuditFields(before),
-      after: pickAuditFields(updated),
-    });
+    // SD-10: per-field diff. The prior implementation only recorded
+    // {name, status, ward, complaint} — silently dropping clinical edits
+    // like diagnosis, contagious, weightKg, vaccination, etc.
+    const diff = diffAnimalFields(before, updated);
+    if (diff.changedKeys.length > 0) {
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'update',
+        entityType: 'Animal',
+        entityId: animalId,
+        before: diff.before,
+        after: diff.after,
+        context: { changedFields: diff.changedKeys },
+      });
+    }
     return updated;
   });
 }
 
-type AnimalLike = { name: string; status: AnimalStatus; ward: string | null; complaint: string | null };
-function pickAuditFields(a: AnimalLike) {
-  return { name: a.name, status: a.status, ward: a.ward, complaint: a.complaint };
+const AUDITED_ANIMAL_FIELDS = [
+  'name',
+  'species',
+  'breed',
+  'gender',
+  'ageText',
+  'color',
+  'weightKg',
+  'vaccination',
+  'sterilized',
+  'aggressive',
+  'rescuer',
+  'rescuerPhone',
+  'address',
+  'ngo',
+  'broughtBy',
+  'complaint',
+  'injuryType',
+  'history',
+  'diagnosis',
+  'immediateTreatment',
+  'surgeryRequired',
+  'contagious',
+  'status',
+  'ward',
+] as const;
+
+type AuditedKey = (typeof AUDITED_ANIMAL_FIELDS)[number];
+
+function jsonValue(v: unknown): unknown {
+  // Prisma Decimal serialises through toString; everything else passes
+  // through. Dates aren't on this list so we don't need a Date branch.
+  if (v && typeof v === 'object' && 'toFixed' in v) return (v as { toString(): string }).toString();
+  return v ?? null;
+}
+
+function diffAnimalFields(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): { changedKeys: AuditedKey[]; before: Record<string, unknown>; after: Record<string, unknown> } {
+  const beforeOut: Record<string, unknown> = {};
+  const afterOut: Record<string, unknown> = {};
+  const changedKeys: AuditedKey[] = [];
+  for (const k of AUDITED_ANIMAL_FIELDS) {
+    const b = jsonValue(before[k]);
+    const a = jsonValue(after[k]);
+    if (b !== a) {
+      changedKeys.push(k);
+      beforeOut[k] = b;
+      afterOut[k] = a;
+    }
+  }
+  return { changedKeys, before: beforeOut, after: afterOut };
 }
 
 export async function softDeleteAnimal(actor: Actor, animalId: string) {
@@ -219,6 +276,13 @@ export async function restoreAnimal(actor: Actor, animalId: string) {
       entityType: 'Animal',
       entityId: animalId,
       after: { name: updated.name, species: updated.species, status: updated.status },
+      // SD-9: when restoring a DECEASED or DISCHARGED animal, the
+      // DeathRecord / DischargeRecord remain attached. Record the
+      // discrepancy so an admin can decide whether to re-admit (which
+      // requires explicitly clearing the lifecycle state via Edit).
+      ...(updated.status === 'DECEASED' || updated.status === 'DISCHARGED'
+        ? { context: { staleLifecycle: updated.status } }
+        : {}),
     });
     return updated;
   });
