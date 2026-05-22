@@ -36,7 +36,9 @@ async function main() {
 
     log('2) Going to /reports/today…');
     await page.goto('/reports/today');
-    await page.getByText(/Daily activity report/i).waitFor();
+    // TST-4: locator was matching the post-share toast as well as the
+    // heading. Scope to heading role to avoid the race.
+    await page.getByRole('heading', { name: /Daily activity report/i }).waitFor();
 
     log('3) Verify filter chips render…');
     await page.getByRole('button', { name: /^All ·/ }).waitFor({ timeout: 10_000 });

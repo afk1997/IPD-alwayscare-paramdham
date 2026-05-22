@@ -21,7 +21,9 @@ async function login(page: Page) {
   await page.getByLabel('Email').fill(EMAIL);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL(/\/$/);
+  // TST-3 fix: tighten URL match to literal pathname '/' instead of
+  // a regex that matches any trailing-slash route.
+  await page.waitForURL((u) => new URL(u).pathname === '/');
 }
 
 async function logActivity(page: Page): Promise<string> {
@@ -36,9 +38,18 @@ async function logActivity(page: Page): Promise<string> {
   await rows.first().click();
   await dialog.getByRole('button', { name: /^Doctor round$/ }).click();
   const stamp = `today-timeline-e2e-${Math.random().toString(36).slice(2, 8)}`;
-  await dialog.locator('textarea').last().fill(stamp);
+  // TST-3 fix: Remarks is the only textarea in the modal — target by
+  // role rather than relying on positional .last().
+  await dialog.getByLabel(/remarks/i).fill(stamp);
   await dialog.getByRole('button', { name: /save entry/i }).click();
+  // TST-3 fix: wait for the save toast before navigating, otherwise the
+  // router.refresh() may not have committed when we hit '/'.
+  await page
+    .getByText(/saved|logged/i)
+    .first()
+    .waitFor({ timeout: 10_000 });
   await page.waitForURL(/\/patients\/c[a-z0-9]{20,}$/, { timeout: 15_000 });
+  await page.waitForLoadState('networkidle');
   return firstRowText;
 }
 
