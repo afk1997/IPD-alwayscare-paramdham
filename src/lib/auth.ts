@@ -4,6 +4,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import NextAuth from 'next-auth';
 import type { Adapter } from 'next-auth/adapters';
 import Credentials from 'next-auth/providers/credentials';
+import { redirect } from 'next/navigation';
 import { writeAuditLog } from './audit';
 import { authConfig } from './auth.config';
 import { prisma } from './prisma';
@@ -73,4 +74,15 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name: dbUser.name,
     role: dbUser.role,
   };
+}
+
+// Server-side guard: redirect VIEWER away from write-only routes.
+// Mount at the top of any patient new / edit / discharge / death page so
+// VIEWER never sees the form chrome (defence-in-depth on top of the
+// server action's RBAC denial).
+export async function requireWriteRole(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  if (user.role === 'VIEWER') redirect('/');
+  return user;
 }
