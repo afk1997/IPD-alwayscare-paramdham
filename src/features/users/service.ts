@@ -57,18 +57,20 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
     throw new RbacError('cannot change your own role');
   }
 
-  // Only SUPER_ADMIN can change SUPER_ADMIN or VIEWER assignments — in
-  // either direction. ADMIN can move STAFF↔DOCTOR↔ADMIN freely; touching
-  // a restricted role (target or destination) requires SUPER_ADMIN.
-  const touchesRestrictedRole =
+  // Only SUPER_ADMIN can modify a SUPER_ADMIN or VIEWER user — period.
+  // That covers role changes (either direction), deactivations, and
+  // renames.  An earlier version of this guard only checked role
+  // changes; deactivateUser / updateUser-with-name slipped through and
+  // an ADMIN could turn off a SUPER_ADMIN.  Now: if the target is
+  // restricted, or the requested role is restricted, the actor must be
+  // SUPER_ADMIN.
+  const targetIsRestricted = before.role === 'SUPER_ADMIN' || before.role === 'VIEWER';
+  const settingRestrictedRole =
     parsed.role !== undefined &&
     parsed.role !== before.role &&
-    (parsed.role === 'SUPER_ADMIN' ||
-      parsed.role === 'VIEWER' ||
-      before.role === 'SUPER_ADMIN' ||
-      before.role === 'VIEWER');
-  if (touchesRestrictedRole && actor.role !== 'SUPER_ADMIN') {
-    throw new RbacError('only SUPER_ADMIN can change SUPER_ADMIN or VIEWER assignments');
+    (parsed.role === 'SUPER_ADMIN' || parsed.role === 'VIEWER');
+  if ((targetIsRestricted || settingRestrictedRole) && actor.role !== 'SUPER_ADMIN') {
+    throw new RbacError('only SUPER_ADMIN can change SUPER_ADMIN or VIEWER users');
   }
 
   // H2-s (broadened): refuse to deactivate or demote the LAST active

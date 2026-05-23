@@ -114,6 +114,29 @@ describe('user service — role-assignment guards', () => {
     expect(demoted.role).toBe('STAFF');
   });
 
+  it('ADMIN cannot deactivate a VIEWER (target is restricted)', async () => {
+    const target = await makeUser('VIEWER');
+    await expect(updateUser(toActor(qaAdmin), { id: target.id, active: false })).rejects.toBeInstanceOf(
+      RbacError,
+    );
+  });
+
+  it('ADMIN cannot rename a SUPER_ADMIN (target is restricted)', async () => {
+    const target = await makeUser('SUPER_ADMIN');
+    await expect(
+      updateUser(toActor(qaAdmin), { id: target.id, name: 'renamed by admin' }),
+    ).rejects.toBeInstanceOf(RbacError);
+  });
+
+  it('SUPER_ADMIN can deactivate and rename restricted users', async () => {
+    const actor = await makeUser('SUPER_ADMIN');
+    const viewer = await makeUser('VIEWER');
+    const renamed = await updateUser(toActor(actor), { id: viewer.id, name: 'renamed by SA' });
+    expect(renamed.name).toBe('renamed by SA');
+    const deactivated = await updateUser(toActor(actor), { id: viewer.id, active: false });
+    expect(deactivated.active).toBe(false);
+  });
+
   it('last-admin guard counts SUPER_ADMIN as admin-equivalent', async () => {
     // Setup: one SUPER_ADMIN and one ADMIN created just for this test.
     // Demoting the ADMIN should succeed because the SUPER_ADMIN remains
