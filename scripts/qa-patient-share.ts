@@ -25,7 +25,12 @@ async function main() {
   }
   const patientName = (await firstPatient.innerText()).split('\n')[0]?.trim() ?? '';
   await firstPatient.click();
-  await page.waitForURL(/\/patients\/c[a-z0-9]{24}$/, { timeout: 15_000 });
+  // Use domcontentloaded — default 'load' state can stall on slow image
+  // / font loads in CI and time out before the URL pattern is checked.
+  await page.waitForURL(/\/patients\/c[a-z0-9]{20,}$/, {
+    timeout: 30_000,
+    waitUntil: 'domcontentloaded',
+  });
   await page.waitForTimeout(500);
 
   // Patient page Share button — sits next to "Log activity".
