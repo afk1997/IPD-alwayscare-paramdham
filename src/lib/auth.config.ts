@@ -3,8 +3,17 @@ import Credentials from 'next-auth/providers/credentials';
 
 const ALLOWED_ROLES = new Set(['STAFF', 'DOCTOR', 'ADMIN'] as const);
 
+// Stay-logged-in policy: once a user signs in we keep the cookie alive
+// for a full year and refresh `exp` on every request (`updateAge: 0`
+// would freeze it; setting it equal to maxAge effectively re-issues).
+// The hard security boundary is still the DB re-check in
+// getCurrentUser — if an admin deactivates the user or changes their
+// role, the very next request is rejected/downgraded immediately,
+// regardless of how long the cookie has been alive.
+const ONE_YEAR_SEC = 365 * 24 * 60 * 60;
+
 export const authConfig = {
-  session: { strategy: 'jwt', maxAge: 60 * 60 * 8, updateAge: 0 },
+  session: { strategy: 'jwt', maxAge: ONE_YEAR_SEC, updateAge: ONE_YEAR_SEC },
   pages: { signIn: '/login' },
   providers: [
     Credentials({
@@ -13,25 +22,14 @@ export const authConfig = {
     }),
   ],
   callbacks: {
-    jwt({ token, user, trigger }) {
+    jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         const raw = (user as { role?: string }).role;
         token.role = raw && ALLOWED_ROLES.has(raw as 'STAFF' | 'DOCTOR' | 'ADMIN') ? raw : undefined;
-        token.iat = Math.floor(Date.now() / 1000);
       }
-      if (trigger === 'update' && token.id) {
-        token.iat = Math.floor(Date.now() / 1000);
-      }
-      // AUTH-9: absolute timeout. Even with updateAge:0 the cookie can
-      // hang around for `maxAge` seconds of inactivity, but once iat is
-      // older than 12h treat the token as expired regardless. Doctors
-      // hand off devices between shifts; the floor matters.
-      const issuedAt = typeof token.iat === 'number' ? token.iat : 0;
-      const ABSOLUTE_MAX_SEC = 12 * 60 * 60;
-      if (issuedAt > 0 && Date.now() / 1000 - issuedAt > ABSOLUTE_MAX_SEC) {
-        return {};
-      }
+      // No absolute timeout. Sessions stay valid until the user signs
+      // out or an admin deactivates them (getCurrentUser DB re-check).
       return token;
     },
     session({ session, token }) {
