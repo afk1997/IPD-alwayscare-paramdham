@@ -19,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <AppShell
       user={{
+        id: user.id,
         name: user.name,
         role: ROLE_LABELS[role] ?? role,
         isAdmin,

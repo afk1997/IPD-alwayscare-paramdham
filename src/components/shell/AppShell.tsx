@@ -12,7 +12,7 @@ import { SideNavDrawer } from './SideNavDrawer';
 import { TopBar } from './TopBar';
 
 interface Props {
-  user: { name: string; role: string; isAdmin: boolean; rawRole: Role };
+  user: { id: string; name: string; role: string; isAdmin: boolean; rawRole: Role };
   activeUsers: ActiveUserLite[];
   title?: string | undefined;
   children: React.ReactNode;
@@ -31,7 +31,12 @@ export function AppShell({ user, activeUsers, title, children }: Props) {
 
   return (
     <Suspense fallback={null}>
-      <ActiveUsersProvider users={activeUsers} currentUserName={user.name} currentUserRole={user.rawRole}>
+      <ActiveUsersProvider
+        users={activeUsers}
+        currentUserId={user.id}
+        currentUserName={user.name}
+        currentUserRole={user.rawRole}
+      >
         <ToastProvider>
           <CommandPaletteProvider>
             <QuickAddProvider>

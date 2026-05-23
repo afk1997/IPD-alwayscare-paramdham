@@ -50,8 +50,20 @@ export function EditUserForm({ user, currentUserRole }: Props) {
   return (
     <form onSubmit={save} className="flex flex-col gap-5">
       <FormSection title={`Edit ${user.name}`} description={user.email}>
+        {roleFieldDisabled && (
+          <p className="rounded-md border border-line bg-paper-2 p-2.5 text-muted text-xs">
+            Only Super admin can modify this user. Read-only view.
+          </p>
+        )}
         <FormField label="Full name" required>
-          {(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}
+          {(id) => (
+            <Input
+              id={id}
+              value={name}
+              readOnly={roleFieldDisabled}
+              onChange={(e) => setName(e.target.value)}
+            />
+          )}
         </FormField>
         <FormField
           label="Role"
@@ -79,16 +91,18 @@ export function EditUserForm({ user, currentUserRole }: Props) {
           {error}
         </div>
       )}
-      <div className="flex justify-between">
-        {user.active && (
-          <Button type="button" variant="danger" onClick={disable} disabled={pending}>
-            Disable user
+      {!roleFieldDisabled && (
+        <div className="flex justify-between">
+          {user.active && (
+            <Button type="button" variant="danger" onClick={disable} disabled={pending}>
+              Disable user
+            </Button>
+          )}
+          <Button type="submit" disabled={pending}>
+            {pending ? 'Saving…' : 'Save changes'}
           </Button>
-        )}
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Saving…' : 'Save changes'}
-        </Button>
-      </div>
+        </div>
+      )}
     </form>
   );
 }

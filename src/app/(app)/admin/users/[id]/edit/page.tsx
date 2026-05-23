@@ -1,12 +1,11 @@
 import { EditUserForm } from '@/features/users/components/EditUserForm';
 import { getUserById } from '@/features/users/queries';
 import type { Role } from '@/features/users/schema';
-import { getCurrentUser } from '@/lib/auth';
-import { notFound, redirect } from 'next/navigation';
+import { requireAdminRole } from '@/lib/auth';
+import { notFound } from 'next/navigation';
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
-  const actor = await getCurrentUser();
-  if (!actor) redirect('/login');
+  const actor = await requireAdminRole();
   const { id } = await params;
   const user = await getUserById(id);
   if (!user) notFound();

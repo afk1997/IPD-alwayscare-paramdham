@@ -57,7 +57,10 @@ export function BottomNav() {
       {before.map((it) => (
         <BottomLink key={it.href} item={it} active={isActive(it.href)} />
       ))}
-      {canWrite ? (
+      {/* VIEWER drops the FAB entirely — the four nav links redistribute
+          via flex-1 so there's no visible gap where the button used to
+          live. */}
+      {canWrite && (
         <button
           type="button"
           onClick={() => open()}
@@ -66,10 +69,6 @@ export function BottomNav() {
         >
           <Plus size={22} strokeWidth={2.4} />
         </button>
-      ) : (
-        // Preserve layout — keep the gap so the remaining icons stay
-        // centred in their slots and the nav doesn't reflow on VIEWER.
-        <div className="mx-2 my-auto h-12 w-12 self-center" aria-hidden />
       )}
       {after.map((it) => (
         <BottomLink key={it.href} item={it} active={isActive(it.href)} />

@@ -8,7 +8,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   DOCTOR: 'Doctor',
   ADMIN: 'Admin',
   SUPER_ADMIN: 'Super admin',
-  VIEWER: 'Viewer (read-only)',
+  VIEWER: 'Viewer',
 };
 
 // AUTH-10: strengthen the new-account password floor. At least 12
