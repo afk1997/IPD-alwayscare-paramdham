@@ -10,12 +10,21 @@ import { ROLES, ROLE_LABELS, type Role } from '../schema';
 
 interface Props {
   user: { id: string; name: string; email: string; role: Role; active: boolean };
+  currentUserRole: Role;
 }
 
-export function EditUserForm({ user }: Props) {
+// ADMIN sees STAFF/DOCTOR/ADMIN. SUPER_ADMIN sees all five. If the
+// target user already holds a role the current actor can't assign
+// (e.g. ADMIN viewing a VIEWER), disable the role field rather than
+// silently dropping the current value out of the select.
+const ADMIN_ASSIGNABLE: readonly Role[] = ['STAFF', 'DOCTOR', 'ADMIN'];
+
+export function EditUserForm({ user, currentUserRole }: Props) {
   const router = useRouter();
   const [name, setName] = useState(user.name);
   const [role, setRole] = useState<Role>(user.role);
+  const assignableRoles: readonly Role[] = currentUserRole === 'SUPER_ADMIN' ? ROLES : ADMIN_ASSIGNABLE;
+  const roleFieldDisabled = !assignableRoles.includes(user.role);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -44,10 +53,19 @@ export function EditUserForm({ user }: Props) {
         <FormField label="Full name" required>
           {(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}
         </FormField>
-        <FormField label="Role" required>
+        <FormField
+          label="Role"
+          required
+          hint={roleFieldDisabled ? 'Only Super admin can change this role' : undefined}
+        >
           {(id) => (
-            <Select id={id} value={role} onChange={(e) => setRole(e.target.value as Role)}>
-              {ROLES.map((r) => (
+            <Select
+              id={id}
+              value={role}
+              disabled={roleFieldDisabled}
+              onChange={(e) => setRole(e.target.value as Role)}
+            >
+              {(roleFieldDisabled ? [user.role] : assignableRoles).map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABELS[r]}
                 </option>

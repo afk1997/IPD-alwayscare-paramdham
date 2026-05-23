@@ -6,13 +6,23 @@ import { Select } from '@/components/ui/Select';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { inviteUserAction } from '../actions';
-import { ROLES, ROLE_LABELS } from '../schema';
+import { ROLES, ROLE_LABELS, type Role } from '../schema';
 
-export function InviteUserForm() {
+interface Props {
+  currentUserRole: Role;
+}
+
+// ADMIN sees STAFF/DOCTOR/ADMIN. SUPER_ADMIN sees all five. Server-side
+// guards in users/service.ts are the real enforcement — this is UI
+// consistency so ADMIN doesn't pick a role they can't grant.
+const ADMIN_ASSIGNABLE: readonly Role[] = ['STAFF', 'DOCTOR', 'ADMIN'];
+
+export function InviteUserForm({ currentUserRole }: Props) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<(typeof ROLES)[number]>('STAFF');
+  const assignableRoles: readonly Role[] = currentUserRole === 'SUPER_ADMIN' ? ROLES : ADMIN_ASSIGNABLE;
+  const [role, setRole] = useState<Role>('STAFF');
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +48,8 @@ export function InviteUserForm() {
         </FormField>
         <FormField label="Role" required>
           {(id) => (
-            <Select id={id} value={role} onChange={(e) => setRole(e.target.value as typeof role)}>
-              {ROLES.map((r) => (
+            <Select id={id} value={role} onChange={(e) => setRole(e.target.value as Role)}>
+              {assignableRoles.map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABELS[r]}
                 </option>
