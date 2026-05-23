@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useMemo } from 'react';
 import type { ActiveUserLite } from './queries';
 import type { Role } from './schema';
 
@@ -23,11 +23,13 @@ interface ProviderProps {
 // and by any client component that needs to conditionally render write
 // controls (hidden for VIEWER).  Mounted once in AppShell.
 export function ActiveUsersProvider({ users, currentUserName, currentUserRole, children }: ProviderProps) {
-  return (
-    <ActiveUsersContext.Provider value={{ users, currentUserName, currentUserRole }}>
-      {children}
-    </ActiveUsersContext.Provider>
+  // Memoise the value object so the AppShell's drawer-toggle re-renders
+  // don't churn every consumer of useActiveUsers().
+  const value = useMemo(
+    () => ({ users, currentUserName, currentUserRole }),
+    [users, currentUserName, currentUserRole],
   );
+  return <ActiveUsersContext.Provider value={value}>{children}</ActiveUsersContext.Provider>;
 }
 
 export function useActiveUsers(): ActiveUsersContextValue {

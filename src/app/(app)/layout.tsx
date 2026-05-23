@@ -1,16 +1,8 @@
 import { AppShell } from '@/components/shell/AppShell';
 import { listActiveUsers } from '@/features/users/queries';
-import type { Role } from '@/features/users/schema';
+import { ROLE_LABELS, type Role } from '@/features/users/schema';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-
-const roleLabel: Record<Role, string> = {
-  STAFF: 'Floor staff',
-  DOCTOR: 'Doctor',
-  ADMIN: 'Admin',
-  SUPER_ADMIN: 'Super admin',
-  VIEWER: 'Viewer',
-};
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -28,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <AppShell
       user={{
         name: user.name,
-        role: roleLabel[role] ?? role,
+        role: ROLE_LABELS[role] ?? role,
         isAdmin,
         rawRole: role,
       }}

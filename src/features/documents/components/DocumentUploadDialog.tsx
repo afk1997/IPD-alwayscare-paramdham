@@ -18,11 +18,6 @@ export function DocumentUploadDialog({ animalId }: Props) {
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
 
-  // VIEWER never sees the upload button — server-side document.create
-  // would reject the write anyway, but the UI shouldn't dangle a CTA
-  // that can't succeed.
-  if (currentUserRole === 'VIEWER') return null;
-
   // UI-12: Escape closes the dialog.
   useEffect(() => {
     if (!open) return;
@@ -32,6 +27,12 @@ export function DocumentUploadDialog({ animalId }: Props) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
+
+  // VIEWER never sees the upload button — server-side document.create
+  // would reject the write anyway, but the UI shouldn't dangle a CTA
+  // that can't succeed.  Early-return AFTER all hooks so the hook count
+  // stays constant across renders (Rules of Hooks).
+  if (currentUserRole === 'VIEWER') return null;
 
   const handleSaved = () => {
     setOpen(false);
