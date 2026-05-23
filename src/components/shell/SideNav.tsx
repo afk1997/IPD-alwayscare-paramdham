@@ -1,5 +1,6 @@
 'use client';
 import { useQuickAdd } from '@/features/quick-add/QuickAddProvider';
+import type { Role } from '@/features/users/schema';
 import { CalendarRange, FileText, History, Home, PawPrint, Plus, Trash2, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -27,6 +28,7 @@ const adminNav: NavItem[] = [
 
 interface Props {
   isAdmin: boolean;
+  userRole: Role;
   user: { name: string; role: string };
   // When true, render unconditionally (used inside the mobile SideNavDrawer
   // <dialog>).  Otherwise hide below the md breakpoint — the page-level
@@ -49,10 +51,11 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-export function SideNav({ isAdmin, user, forceVisible = false }: Props) {
+export function SideNav({ isAdmin, userRole, user, forceVisible = false }: Props) {
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const { open } = useQuickAdd();
+  const canWrite = userRole !== 'VIEWER';
 
   const initials = user.name
     .split(' ')
@@ -73,18 +76,20 @@ export function SideNav({ isAdmin, user, forceVisible = false }: Props) {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => open()}
-        className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 font-semibold text-accent-fg text-sm shadow-sm transition hover:opacity-90"
-        title="Press N to open"
-      >
-        <Plus size={16} strokeWidth={2.4} />
-        <span className="flex-1 text-left">New entry</span>
-        <kbd className="rounded border border-accent-fg/30 bg-accent-fg/10 px-1.5 py-0.5 font-mono text-[10px] text-accent-fg/80">
-          N
-        </kbd>
-      </button>
+      {canWrite && (
+        <button
+          type="button"
+          onClick={() => open()}
+          className="mx-3.5 mb-4 flex items-center justify-center gap-2 rounded-md bg-accent px-3 py-2 font-semibold text-accent-fg text-sm shadow-sm transition hover:opacity-90"
+          title="Press N to open"
+        >
+          <Plus size={16} strokeWidth={2.4} />
+          <span className="flex-1 text-left">New entry</span>
+          <kbd className="rounded border border-accent-fg/30 bg-accent-fg/10 px-1.5 py-0.5 font-mono text-[10px] text-accent-fg/80">
+            N
+          </kbd>
+        </button>
+      )}
 
       <nav className="flex flex-1 flex-col gap-0.5 px-2.5">
         <div className="px-3 pb-2 pt-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-soft">

@@ -1,4 +1,5 @@
 'use client';
+import type { Role } from '@/features/users/schema';
 import { useEffect, useRef } from 'react';
 import { SideNav } from './SideNav';
 
@@ -6,10 +7,11 @@ interface Props {
   open: boolean;
   onClose: () => void;
   isAdmin: boolean;
+  userRole: Role;
   user: { name: string; role: string };
 }
 
-export function SideNavDrawer({ open, onClose, isAdmin, user }: Props) {
+export function SideNavDrawer({ open, onClose, isAdmin, userRole, user }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function SideNavDrawer({ open, onClose, isAdmin, user }: Props) {
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
-        <SideNav isAdmin={isAdmin} user={user} forceVisible />
+        <SideNav isAdmin={isAdmin} userRole={userRole} user={user} forceVisible />
       </div>
     </dialog>
   );

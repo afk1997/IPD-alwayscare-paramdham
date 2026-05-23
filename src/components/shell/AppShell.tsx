@@ -4,6 +4,7 @@ import { QuickAddProvider } from '@/features/quick-add/QuickAddProvider';
 import { CommandPaletteProvider } from '@/features/search/CommandPalette';
 import { ActiveUsersProvider } from '@/features/users/ActiveUsersContext';
 import type { ActiveUserLite } from '@/features/users/queries';
+import type { Role } from '@/features/users/schema';
 import { Suspense, useState } from 'react';
 import { BottomNav } from './BottomNav';
 import { SideNav } from './SideNav';
@@ -11,7 +12,7 @@ import { SideNavDrawer } from './SideNavDrawer';
 import { TopBar } from './TopBar';
 
 interface Props {
-  user: { name: string; role: string; isAdmin: boolean };
+  user: { name: string; role: string; isAdmin: boolean; rawRole: Role };
   activeUsers: ActiveUserLite[];
   title?: string | undefined;
   children: React.ReactNode;
@@ -30,16 +31,17 @@ export function AppShell({ user, activeUsers, title, children }: Props) {
 
   return (
     <Suspense fallback={null}>
-      <ActiveUsersProvider users={activeUsers} currentUserName={user.name}>
+      <ActiveUsersProvider users={activeUsers} currentUserName={user.name} currentUserRole={user.rawRole}>
         <ToastProvider>
           <CommandPaletteProvider>
             <QuickAddProvider>
               <div className="flex min-h-screen bg-bg text-text">
-                <SideNav isAdmin={user.isAdmin} user={user} />
+                <SideNav isAdmin={user.isAdmin} userRole={user.rawRole} user={user} />
                 <SideNavDrawer
                   open={drawerOpen}
                   onClose={() => setDrawerOpen(false)}
                   isAdmin={user.isAdmin}
+                  userRole={user.rawRole}
                   user={user}
                 />
 
