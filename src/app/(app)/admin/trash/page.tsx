@@ -5,8 +5,7 @@ import {
   listTrashDocuments,
   trashCounts,
 } from '@/features/trash/queries';
-import { getCurrentUser } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireAdminRole } from '@/lib/auth';
 
 const TABS = ['activities', 'documents', 'animals'] as const;
 type Tab = (typeof TABS)[number];
@@ -20,9 +19,7 @@ export default async function TrashPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const user = await getCurrentUser();
-  if (!user) redirect('/login');
-  if (user.role !== 'ADMIN') redirect('/');
+  const user = await requireAdminRole();
 
   const actor = { id: user.id, role: user.role };
   const params = await searchParams;

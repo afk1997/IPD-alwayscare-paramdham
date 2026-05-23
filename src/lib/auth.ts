@@ -86,3 +86,14 @@ export async function requireWriteRole(): Promise<CurrentUser> {
   if (user.role === 'VIEWER') redirect('/');
   return user;
 }
+
+// Server-side guard: redirect anyone who isn't admin-equivalent away
+// from the /admin/* subtree, /documents, audit log, trash. SUPER_ADMIN
+// counts as admin (it's a superset). Replaces the scattered
+// `user.role !== 'ADMIN'` checks that were missing SUPER_ADMIN.
+export async function requireAdminRole(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') redirect('/');
+  return user;
+}

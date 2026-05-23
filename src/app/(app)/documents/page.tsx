@@ -2,11 +2,10 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { DocumentsFilters } from '@/features/documents/components/DocumentsFilters';
 import { listAllDocuments } from '@/features/documents/queries';
 import { DOC_CATEGORIES, DOC_CATEGORY_LABELS, type DocCategory } from '@/features/documents/schema';
-import { getCurrentUser } from '@/lib/auth';
+import { requireAdminRole } from '@/lib/auth';
 import { relativeTime } from '@/lib/time';
 import { FileText } from 'lucide-react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 
 const CATEGORY_SET = new Set<DocCategory>(DOC_CATEGORIES);
 
@@ -20,9 +19,7 @@ export default async function DocumentsPage({
 }: {
   searchParams: Promise<{ q?: string; category?: string }>;
 }) {
-  const user = await getCurrentUser();
-  if (!user) redirect('/login');
-  if (user.role !== 'ADMIN') redirect('/');
+  const user = await requireAdminRole();
 
   const params = await searchParams;
   const search = params.q || undefined;

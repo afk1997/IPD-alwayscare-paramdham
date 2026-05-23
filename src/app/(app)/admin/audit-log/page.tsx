@@ -1,12 +1,9 @@
 import { AuditLogTable } from '@/features/audit/components/AuditLogTable';
 import { listAuditLog } from '@/features/audit/queries';
-import { getCurrentUser } from '@/lib/auth';
-import { redirect } from 'next/navigation';
+import { requireAdminRole } from '@/lib/auth';
 
 export default async function AuditLogPage() {
-  const user = await getCurrentUser();
-  if (!user) redirect('/login');
-  if (user.role !== 'ADMIN') redirect('/');
+  const user = await requireAdminRole();
   const rows = await listAuditLog({ id: user.id, role: user.role }, { take: 200 });
   return (
     <div className="flex flex-col gap-4">

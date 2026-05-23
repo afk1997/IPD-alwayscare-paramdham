@@ -1,7 +1,8 @@
 import type { NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 
-const ALLOWED_ROLES = new Set(['STAFF', 'DOCTOR', 'ADMIN'] as const);
+const ALLOWED_ROLES = new Set(['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN', 'VIEWER'] as const);
+type AllowedRole = 'STAFF' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN' | 'VIEWER';
 
 // Stay-logged-in policy: once a user signs in we keep the cookie alive
 // for a full year and refresh `exp` on every request (`updateAge: 0`
@@ -26,7 +27,7 @@ export const authConfig = {
       if (user) {
         token.id = user.id;
         const raw = (user as { role?: string }).role;
-        token.role = raw && ALLOWED_ROLES.has(raw as 'STAFF' | 'DOCTOR' | 'ADMIN') ? raw : undefined;
+        token.role = raw && ALLOWED_ROLES.has(raw as AllowedRole) ? raw : undefined;
       }
       // No absolute timeout. Sessions stay valid until the user signs
       // out or an admin deactivates them (getCurrentUser DB re-check).
@@ -36,7 +37,7 @@ export const authConfig = {
       if (token?.id && session.user) {
         session.user.id = token.id as string;
         const role = token.role as string | undefined;
-        session.user.role = role && ALLOWED_ROLES.has(role as 'STAFF' | 'DOCTOR' | 'ADMIN') ? role : '';
+        session.user.role = role && ALLOWED_ROLES.has(role as AllowedRole) ? role : '';
       }
       return session;
     },
