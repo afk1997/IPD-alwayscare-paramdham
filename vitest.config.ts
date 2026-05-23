@@ -9,7 +9,16 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.ts'],
     coverage: { reporter: ['text', 'html'] },
-    exclude: ['node_modules', '.next', 'tests/e2e', 'playwright-report', 'test-results'],
+    // __integration__ suites are picked up by vitest.integration.config.ts
+    // — they hit a real DB and need their own runner.
+    exclude: [
+      'node_modules',
+      '.next',
+      'tests/e2e',
+      'playwright-report',
+      'test-results',
+      'src/**/__integration__/**',
+    ],
   },
   resolve: {
     alias: { '@': resolve(__dirname, './src') },
