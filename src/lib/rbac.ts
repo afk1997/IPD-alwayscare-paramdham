@@ -1,6 +1,6 @@
 import { RbacError } from './errors';
 
-export type Role = 'STAFF' | 'DOCTOR' | 'ADMIN';
+export type Role = 'STAFF' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN' | 'VIEWER';
 
 export interface Actor {
   id: string;
@@ -29,25 +29,25 @@ export type Action =
   | 'trash.read';
 
 const PERMISSIONS: Record<Action, Role[]> = {
-  'animal.create': ['STAFF', 'DOCTOR', 'ADMIN'],
-  'animal.read': ['STAFF', 'DOCTOR', 'ADMIN'],
-  'animal.update': ['DOCTOR', 'ADMIN'],
-  'animal.delete': ['ADMIN'],
-  'animal.restore': ['ADMIN'],
-  'animal.discharge': ['DOCTOR', 'ADMIN'],
-  'animal.death': ['DOCTOR', 'ADMIN'],
-  'activity.create': ['STAFF', 'DOCTOR', 'ADMIN'],
-  'activity.create.clinical': ['DOCTOR', 'ADMIN'],
-  'activity.update.any': ['DOCTOR', 'ADMIN'],
-  'activity.delete': ['DOCTOR', 'ADMIN'],
-  'activity.restore': ['ADMIN'],
-  'document.create': ['STAFF', 'DOCTOR', 'ADMIN'],
-  'document.delete': ['DOCTOR', 'ADMIN'],
-  'document.restore': ['ADMIN'],
-  'document.read.all': ['ADMIN'],
-  'user.manage': ['ADMIN'],
-  'audit.read.all': ['ADMIN'],
-  'trash.read': ['ADMIN'],
+  'animal.create': ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'animal.read': ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN', 'VIEWER'],
+  'animal.update': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'animal.delete': ['ADMIN', 'SUPER_ADMIN'],
+  'animal.restore': ['ADMIN', 'SUPER_ADMIN'],
+  'animal.discharge': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'animal.death': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'activity.create': ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'activity.create.clinical': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'activity.update.any': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'activity.delete': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'activity.restore': ['ADMIN', 'SUPER_ADMIN'],
+  'document.create': ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'document.delete': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'document.restore': ['ADMIN', 'SUPER_ADMIN'],
+  'document.read.all': ['ADMIN', 'SUPER_ADMIN'],
+  'user.manage': ['ADMIN', 'SUPER_ADMIN'],
+  'audit.read.all': ['ADMIN', 'SUPER_ADMIN'],
+  'trash.read': ['ADMIN', 'SUPER_ADMIN'],
 };
 
 export function can(actor: Actor, action: Action): boolean {

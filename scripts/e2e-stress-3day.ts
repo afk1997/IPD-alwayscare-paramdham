@@ -61,7 +61,10 @@ function dayOffset(days: number, hours = 9, minutes = 0): string {
   return d.toISOString();
 }
 
-async function findUserByRole(role: 'ADMIN' | 'DOCTOR' | 'STAFF', skip: string[] = []) {
+async function findUserByRole(
+  role: 'ADMIN' | 'DOCTOR' | 'STAFF' | 'SUPER_ADMIN' | 'VIEWER',
+  skip: string[] = [],
+) {
   const u = await prisma.user.findFirst({
     where: { role, active: true, id: { notIn: skip } },
     select: { id: true, role: true, name: true },
@@ -260,7 +263,11 @@ async function main() {
   const activityIds: string[] = [];
 
   async function logActivity(
-    actor: { id: string; role: 'ADMIN' | 'DOCTOR' | 'STAFF'; name: string },
+    actor: {
+      id: string;
+      role: 'ADMIN' | 'DOCTOR' | 'STAFF' | 'SUPER_ADMIN' | 'VIEWER';
+      name: string;
+    },
     input: Omit<CreateActivityInput, 'byName'> & { byName?: string },
   ) {
     try {

@@ -13,6 +13,8 @@ enum Role {
   STAFF
   DOCTOR
   ADMIN
+  SUPER_ADMIN
+  VIEWER
 }
 
 enum Gender {

@@ -5,6 +5,8 @@ const TONES: Record<Role, string> = {
   STAFF: 'bg-paper-2 text-muted',
   DOCTOR: 'bg-accent-soft text-accent-ink',
   ADMIN: 'bg-observation-bg text-observation',
+  SUPER_ADMIN: 'bg-critical-bg text-critical',
+  VIEWER: 'bg-paper-2 text-soft',
 };
 
 interface Props {

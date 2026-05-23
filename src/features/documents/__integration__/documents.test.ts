@@ -14,7 +14,11 @@ import { prisma } from '@/lib/prisma';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 async function makeAssetAndDoc(
-  actor: { id: string; role: 'STAFF' | 'DOCTOR' | 'ADMIN'; name: string },
+  actor: {
+    id: string;
+    role: 'STAFF' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN' | 'VIEWER';
+    name: string;
+  },
   animalId: string,
 ) {
   // Insert a fully-formed MediaAsset directly so we don't have to go through

@@ -30,7 +30,11 @@ const baseAnimal: Omit<CreateAnimalInput, 'name'> = {
   mediaAssetIds: [],
 };
 
-async function spawnAnimal(actor: { id: string; role: 'STAFF' | 'DOCTOR' | 'ADMIN'; name: string }) {
+async function spawnAnimal(actor: {
+  id: string;
+  role: 'STAFF' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN' | 'VIEWER';
+  name: string;
+}) {
   return createAnimal(actor, { ...baseAnimal, name: qaName('AnimalForActivity') });
 }
 

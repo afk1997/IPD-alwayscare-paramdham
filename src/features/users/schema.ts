@@ -1,12 +1,14 @@
 import { z } from 'zod';
 
-export const ROLES = ['STAFF', 'DOCTOR', 'ADMIN'] as const;
+export const ROLES = ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN', 'VIEWER'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABELS: Record<Role, string> = {
   STAFF: 'Floor staff',
   DOCTOR: 'Doctor',
   ADMIN: 'Admin',
+  SUPER_ADMIN: 'Super admin',
+  VIEWER: 'Viewer (read-only)',
 };
 
 // AUTH-10: strengthen the new-account password floor. At least 12

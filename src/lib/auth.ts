@@ -56,7 +56,7 @@ export interface CurrentUser {
   id: string;
   email: string;
   name: string;
-  role: 'STAFF' | 'DOCTOR' | 'ADMIN';
+  role: 'STAFF' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN' | 'VIEWER';
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
