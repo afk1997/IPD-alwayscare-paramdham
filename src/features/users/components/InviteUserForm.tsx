@@ -57,7 +57,11 @@ export function InviteUserForm({ currentUserRole }: Props) {
             </Select>
           )}
         </FormField>
-        <FormField label="Temporary password" hint="Min 8 characters. Share securely with the user." required>
+        <FormField
+          label="Temporary password"
+          hint="At least 12 characters with a mix of letters, numbers, and symbols. Share securely with the user."
+          required
+        >
           {(id) => (
             <Input
               id={id}
