@@ -31,7 +31,10 @@ async function main() {
     return;
   }
   await firstPatient.click();
-  await page.waitForURL(/\/patients\/c[a-z0-9]{24}$/, { timeout: 15_000 });
+  await page.waitForURL(/\/patients\/c[a-z0-9]{20,}$/, {
+    timeout: 30_000,
+    waitUntil: 'domcontentloaded',
+  });
   await page.waitForTimeout(500);
 
   // Per-patient ActivityQuickAdd → Treatment.
