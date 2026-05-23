@@ -68,7 +68,7 @@ export function Step1Basics({ form }: Props) {
         <Input id="color" {...register('color')} placeholder="Brown & white, scar on nose" />
       </FormField>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FormField label="Vaccination" htmlFor="vaccination">
           <Select id="vaccination" {...register('vaccination')}>
             {VACCINATION.map((v) => (
@@ -78,7 +78,7 @@ export function Step1Basics({ form }: Props) {
             ))}
           </Select>
         </FormField>
-        <div className="flex items-end gap-6 pb-2">
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-2 pb-2">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" {...register('sterilized')} className="h-4 w-4 accent-accent" />
             Sterilized

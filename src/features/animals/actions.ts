@@ -72,9 +72,13 @@ export async function updateAnimalAction(
 
 export async function searchAnimalsAction(query: string, includePast = false): Promise<ActiveAnimalLite[]> {
   await requireActor();
-  // ACT-5: enforce a minimum query length so empty searches don't dump
-  // the entire patient roster (including past patients).
+  // ACT-5: when listing past patients (potentially unbounded) require a
+  // minimum query length so callers can't dump the entire historical
+  // roster with one empty request. For active patients alone, an empty
+  // query is fine — the result is already capped at 50, and the
+  // by-animal report page calls this with q='' to render the patient
+  // picker on first load.
   const q = query.trim().slice(0, 64);
-  if (q.length < 2) return [];
+  if (includePast && q.length < 2) return [];
   return searchActiveAnimals(q, 50, includePast);
 }

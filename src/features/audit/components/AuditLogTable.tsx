@@ -22,14 +22,16 @@ export function AuditLogTable({ rows }: Props) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-line bg-paper">
-      <table className="w-full text-sm">
+      {/* min-w-[640px] makes the table extend past the mobile viewport,
+          giving the wrapper's overflow-x-auto something to scroll. */}
+      <table className="w-full min-w-[640px] text-sm">
         <thead className="bg-paper-2 text-xs uppercase tracking-wide text-muted">
           <tr>
-            <th className="px-3 py-2 text-left">When</th>
-            <th className="px-3 py-2 text-left">Actor</th>
-            <th className="px-3 py-2 text-left">Action</th>
-            <th className="px-3 py-2 text-left">Entity</th>
-            <th className="px-3 py-2 text-left">ID</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left">When</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left">Actor</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left">Action</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left">Entity</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left">ID</th>
           </tr>
         </thead>
         <tbody>

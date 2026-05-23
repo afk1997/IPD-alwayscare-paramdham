@@ -1,11 +1,30 @@
 'use client';
 import { useCommandPalette } from '@/features/search/CommandPalette';
 import { Bell, Menu, Search } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { BrandMark } from './BrandMark';
 
 interface Props {
   title?: string | undefined;
   onMenuClick?: (() => void) | undefined;
+}
+
+// Map URL path → readable section title. Keeps the TopBar in sync with
+// the page the user is on (was previously hard-coded to "Today").
+function titleFromPath(path: string): string {
+  if (path === '/' || path === '/today') return 'Today';
+  if (path.startsWith('/patients/new')) return 'New admission';
+  if (path.startsWith('/patients/')) return 'Patient';
+  if (path === '/patients') return 'Patients';
+  if (path.startsWith('/reports/today')) return 'Daily report';
+  if (path.startsWith('/reports/by-animal')) return 'Per-animal report';
+  if (path.startsWith('/reports')) return 'Reports';
+  if (path.startsWith('/documents')) return 'Documents';
+  if (path.startsWith('/activity/new')) return 'Log activity';
+  if (path.startsWith('/admin/users')) return 'Users';
+  if (path.startsWith('/admin/audit-log')) return 'Audit log';
+  if (path.startsWith('/admin/trash')) return 'Trash';
+  return 'Arham';
 }
 
 // Both mobile- and desktop-shaped headers live in the markup
@@ -15,6 +34,8 @@ interface Props {
 // rendered the desktop variant).
 export function TopBar({ title, onMenuClick }: Props) {
   const { open: openPalette } = useCommandPalette();
+  const pathname = usePathname() ?? '/';
+  const derivedTitle = title ?? titleFromPath(pathname);
   return (
     <header className="sticky top-0 z-20 flex h-[52px] shrink-0 items-center gap-2 border-line border-b bg-paper px-3.5 md:h-[56px] md:px-6">
       {/* Mobile layout — hidden on md+ */}
@@ -28,7 +49,7 @@ export function TopBar({ title, onMenuClick }: Props) {
       </button>
       <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
         <BrandMark size={22} />
-        <span className="truncate font-display font-bold text-sm tracking-tight">{title ?? 'Arham'}</span>
+        <span className="truncate font-display font-bold text-sm tracking-tight">{derivedTitle}</span>
       </div>
       <button
         type="button"
@@ -41,7 +62,7 @@ export function TopBar({ title, onMenuClick }: Props) {
 
       {/* Desktop layout — hidden on small screens */}
       <div className="hidden flex-1 items-center gap-2 md:flex">
-        <span className="font-display font-semibold text-sm">{title ?? 'Today'}</span>
+        <span className="font-display font-semibold text-sm">{derivedTitle}</span>
       </div>
       <button
         type="button"

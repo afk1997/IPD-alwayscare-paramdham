@@ -65,7 +65,10 @@ export function AdmissionWizard() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      {/* Extra bottom padding on mobile so the Continue button clears the
+          fixed BottomNav (64 px) — the scroll container's pb-20 isn't
+          enough when the form is short. */}
+      <div className="flex items-center justify-between pb-20 md:pb-0">
         <Button type="button" variant="ghost" onClick={prev} disabled={step === 0 || pending}>
           Back
         </Button>
