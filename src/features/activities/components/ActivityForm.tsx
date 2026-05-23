@@ -77,16 +77,20 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
   const { users: activeUsers, currentUserName } = useActiveUsers();
   const [byNameSelected, setByNameSelected] = useState(currentUserName);
   // Memoise the <option> list so React doesn't rebuild it on every
-  // keystroke in the other fields.
-  const loggedByOptions = useMemo(
-    () =>
-      activeUsers.map((u) => (
-        <option key={u.id} value={u.name}>
-          {u.name}
-        </option>
-      )),
-    [activeUsers],
-  );
+  // keystroke in the other fields.  If the current user's name isn't in
+  // activeUsers (e.g. SUPER_ADMIN — filtered out of the Logged-by
+  // dropdown), prepend a self-option so the Select has a valid initial
+  // value and the form can submit without the browser silently picking
+  // the wrong first option.
+  const loggedByOptions = useMemo(() => {
+    const selfInList = activeUsers.some((u) => u.name === currentUserName);
+    const withSelf = selfInList ? activeUsers : [{ id: '__self__', name: currentUserName }, ...activeUsers];
+    return withSelf.map((u) => (
+      <option key={u.id} value={u.name}>
+        {u.name}
+      </option>
+    ));
+  }, [activeUsers, currentUserName]);
 
   const form = useForm<CreateActivityInput>({
     // biome-ignore lint/suspicious/noExplicitAny: discriminated union typing is intentionally relaxed at the form layer

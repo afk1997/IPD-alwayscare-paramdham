@@ -1,6 +1,7 @@
 'use client';
 import type { ActivityType } from '@/features/activities/schema';
 import { type QuickAddPrefill, useQuickAdd } from '@/features/quick-add/QuickAddProvider';
+import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { type LucideIcon, Pill, Plus, Salad, Stethoscope } from 'lucide-react';
 
 interface ActionTile {
@@ -44,6 +45,8 @@ const TILES: ActionTile[] = [
 
 export function QuickActions() {
   const { open } = useQuickAdd();
+  const { currentUserRole } = useActiveUsers();
+  if (currentUserRole === 'VIEWER') return null;
   return (
     <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
       {TILES.map((t) => {

@@ -1,5 +1,6 @@
 'use client';
 import { useQuickAdd } from '@/features/quick-add/QuickAddProvider';
+import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { CalendarRange, FileText, Home, PawPrint, Plus } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
@@ -43,6 +44,8 @@ export function BottomNav() {
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const { open } = useQuickAdd();
   const keyboardOpen = useKeyboardOpen();
+  const { currentUserRole } = useActiveUsers();
+  const canWrite = currentUserRole !== 'VIEWER';
 
   const before = nav.slice(0, 2);
   const after = nav.slice(2);
@@ -54,14 +57,20 @@ export function BottomNav() {
       {before.map((it) => (
         <BottomLink key={it.href} item={it} active={isActive(it.href)} />
       ))}
-      <button
-        type="button"
-        onClick={() => open()}
-        aria-label="New entry"
-        className="-translate-y-2.5 mx-2 my-auto flex h-12 w-12 items-center justify-center self-center rounded-full bg-accent text-accent-fg shadow-md"
-      >
-        <Plus size={22} strokeWidth={2.4} />
-      </button>
+      {canWrite ? (
+        <button
+          type="button"
+          onClick={() => open()}
+          aria-label="New entry"
+          className="-translate-y-2.5 mx-2 my-auto flex h-12 w-12 items-center justify-center self-center rounded-full bg-accent text-accent-fg shadow-md"
+        >
+          <Plus size={22} strokeWidth={2.4} />
+        </button>
+      ) : (
+        // Preserve layout — keep the gap so the remaining icons stay
+        // centred in their slots and the nav doesn't reflow on VIEWER.
+        <div className="mx-2 my-auto h-12 w-12 self-center" aria-hidden />
+      )}
       {after.map((it) => (
         <BottomLink key={it.href} item={it} active={isActive(it.href)} />
       ))}
