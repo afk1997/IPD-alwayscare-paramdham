@@ -9,6 +9,13 @@ import { type InviteUserInput, InviteUserSchema, type UpdateUserInput, UpdateUse
 export async function inviteUser(actor: Actor, input: InviteUserInput) {
   assertCan(actor, 'user.manage');
   const parsed = InviteUserSchema.parse(input);
+
+  // Only SUPER_ADMIN can grant the SUPER_ADMIN or VIEWER role. ADMIN can
+  // still invite STAFF/DOCTOR/ADMIN normally.
+  if ((parsed.role === 'SUPER_ADMIN' || parsed.role === 'VIEWER') && actor.role !== 'SUPER_ADMIN') {
+    throw new RbacError(`only SUPER_ADMIN can assign ${parsed.role}`);
+  }
+
   const existing = await prisma.user.findUnique({ where: { email: parsed.email.toLowerCase() } });
   if (existing) throw new ValidationError('Email already in use');
   const passwordHash = await bcrypt.hash(parsed.temporaryPassword, 12);
@@ -50,18 +57,36 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
     throw new RbacError('cannot change your own role');
   }
 
-  // H2-s: refuse to deactivate or demote the LAST active admin.  This
-  // protects the clinic from locking itself out of the admin surface
-  // (user management, audit log, recovery).
-  const wouldRemoveAdmin =
-    before.role === 'ADMIN' &&
-    ((parsed.role !== undefined && parsed.role !== 'ADMIN') ||
+  // Only SUPER_ADMIN can change SUPER_ADMIN or VIEWER assignments — in
+  // either direction. ADMIN can move STAFF↔DOCTOR↔ADMIN freely; touching
+  // a restricted role (target or destination) requires SUPER_ADMIN.
+  const touchesRestrictedRole =
+    parsed.role !== undefined &&
+    parsed.role !== before.role &&
+    (parsed.role === 'SUPER_ADMIN' ||
+      parsed.role === 'VIEWER' ||
+      before.role === 'SUPER_ADMIN' ||
+      before.role === 'VIEWER');
+  if (touchesRestrictedRole && actor.role !== 'SUPER_ADMIN') {
+    throw new RbacError('only SUPER_ADMIN can change SUPER_ADMIN or VIEWER assignments');
+  }
+
+  // H2-s (broadened): refuse to deactivate or demote the LAST active
+  // admin-equivalent. SUPER_ADMIN and ADMIN count together — losing all
+  // of them locks the clinic out of the admin surface.
+  const wouldRemoveAdminEquivalent =
+    (before.role === 'ADMIN' || before.role === 'SUPER_ADMIN') &&
+    ((parsed.role !== undefined && parsed.role !== 'ADMIN' && parsed.role !== 'SUPER_ADMIN') ||
       (parsed.active !== undefined && parsed.active === false));
-  if (wouldRemoveAdmin) {
-    const otherActiveAdmins = await prisma.user.count({
-      where: { role: 'ADMIN', active: true, id: { not: parsed.id } },
+  if (wouldRemoveAdminEquivalent) {
+    const otherActiveAdminEquivalents = await prisma.user.count({
+      where: {
+        role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+        active: true,
+        id: { not: parsed.id },
+      },
     });
-    if (otherActiveAdmins === 0) {
+    if (otherActiveAdminEquivalents === 0) {
       throw new RbacError('cannot remove the last active admin');
     }
   }
