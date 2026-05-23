@@ -61,8 +61,23 @@ jobs:
           echo "NODE_ENV=development" >> .env.local
       - run: pnpm run db:seed
       - run: pnpm exec playwright test
-      # Fast standalone probes — runs against the dev server Playwright
-      # already brought up via webServer.
+      # Playwright tears down its webServer when tests finish, but the
+      # standalone qa-* probes still need a running app. Boot `next
+      # start` (production build is already on disk from `pnpm run
+      # build` above) in the background and wait for /login to answer.
+      - name: Start app server for qa probes
+        run: |
+          pnpm exec dotenv -e .env.local -- pnpm exec next start --port 3000 &
+          echo $! > /tmp/next.pid
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/login > /dev/null; then
+              echo "server up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "server did not come up in 60s"
+          exit 1
       - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-trash-page.ts
       - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-trash-rbac.ts
       - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-activity-share.ts
@@ -70,3 +85,9 @@ jobs:
       - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-daily-report-share.ts
       - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-logged-by-dropdown.ts
       - run: pnpm exec dotenv -e .env.local -- tsx scripts/qa-patient-share.ts
+      - name: Stop app server
+        if: always()
+        run: |
+          if [ -f /tmp/next.pid ]; then
+            kill "$(cat /tmp/next.pid)" 2>/dev/null || true
+          fi
