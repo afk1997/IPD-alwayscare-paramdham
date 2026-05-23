@@ -11,21 +11,11 @@ export const ROLE_LABELS: Record<Role, string> = {
   VIEWER: 'Viewer',
 };
 
-// AUTH-10: strengthen the new-account password floor. At least 12
-// characters, with three of four character classes (lower / upper /
-// digit / special). The dev seed accounts still bypass this because
-// they're created via prisma.upsert, not this schema.
-export const PasswordSchema = z
-  .string()
-  .min(12, 'At least 12 characters')
-  .refine((p) => {
-    let classes = 0;
-    if (/[a-z]/.test(p)) classes += 1;
-    if (/[A-Z]/.test(p)) classes += 1;
-    if (/[0-9]/.test(p)) classes += 1;
-    if (/[^A-Za-z0-9]/.test(p)) classes += 1;
-    return classes >= 3;
-  }, 'Use a mix of letters, numbers, and symbols');
+// Lightweight floor — clinic staff hand each other temporary passwords;
+// the strict 12-char/3-class rule got in the way for everyday invites.
+// Keep a small minimum so we don't accept empty/one-char strings, and
+// otherwise trust the operator's judgement.
+export const PasswordSchema = z.string().min(6, 'At least 6 characters');
 
 export const InviteUserSchema = z.object({
   email: z.string().email(),

@@ -59,7 +59,7 @@ export function InviteUserForm({ currentUserRole }: Props) {
         </FormField>
         <FormField
           label="Temporary password"
-          hint="At least 12 characters with a mix of letters, numbers, and symbols. Share securely with the user."
+          hint="At least 6 characters. Share securely with the user."
           required
         >
           {(id) => (
