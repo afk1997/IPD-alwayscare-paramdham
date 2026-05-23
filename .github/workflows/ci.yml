@@ -65,6 +65,10 @@ jobs:
       # standalone qa-* probes still need a running app. Boot `next
       # start` (production build is already on disk from `pnpm run
       # build` above) in the background and wait for /login to answer.
+      # Playwright's webServer ran `next dev`, which overwrites the
+      # production build artifacts the earlier `pnpm run build` produced.
+      # Rebuild before starting `next start` for the probes.
+      - run: pnpm run build
       - name: Start app server for qa probes
         run: |
           pnpm exec dotenv -e .env.local -- pnpm exec next start --port 3000 &
