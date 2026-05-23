@@ -39,7 +39,7 @@ export interface ActiveUserLite {
 
 async function _listActiveUsersRaw(): Promise<ActiveUserLite[]> {
   return prisma.user.findMany({
-    where: { active: true },
+    where: { active: true, role: { in: ['STAFF', 'DOCTOR', 'ADMIN'] } },
     orderBy: { name: 'asc' },
     select: { id: true, name: true },
   });
@@ -50,6 +50,10 @@ async function _listActiveUsersRaw(): Promise<ActiveUserLite[]> {
 // `active-users` tag (see inviteUserAction / updateUserAction /
 // deactivateUserAction).  Without the cache, every page render hits
 // Postgres for the same ~10 rows.
+//
+// SUPER_ADMIN and VIEWER are intentionally excluded — they don't log
+// clinical work and shouldn't appear as candidates in the dropdown.
+// listUsers (the admin user-list query) stays unfiltered.
 const _listActiveUsersCached = unstable_cache(_listActiveUsersRaw, ['active-users'], {
   revalidate: 300,
   tags: ['active-users'],

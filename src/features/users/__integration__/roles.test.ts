@@ -126,4 +126,22 @@ describe('user service — role-assignment guards', () => {
     });
     expect(demoted.role).toBe('STAFF');
   });
+
+  it('listActiveUsers WHERE clause excludes SUPER_ADMIN and VIEWER', async () => {
+    // Direct DB check using the same WHERE clause listActiveUsers should
+    // emit — the production function is wrapped in Next's unstable_cache,
+    // which needs Next's runtime context to evaluate. Mirrors the pattern
+    // animals.test.ts uses for searchActiveAnimals.
+    await makeUser('SUPER_ADMIN');
+    await makeUser('VIEWER');
+    await makeUser('STAFF');
+    const list = await prisma.user.findMany({
+      where: { active: true, role: { in: ['STAFF', 'DOCTOR', 'ADMIN'] } },
+      select: { id: true, role: true },
+    });
+    const roles = new Set(list.map((u) => u.role));
+    expect(roles.has('SUPER_ADMIN')).toBe(false);
+    expect(roles.has('VIEWER')).toBe(false);
+    expect(roles.size).toBeGreaterThan(0);
+  });
 });
