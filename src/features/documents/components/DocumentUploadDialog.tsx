@@ -1,5 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/Button';
+import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { Plus, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -11,10 +12,16 @@ interface Props {
 }
 
 export function DocumentUploadDialog({ animalId }: Props) {
+  const { currentUserRole } = useActiveUsers();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
+
+  // VIEWER never sees the upload button — server-side document.create
+  // would reject the write anyway, but the UI shouldn't dangle a CTA
+  // that can't succeed.
+  if (currentUserRole === 'VIEWER') return null;
 
   // UI-12: Escape closes the dialog.
   useEffect(() => {
