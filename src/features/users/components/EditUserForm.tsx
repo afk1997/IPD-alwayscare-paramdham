@@ -10,21 +10,13 @@ import { ROLES, ROLE_LABELS, type Role } from '../schema';
 
 interface Props {
   user: { id: string; name: string; email: string; role: Role; active: boolean };
-  currentUserRole: Role;
 }
 
-// ADMIN sees STAFF/DOCTOR/ADMIN. SUPER_ADMIN sees all five. If the
-// target user already holds a role the current actor can't assign
-// (e.g. ADMIN viewing a VIEWER), disable the role field rather than
-// silently dropping the current value out of the select.
-const ADMIN_ASSIGNABLE: readonly Role[] = ['STAFF', 'DOCTOR', 'ADMIN'];
-
-export function EditUserForm({ user, currentUserRole }: Props) {
+export function EditUserForm({ user }: Props) {
   const router = useRouter();
   const [name, setName] = useState(user.name);
   const [role, setRole] = useState<Role>(user.role);
-  const assignableRoles: readonly Role[] = currentUserRole === 'SUPER_ADMIN' ? ROLES : ADMIN_ASSIGNABLE;
-  const roleFieldDisabled = !assignableRoles.includes(user.role);
+  const [password, setPassword] = useState('');
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +24,12 @@ export function EditUserForm({ user, currentUserRole }: Props) {
     e.preventDefault();
     setError(null);
     start(async () => {
-      const result = await updateUserAction({ id: user.id, name, role });
+      const result = await updateUserAction({
+        id: user.id,
+        name,
+        role,
+        ...(password ? { password } : {}),
+      });
       if (!result.ok) setError(result.error ?? 'Update failed');
       else router.push('/admin/users');
     });
@@ -50,39 +47,33 @@ export function EditUserForm({ user, currentUserRole }: Props) {
   return (
     <form onSubmit={save} className="flex flex-col gap-5">
       <FormSection title={`Edit ${user.name}`} description={user.email}>
-        {roleFieldDisabled && (
-          <p className="rounded-md border border-line bg-paper-2 p-2.5 text-muted text-xs">
-            Only Super admin can modify this user. Read-only view.
-          </p>
-        )}
         <FormField label="Full name" required>
-          {(id) => (
-            <Input
-              id={id}
-              value={name}
-              readOnly={roleFieldDisabled}
-              onChange={(e) => setName(e.target.value)}
-            />
-          )}
+          {(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}
         </FormField>
-        <FormField
-          label="Role"
-          required
-          hint={roleFieldDisabled ? 'Only Super admin can change this role' : undefined}
-        >
+        <FormField label="Role" required>
           {(id) => (
-            <Select
-              id={id}
-              value={role}
-              disabled={roleFieldDisabled}
-              onChange={(e) => setRole(e.target.value as Role)}
-            >
-              {(roleFieldDisabled ? [user.role] : assignableRoles).map((r) => (
+            <Select id={id} value={role} onChange={(e) => setRole(e.target.value as Role)}>
+              {ROLES.map((r) => (
                 <option key={r} value={r}>
                   {ROLE_LABELS[r]}
                 </option>
               ))}
             </Select>
+          )}
+        </FormField>
+        <FormField
+          label="Reset password"
+          hint="Leave blank to keep the current password. At least 6 characters to change it."
+        >
+          {(id) => (
+            <Input
+              id={id}
+              type="text"
+              autoComplete="new-password"
+              placeholder="New temporary password (optional)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           )}
         </FormField>
       </FormSection>
@@ -91,18 +82,16 @@ export function EditUserForm({ user, currentUserRole }: Props) {
           {error}
         </div>
       )}
-      {!roleFieldDisabled && (
-        <div className="flex justify-between">
-          {user.active && (
-            <Button type="button" variant="danger" onClick={disable} disabled={pending}>
-              Disable user
-            </Button>
-          )}
-          <Button type="submit" disabled={pending}>
-            {pending ? 'Saving…' : 'Save changes'}
+      <div className="flex justify-between">
+        {user.active && (
+          <Button type="button" variant="danger" onClick={disable} disabled={pending}>
+            Disable user
           </Button>
-        </div>
-      )}
+        )}
+        <Button type="submit" disabled={pending}>
+          {pending ? 'Saving…' : 'Save changes'}
+        </Button>
+      </div>
     </form>
   );
 }

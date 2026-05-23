@@ -5,7 +5,7 @@ import { requireAdminRole } from '@/lib/auth';
 import { notFound } from 'next/navigation';
 
 export default async function EditUserPage({ params }: { params: Promise<{ id: string }> }) {
-  const actor = await requireAdminRole();
+  await requireAdminRole();
   const { id } = await params;
   const user = await getUserById(id);
   if (!user) notFound();
@@ -20,7 +20,6 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
           role: user.role as Role,
           active: user.active,
         }}
-        currentUserRole={actor.role as Role}
       />
     </div>
   );

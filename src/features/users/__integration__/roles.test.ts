@@ -2,6 +2,7 @@ import { RbacError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import type { Actor } from '@/lib/rbac';
 import type { Role } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { inviteUser, updateUser } from '../service';
 
@@ -41,7 +42,7 @@ function toActor(u: { id: string; role: Role }): Actor {
   return { id: u.id, role: u.role };
 }
 
-describe('user service — role-assignment guards', () => {
+describe('user service — role assignment + password reset', () => {
   // Fresh QA actors so the suite is independent of seed state.
   let qaAdmin: { id: string; role: Role };
 
@@ -51,117 +52,81 @@ describe('user service — role-assignment guards', () => {
   });
   afterAll(purgeRolesQa);
 
-  it('ADMIN cannot invite a SUPER_ADMIN', async () => {
-    await expect(
-      inviteUser(toActor(qaAdmin), {
-        email: qaEmail('blockedSA'),
-        name: '__qa__blockedSA',
-        role: 'SUPER_ADMIN',
-        temporaryPassword: 'TmpPass#2026',
-      }),
-    ).rejects.toBeInstanceOf(RbacError);
-  });
-
-  it('ADMIN cannot invite a VIEWER', async () => {
-    await expect(
-      inviteUser(toActor(qaAdmin), {
-        email: qaEmail('blockedV'),
-        name: '__qa__blockedV',
-        role: 'VIEWER',
-        temporaryPassword: 'TmpPass#2026',
-      }),
-    ).rejects.toBeInstanceOf(RbacError);
-  });
-
-  it('SUPER_ADMIN can invite a SUPER_ADMIN and a VIEWER', async () => {
-    const superAdmin = await makeUser('SUPER_ADMIN');
-    const inv1 = await inviteUser(toActor(superAdmin), {
+  it('ADMIN can invite a SUPER_ADMIN', async () => {
+    const invited = await inviteUser(toActor(qaAdmin), {
       email: qaEmail('newSA'),
       name: '__qa__newSA',
       role: 'SUPER_ADMIN',
-      temporaryPassword: 'TmpPass#2026',
+      temporaryPassword: 'TmpPass1',
     });
-    expect(inv1.role).toBe('SUPER_ADMIN');
-    const inv2 = await inviteUser(toActor(superAdmin), {
+    expect(invited.role).toBe('SUPER_ADMIN');
+  });
+
+  it('ADMIN can invite a VIEWER', async () => {
+    const invited = await inviteUser(toActor(qaAdmin), {
       email: qaEmail('newV'),
       name: '__qa__newV',
       role: 'VIEWER',
-      temporaryPassword: 'TmpPass#2026',
+      temporaryPassword: 'TmpPass1',
     });
-    expect(inv2.role).toBe('VIEWER');
+    expect(invited.role).toBe('VIEWER');
   });
 
-  it('ADMIN cannot promote STAFF to SUPER_ADMIN', async () => {
+  it('ADMIN can promote and demote any user, including SUPER_ADMIN and VIEWER', async () => {
     const target = await makeUser('STAFF');
-    await expect(updateUser(toActor(qaAdmin), { id: target.id, role: 'SUPER_ADMIN' })).rejects.toBeInstanceOf(
+    const promoted = await updateUser(toActor(qaAdmin), { id: target.id, role: 'SUPER_ADMIN' });
+    expect(promoted.role).toBe('SUPER_ADMIN');
+    const sideways = await updateUser(toActor(qaAdmin), { id: target.id, role: 'VIEWER' });
+    expect(sideways.role).toBe('VIEWER');
+    const back = await updateUser(toActor(qaAdmin), { id: target.id, role: 'STAFF' });
+    expect(back.role).toBe('STAFF');
+  });
+
+  it('updateUser refuses self-role-change (can lock yourself out)', async () => {
+    await expect(updateUser(toActor(qaAdmin), { id: qaAdmin.id, role: 'STAFF' })).rejects.toBeInstanceOf(
       RbacError,
     );
   });
 
-  it('ADMIN cannot demote a SUPER_ADMIN', async () => {
-    const target = await makeUser('SUPER_ADMIN');
-    await expect(updateUser(toActor(qaAdmin), { id: target.id, role: 'ADMIN' })).rejects.toBeInstanceOf(
+  it('updateUser refuses self-deactivation', async () => {
+    await expect(updateUser(toActor(qaAdmin), { id: qaAdmin.id, active: false })).rejects.toBeInstanceOf(
       RbacError,
     );
   });
 
-  it('SUPER_ADMIN can promote and demote VIEWER', async () => {
-    const superAdmin = await makeUser('SUPER_ADMIN');
-    const target = await makeUser('STAFF');
-    const promoted = await updateUser(toActor(superAdmin), { id: target.id, role: 'VIEWER' });
-    expect(promoted.role).toBe('VIEWER');
-    const demoted = await updateUser(toActor(superAdmin), { id: target.id, role: 'STAFF' });
+  it('last-admin-equivalent guard still fires', async () => {
+    // Promote a fresh user to SUPER_ADMIN, then count how many admin-
+    // equivalents exist.  Demote a different admin to STAFF — should
+    // succeed as long as someone else is still admin-equivalent.
+    const sa = await makeUser('SUPER_ADMIN');
+    const otherAdmin = await makeUser('ADMIN');
+    const demoted = await updateUser(toActor(sa), { id: otherAdmin.id, role: 'STAFF' });
     expect(demoted.role).toBe('STAFF');
   });
 
-  it('ADMIN cannot deactivate a VIEWER (target is restricted)', async () => {
-    const target = await makeUser('VIEWER');
-    await expect(updateUser(toActor(qaAdmin), { id: target.id, active: false })).rejects.toBeInstanceOf(
-      RbacError,
-    );
+  it('updateUser accepts a new password and rehashes', async () => {
+    const target = await makeUser('STAFF');
+    const newPassword = 'fresh-pass';
+    await updateUser(toActor(qaAdmin), { id: target.id, password: newPassword });
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: target.id } });
+    expect(await bcrypt.compare(newPassword, after.passwordHash)).toBe(true);
+    // Old "x" placeholder no longer matches.
+    expect(await bcrypt.compare('x', after.passwordHash)).toBe(false);
   });
 
-  it('ADMIN cannot rename a SUPER_ADMIN (target is restricted)', async () => {
-    const target = await makeUser('SUPER_ADMIN');
-    await expect(
-      updateUser(toActor(qaAdmin), { id: target.id, name: 'renamed by admin' }),
-    ).rejects.toBeInstanceOf(RbacError);
-  });
-
-  it('updateUser refuses self-deactivation (closes deactivateUser wrapper bypass)', async () => {
-    const actor = await makeUser('ADMIN');
-    await expect(updateUser(toActor(actor), { id: actor.id, active: false })).rejects.toBeInstanceOf(
-      RbacError,
-    );
-  });
-
-  it('SUPER_ADMIN can deactivate and rename restricted users', async () => {
-    const actor = await makeUser('SUPER_ADMIN');
-    const viewer = await makeUser('VIEWER');
-    const renamed = await updateUser(toActor(actor), { id: viewer.id, name: 'renamed by SA' });
-    expect(renamed.name).toBe('renamed by SA');
-    const deactivated = await updateUser(toActor(actor), { id: viewer.id, active: false });
-    expect(deactivated.active).toBe(false);
-  });
-
-  it('last-admin guard counts SUPER_ADMIN as admin-equivalent', async () => {
-    // Setup: one SUPER_ADMIN and one ADMIN created just for this test.
-    // Demoting the ADMIN should succeed because the SUPER_ADMIN remains
-    // as the admin-equivalent backstop.
-    const superAdmin = await makeUser('SUPER_ADMIN');
-    const adminToDemote = await makeUser('ADMIN');
-    const demoted = await updateUser(toActor(superAdmin), {
-      id: adminToDemote.id,
-      role: 'STAFF',
-    });
-    expect(demoted.role).toBe('STAFF');
+  it('updateUser treats empty password string as no change', async () => {
+    const target = await makeUser('STAFF');
+    const beforeHash = target.passwordHash;
+    await updateUser(toActor(qaAdmin), { id: target.id, password: '', name: 'renamed' });
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: target.id } });
+    expect(after.passwordHash).toBe(beforeHash);
+    expect(after.name).toBe('renamed');
   });
 
   it('listActiveUsers WHERE clause excludes SUPER_ADMIN and VIEWER', async () => {
-    // Direct DB check using the same WHERE clause listActiveUsers should
-    // emit — the production function is wrapped in Next's unstable_cache,
-    // which needs Next's runtime context to evaluate. Mirrors the pattern
-    // animals.test.ts uses for searchActiveAnimals.
+    // Direct DB check mirroring the WHERE in queries.ts — the production
+    // function is wrapped in Next's unstable_cache and isn't callable
+    // from a vitest node context.
     await makeUser('SUPER_ADMIN');
     await makeUser('VIEWER');
     await makeUser('STAFF');

@@ -31,6 +31,10 @@ export const UpdateUserSchema = z.object({
   name: z.string().min(1).max(120).optional(),
   role: z.enum(ROLES).optional(),
   active: z.boolean().optional(),
+  // Optional: when present, hash and update the user's password.
+  // Empty string is treated as "no change" so the EditUserForm can
+  // submit a blank field without resetting the password.
+  password: z.union([PasswordSchema, z.literal('')]).optional(),
 });
 
 export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;

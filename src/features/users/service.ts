@@ -10,12 +10,6 @@ export async function inviteUser(actor: Actor, input: InviteUserInput) {
   assertCan(actor, 'user.manage');
   const parsed = InviteUserSchema.parse(input);
 
-  // Only SUPER_ADMIN can grant the SUPER_ADMIN or VIEWER role. ADMIN can
-  // still invite STAFF/DOCTOR/ADMIN normally.
-  if ((parsed.role === 'SUPER_ADMIN' || parsed.role === 'VIEWER') && actor.role !== 'SUPER_ADMIN') {
-    throw new RbacError(`only SUPER_ADMIN can assign ${parsed.role}`);
-  }
-
   const existing = await prisma.user.findUnique({ where: { email: parsed.email.toLowerCase() } });
   if (existing) throw new ValidationError('Email already in use');
   const passwordHash = await bcrypt.hash(parsed.temporaryPassword, 12);
@@ -63,22 +57,6 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
     throw new RbacError('cannot deactivate yourself');
   }
 
-  // Only SUPER_ADMIN can modify a SUPER_ADMIN or VIEWER user — period.
-  // That covers role changes (either direction), deactivations, and
-  // renames.  An earlier version of this guard only checked role
-  // changes; deactivateUser / updateUser-with-name slipped through and
-  // an ADMIN could turn off a SUPER_ADMIN.  Now: if the target is
-  // restricted, or the requested role is restricted, the actor must be
-  // SUPER_ADMIN.
-  const targetIsRestricted = before.role === 'SUPER_ADMIN' || before.role === 'VIEWER';
-  const settingRestrictedRole =
-    parsed.role !== undefined &&
-    parsed.role !== before.role &&
-    (parsed.role === 'SUPER_ADMIN' || parsed.role === 'VIEWER');
-  if ((targetIsRestricted || settingRestrictedRole) && actor.role !== 'SUPER_ADMIN') {
-    throw new RbacError('only SUPER_ADMIN can change SUPER_ADMIN or VIEWER users');
-  }
-
   // H2-s (broadened): refuse to deactivate or demote the LAST active
   // admin-equivalent. SUPER_ADMIN and ADMIN count together — losing all
   // of them locks the clinic out of the admin surface.
@@ -99,10 +77,17 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
     }
   }
 
-  const updateData: { name?: string; role?: PrismaRole; active?: boolean } = {};
+  const updateData: { name?: string; role?: PrismaRole; active?: boolean; passwordHash?: string } = {};
   if (parsed.name !== undefined) updateData.name = parsed.name;
   if (parsed.role !== undefined) updateData.role = parsed.role as PrismaRole;
   if (parsed.active !== undefined) updateData.active = parsed.active;
+  // Empty-string password means "no change" — only hash when a real
+  // value was provided.  The audit row records the change as a bare
+  // "password reset" flag; the hash itself never lands in the log.
+  const passwordChanged = parsed.password !== undefined && parsed.password.length > 0;
+  if (passwordChanged) {
+    updateData.passwordHash = await bcrypt.hash(parsed.password as string, 12);
+  }
 
   return prisma.$transaction(async (tx) => {
     const updated = await tx.user.update({
@@ -115,7 +100,12 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
       entityType: 'User',
       entityId: updated.id,
       before: { name: before.name, role: before.role, active: before.active },
-      after: { name: updated.name, role: updated.role, active: updated.active },
+      after: {
+        name: updated.name,
+        role: updated.role,
+        active: updated.active,
+        ...(passwordChanged ? { passwordReset: true } : {}),
+      },
     });
     return updated;
   });
