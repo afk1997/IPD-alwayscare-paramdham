@@ -128,6 +128,13 @@ describe('user service — role-assignment guards', () => {
     ).rejects.toBeInstanceOf(RbacError);
   });
 
+  it('updateUser refuses self-deactivation (closes deactivateUser wrapper bypass)', async () => {
+    const actor = await makeUser('ADMIN');
+    await expect(updateUser(toActor(actor), { id: actor.id, active: false })).rejects.toBeInstanceOf(
+      RbacError,
+    );
+  });
+
   it('SUPER_ADMIN can deactivate and rename restricted users', async () => {
     const actor = await makeUser('SUPER_ADMIN');
     const viewer = await makeUser('VIEWER');

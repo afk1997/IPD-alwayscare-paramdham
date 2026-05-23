@@ -56,6 +56,12 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
   if (actor.id === parsed.id && parsed.role !== undefined && parsed.role !== before.role) {
     throw new RbacError('cannot change your own role');
   }
+  // H3-s (extended): refuse self-deactivation.  deactivateUser() blocks
+  // this for its own callers, but updateUserAction({id: ownId,
+  // active: false}) bypasses that wrapper — close the gap here too.
+  if (actor.id === parsed.id && parsed.active === false) {
+    throw new RbacError('cannot deactivate yourself');
+  }
 
   // Only SUPER_ADMIN can modify a SUPER_ADMIN or VIEWER user — period.
   // That covers role changes (either direction), deactivations, and

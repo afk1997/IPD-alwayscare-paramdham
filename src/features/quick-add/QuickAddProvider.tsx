@@ -1,5 +1,6 @@
 'use client';
 import type { ActivityType } from '@/features/activities/schema';
+import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { QuickAddModal } from './QuickAddModal';
@@ -40,11 +41,21 @@ export function QuickAddProvider({ children }: Props) {
   const [prefill, setPrefill] = useState<QuickAddPrefill | null>(null);
   const router = useRouter();
   const search = useSearchParams();
+  const { currentUserRole } = useActiveUsers();
+  // VIEWER has no write capability; every entry point this provider
+  // exposes leads to a server-side RBAC rejection. Gate both the
+  // programmatic open() and the global N keyboard shortcut here so the
+  // form chrome never appears.
+  const canWrite = currentUserRole !== 'VIEWER';
 
-  const open = useCallback((next?: QuickAddPrefill) => {
-    setPrefill(next ?? null);
-    setIsOpen(true);
-  }, []);
+  const open = useCallback(
+    (next?: QuickAddPrefill) => {
+      if (!canWrite) return;
+      setPrefill(next ?? null);
+      setIsOpen(true);
+    },
+    [canWrite],
+  );
   const close = useCallback(() => {
     setIsOpen(false);
     setPrefill(null);
@@ -53,16 +64,18 @@ export function QuickAddProvider({ children }: Props) {
   // Auto-open when arriving with ?quickAdd=1; then strip the param.
   useEffect(() => {
     if (search.get('quickAdd') === '1') {
-      setIsOpen(true);
+      if (canWrite) setIsOpen(true);
       const next = new URLSearchParams(search.toString());
       next.delete('quickAdd');
       const qs = next.toString();
       router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
     }
-  }, [search, router]);
+  }, [search, router, canWrite]);
 
-  // Keyboard shortcut: N opens QuickAdd (except inside inputs).
+  // Keyboard shortcut: N opens QuickAdd (except inside inputs, and never
+  // for VIEWER — see canWrite above).
   useEffect(() => {
+    if (!canWrite) return;
     function onKey(e: KeyboardEvent) {
       if (e.defaultPrevented) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
@@ -77,7 +90,7 @@ export function QuickAddProvider({ children }: Props) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [canWrite]);
 
   const value = useMemo<QuickAddContextValue>(() => ({ isOpen, open, close }), [isOpen, open, close]);
 
