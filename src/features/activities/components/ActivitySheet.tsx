@@ -2,6 +2,7 @@
 import { Photo } from '@/components/media/Photo';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
+import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { copyToClipboard } from '@/lib/clipboard';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
@@ -58,6 +59,8 @@ const TYPE_COLOR: Record<ActivityType, string> = {
 
 export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   const { showToast } = useToast();
+  const { currentUserRole } = useActiveUsers();
+  const canWrite = currentUserRole !== 'VIEWER';
   const [mode, setMode] = useState<Mode>('view');
   const [draft, setDraft] = useState<EditDraft>({
     remarks: '',
@@ -219,23 +222,34 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
         <footer className="flex shrink-0 items-center gap-2 border-t border-line bg-paper p-3">
           {mode === 'view' && (
             <>
-              <Button variant="ghost" size="sm" onClick={() => setMode('confirmDelete')} disabled={pending}>
-                <Trash2 size={14} />
-                Delete
-              </Button>
-              <Button variant="ghost" size="sm" onClick={dup} disabled={pending}>
-                <Copy size={14} />
-                Duplicate
-              </Button>
+              {canWrite && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setMode('confirmDelete')}
+                    disabled={pending}
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={dup} disabled={pending}>
+                    <Copy size={14} />
+                    Duplicate
+                  </Button>
+                </>
+              )}
               <Button variant="ghost" size="sm" onClick={share} disabled={pending}>
                 <Share2 size={14} />
                 Share
               </Button>
               <div className="flex-1" />
-              <Button size="sm" onClick={() => setMode('edit')} disabled={pending}>
-                <Pencil size={14} />
-                Edit
-              </Button>
+              {canWrite && (
+                <Button size="sm" onClick={() => setMode('edit')} disabled={pending}>
+                  <Pencil size={14} />
+                  Edit
+                </Button>
+              )}
             </>
           )}
           {mode === 'edit' && (
