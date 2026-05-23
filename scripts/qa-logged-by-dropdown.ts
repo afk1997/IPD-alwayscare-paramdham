@@ -25,7 +25,12 @@ async function main() {
     return;
   }
   await firstPatient.click();
-  await page.waitForURL(/\/patients\/c[a-z0-9]{24}$/, { timeout: 15_000 });
+  // domcontentloaded + 30s — default 'load' state can stall on slow image
+  // / font loads in CI.  Cuid length tolerant at {20,}.
+  await page.waitForURL(/\/patients\/c[a-z0-9]{20,}$/, {
+    timeout: 30_000,
+    waitUntil: 'domcontentloaded',
+  });
   await page.waitForTimeout(500);
 
   // Per-patient ActivityQuickAdd → Treatment

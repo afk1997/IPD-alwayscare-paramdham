@@ -227,7 +227,10 @@ async function phase2Uploads(ctx: BrowserContext) {
 
   // Match a real CUID-style id, NOT the wizard URL "/patients/new" — the
   // old regex `[a-z0-9]+$` matched "new" too and falsely reported success.
-  await page.waitForURL(/\/patients\/c[a-z0-9]{24}$/, { timeout: 30_000 });
+  await page.waitForURL(/\/patients\/c[a-z0-9]{20,}$/, {
+    timeout: 30_000,
+    waitUntil: 'domcontentloaded',
+  });
   await page.waitForTimeout(800);
   const url = page.url();
   const animalId = url.split('/').pop()!;
