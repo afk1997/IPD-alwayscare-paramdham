@@ -26,7 +26,9 @@ test('log a food activity via quick-add', async ({ page }) => {
 
   await page.getByLabel('Food type').fill('Curd-rice + paneer');
   await page.getByLabel('Quantity').fill('80g');
-  await page.getByLabel('Water').fill('100ml');
+  // exact: true — the QuickAdd modal's aria-label "Food & water" also
+  // matches a substring "Water" search and trips Playwright strict mode.
+  await page.getByLabel('Water', { exact: true }).fill('100ml');
   // Intake used to be a <select>; gap #22-#25 turned it into a Segmented
   // button group, so we now click the option button directly.
   await page.getByRole('button', { name: 'Fully', exact: true }).click();
