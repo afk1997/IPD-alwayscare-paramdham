@@ -87,6 +87,11 @@ jobs:
             for i in $(seq 1 60); do
               if curl -fsS http://localhost:3000/login > /dev/null; then
                 echo "server up (pid=$(cat /tmp/next.pid))"
+                # Warm up the routes the probes hit before they start the
+                # browser — dynamic /patients/[id] pages aren't pre-rendered
+                # by next build, so the first hit is slow enough to trip
+                # waitForURL even with 30s budgets.
+                curl -fsS -o /dev/null http://localhost:3000/patients 2>/dev/null || true
                 return 0
               fi
               sleep 1
