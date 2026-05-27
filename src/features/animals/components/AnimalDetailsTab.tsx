@@ -19,6 +19,8 @@ interface Animal {
   aggressive: boolean;
   contagious: boolean;
   ward: string | null;
+  cage: string | null;
+  cageId: string | null;
   status: string;
   admittedAt: string;
   complaint: string | null;
@@ -37,6 +39,7 @@ interface Animal {
 
 interface Props {
   animal: Animal;
+  cages: { id: string; name: string }[];
 }
 
 const TEST_LABELS: Record<string, string> = {
@@ -48,13 +51,14 @@ const TEST_LABELS: Record<string, string> = {
   SONOGRAPHY: 'Sonography',
 };
 
-export function AnimalDetailsTab({ animal }: Props) {
+export function AnimalDetailsTab({ animal, cages }: Props) {
   const [editing, setEditing] = useState(false);
 
   if (editing) {
     return (
       <div className="rounded-lg border border-line bg-paper p-5">
         <AnimalEditForm
+          cages={cages}
           animal={{
             id: animal.id,
             name: animal.name,
@@ -67,6 +71,7 @@ export function AnimalDetailsTab({ animal }: Props) {
             aggressive: animal.aggressive,
             contagious: animal.contagious,
             ward: animal.ward,
+            cageId: animal.cageId,
             status: animal.status,
             complaint: animal.complaint,
             history: animal.history,
@@ -98,6 +103,7 @@ export function AnimalDetailsTab({ animal }: Props) {
       <DetailSection title="Details">
         <DetailGrid>
           <Field label="Ward" value={animal.ward} />
+          <Field label="Cage" value={animal.cage} />
           <Field label="Admitted at" value={formatDateTime(animal.admittedAt)} />
           <Field label="Color" value={animal.color} />
           <Field label="Vaccination" value={animal.vaccination} />

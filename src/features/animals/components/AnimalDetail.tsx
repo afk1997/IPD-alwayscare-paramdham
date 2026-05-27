@@ -2,6 +2,7 @@ import { MediaGrid } from '@/components/media/MediaGrid';
 import { ActivityTimeline } from '@/features/activities/components/ActivityTimeline';
 import { listActivitiesForAnimal } from '@/features/activities/queries';
 import type { ActivityType } from '@/features/activities/schema';
+import { listAssignableCages } from '@/features/cages/queries';
 import { DocumentList } from '@/features/documents/components/DocumentList';
 import { DocumentUploadDialog } from '@/features/documents/components/DocumentUploadDialog';
 import { listDocumentsForAnimal } from '@/features/documents/queries';
@@ -25,6 +26,7 @@ export async function AnimalDetail({ animalId }: Props) {
     listDocumentsForAnimal(animalId),
   ]);
   if (!animal) notFound();
+  const cages = await listAssignableCages(animalId);
   const lastActivityAt = activities[0]?.occurredAt ?? null;
 
   // Aggregate every photo / x-ray / video the patient has — admission media,
@@ -92,6 +94,7 @@ export async function AnimalDetail({ animalId }: Props) {
           weightKg: animal.weightKg,
           color: animal.color,
           ward: animal.ward,
+          cage: animal.cage,
           contagious: animal.contagious,
           aggressive: animal.aggressive,
           vaccination: animal.vaccination,
@@ -114,6 +117,7 @@ export async function AnimalDetail({ animalId }: Props) {
         info={
           <div className="flex flex-col gap-4">
             <AnimalDetailsTab
+              cages={cages}
               animal={{
                 id: animal.id,
                 name: animal.name,
@@ -128,6 +132,8 @@ export async function AnimalDetail({ animalId }: Props) {
                 aggressive: animal.aggressive,
                 contagious: animal.contagious,
                 ward: animal.ward,
+                cage: animal.cage?.name ?? null,
+                cageId: animal.cageId,
                 status: animal.status,
                 admittedAt: animal.admittedAt.toISOString(),
                 complaint: animal.complaint,

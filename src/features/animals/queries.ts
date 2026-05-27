@@ -109,6 +109,7 @@ export async function getAnimal(id: string) {
         include: { asset: true },
       },
       createdBy: { select: { id: true, name: true } },
+      cage: { select: { name: true } },
     },
   });
 }

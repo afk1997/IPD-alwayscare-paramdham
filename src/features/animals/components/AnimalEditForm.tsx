@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { updateAnimalAction } from '../actions';
 import { STATUSES, VACCINATION } from '../schema';
+import { CageSelect } from './CageSelect';
 
 interface Props {
   animal: {
@@ -23,6 +24,7 @@ interface Props {
     aggressive: boolean;
     contagious: boolean;
     ward: string | null;
+    cageId: string | null;
     status: string;
     complaint: string | null;
     history: string | null;
@@ -36,13 +38,14 @@ interface Props {
     ngo: string | null;
     broughtBy: string | null;
   };
+  cages: { id: string; name: string }[];
   /** Called on successful save.  Default: navigate to /patients/{id}. */
   onDone?: () => void;
   /** When provided, renders a Cancel button next to Save. */
   onCancel?: () => void;
 }
 
-export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
+export function AnimalEditForm({ animal, cages, onDone, onCancel }: Props) {
   const { showToast } = useToast();
   const router = useRouter();
   const [form, setForm] = useState(animal);
@@ -67,6 +70,7 @@ export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
         aggressive: form.aggressive,
         contagious: form.contagious,
         ward: form.ward,
+        cageId: form.cageId,
         status: form.status as 'CRITICAL' | 'STABLE' | 'OBSERVATION',
         complaint: form.complaint,
         history: form.history,
@@ -177,7 +181,7 @@ export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
         </div>
       </FormSection>
 
-      <FormSection title="Status & ward">
+      <FormSection title="Status, cage & ward">
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Status">
             {(id) => (
@@ -190,12 +194,24 @@ export function AnimalEditForm({ animal, onDone, onCancel }: Props) {
               </Select>
             )}
           </FormField>
-          <FormField label="Ward">
-            {(id) => (
-              <Input id={id} value={form.ward ?? ''} onChange={(e) => onField('ward', e.target.value)} />
-            )}
-          </FormField>
+          {animal.status !== 'DISCHARGED' && animal.status !== 'DECEASED' && (
+            <FormField label="Cage">
+              {(id) => (
+                <CageSelect
+                  id={id}
+                  options={cages}
+                  value={form.cageId ?? ''}
+                  onChange={(e) => onField('cageId', e.target.value || null)}
+                />
+              )}
+            </FormField>
+          )}
         </div>
+        <FormField label="Ward (legacy)">
+          {(id) => (
+            <Input id={id} value={form.ward ?? ''} onChange={(e) => onField('ward', e.target.value)} />
+          )}
+        </FormField>
       </FormSection>
 
       <FormSection title="Medical">
