@@ -15,6 +15,7 @@ export type Action =
   | 'animal.restore'
   | 'animal.discharge'
   | 'animal.death'
+  | 'cage.manage'
   | 'activity.create'
   | 'activity.create.clinical'
   | 'activity.update.any'
@@ -36,6 +37,7 @@ const PERMISSIONS: Record<Action, Role[]> = {
   'animal.restore': ['ADMIN', 'SUPER_ADMIN'],
   'animal.discharge': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
   'animal.death': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'cage.manage': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
   'activity.create': ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
   'activity.create.clinical': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
   'activity.update.any': ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
