@@ -94,4 +94,7 @@ export async function purgeQa(): Promise<void> {
     await prisma.mediaAsset.deleteMany({ where: { id: { in: mediaAssets.map((m) => m.id) } } });
   }
   await prisma.driveFolder.deleteMany({ where: { key: { contains: QA } } });
+  // Cages are deleted last — __qa__ animals (the only possible occupants) are
+  // already gone above, so the onDelete: Restrict FK won't block this.
+  await prisma.cage.deleteMany({ where: { name: { contains: QA } } });
 }
