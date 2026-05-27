@@ -97,3 +97,12 @@ export async function requireAdminRole(): Promise<CurrentUser> {
   if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') redirect('/');
   return user;
 }
+
+// Server-side guard for the /cages page. DOCTOR is included (broader than
+// the admin-only pages) because doctors manage cages too.
+export async function requireCageManageRole(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  if (user.role !== 'DOCTOR' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') redirect('/');
+  return user;
+}
