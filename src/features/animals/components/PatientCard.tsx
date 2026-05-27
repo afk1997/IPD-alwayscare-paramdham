@@ -35,6 +35,7 @@ export function PatientCard({ animal }: Props) {
           {animal.species}
           {animal.breed ? ` · ${animal.breed}` : ''}
           {animal.ward ? ` · ${animal.ward}` : ''}
+          {animal.cage ? ` · 🏠 ${animal.cage}` : ''}
         </div>
         <div
           className={`mt-1.5 flex items-center gap-1.5 text-[11.5px] ${stale ? 'text-observation' : 'text-soft'}`}

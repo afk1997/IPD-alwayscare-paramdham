@@ -16,6 +16,7 @@ export interface AnimalListItem {
   species: string;
   breed: string | null;
   ward: string | null;
+  cage: string | null;
   status: AnimalStatus;
   contagious: boolean;
   aggressive: boolean;
@@ -60,6 +61,7 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
       species: true,
       breed: true,
       ward: true,
+      cage: { select: { name: true } },
       status: true,
       contagious: true,
       aggressive: true,
@@ -87,6 +89,7 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
     species: r.species,
     breed: r.breed,
     ward: r.ward,
+    cage: r.cage?.name ?? null,
     status: r.status,
     contagious: r.contagious,
     aggressive: r.aggressive,

@@ -19,7 +19,7 @@ const STEP_VALIDATION: Record<number, (keyof CreateAnimalInput)[]> = {
   4: [],
 };
 
-export function AdmissionWizard() {
+export function AdmissionWizard({ cages = [] }: { cages?: { id: string; name: string }[] }) {
   const { form, step, next, prev } = useAdmissionForm();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export function AdmissionWizard() {
       <div className="rounded-lg border border-line bg-paper p-6">
         {step === 0 && <Step1Basics form={form} />}
         {step === 1 && <Step2Rescuer form={form} />}
-        {step === 2 && <Step3Medical form={form} />}
+        {step === 2 && <Step3Medical form={form} cages={cages} />}
         {step === 3 && <Step4Media form={form} />}
         {step === 4 && <Step5DoctorNotes form={form} />}
       </div>
