@@ -267,7 +267,7 @@ export async function softDeleteAnimal(actor: Actor, animalId: string) {
   return prisma.$transaction(async (tx) => {
     const updated = await tx.animal.update({
       where: { id: animalId },
-      data: { deletedAt: new Date(), editedAt: new Date(), editedById: actor.id },
+      data: { deletedAt: new Date(), cageId: null, editedAt: new Date(), editedById: actor.id },
     });
     await writeAuditLog(tx, {
       actorId: actor.id,

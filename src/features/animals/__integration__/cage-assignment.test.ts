@@ -1,6 +1,7 @@
+import { dischargeAnimal, recordDeath } from '@/features/animals/lifecycle/service';
 import type { CreateAnimalInput } from '@/features/animals/schema';
-import { createAnimal, updateAnimal } from '@/features/animals/service';
-import { DOCTOR_EMAIL, actorByEmail, purgeQa, qaName } from '@/lib/__integration__/helpers';
+import { createAnimal, softDeleteAnimal, updateAnimal } from '@/features/animals/service';
+import { ADMIN_EMAIL, DOCTOR_EMAIL, actorByEmail, purgeQa, qaName } from '@/lib/__integration__/helpers';
 import { ValidationError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -53,5 +54,45 @@ describe('cage assignment via animal service — integration', () => {
       orderBy: { createdAt: 'desc' },
     });
     expect((audit?.context as { changedFields?: string[] } | null)?.changedFields).toContain('cageId');
+  });
+
+  it('discharge frees the cage', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const cage = await prisma.cage.create({ data: { name: qaName('CageDischarge') } });
+    const animal = await createAnimal(doctor, {
+      ...base,
+      name: qaName('CageDischargePatient'),
+      cageId: cage.id,
+    });
+    await dischargeAnimal(doctor, { animalId: animal.id, summary: 'Recovered', documentFileIds: [] });
+    const after = await prisma.animal.findUnique({ where: { id: animal.id } });
+    expect(after?.cageId).toBeNull();
+  });
+
+  it('death frees the cage', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const cage = await prisma.cage.create({ data: { name: qaName('CageDeath') } });
+    const animal = await createAnimal(doctor, {
+      ...base,
+      name: qaName('CageDeathPatient'),
+      cageId: cage.id,
+    });
+    await recordDeath(doctor, { animalId: animal.id, causeOfDeath: 'Sepsis', documentFileIds: [] });
+    const after = await prisma.animal.findUnique({ where: { id: animal.id } });
+    expect(after?.cageId).toBeNull();
+  });
+
+  it('trashing (soft delete) frees the cage', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const admin = await actorByEmail(ADMIN_EMAIL);
+    const cage = await prisma.cage.create({ data: { name: qaName('CageTrash') } });
+    const animal = await createAnimal(doctor, {
+      ...base,
+      name: qaName('CageTrashPatient'),
+      cageId: cage.id,
+    });
+    await softDeleteAnimal(admin, animal.id);
+    const after = await prisma.animal.findUnique({ where: { id: animal.id } });
+    expect(after?.cageId).toBeNull();
   });
 });
