@@ -173,6 +173,8 @@ model Animal {
   contagious         Boolean      @default(false)
   status          AnimalStatus @default(OBSERVATION)
   ward            String?
+  cageId          String?      @unique
+  cage            Cage?        @relation(fields: [cageId], references: [id], onDelete: Restrict)
   dischargedAt    DateTime?
   deceasedAt      DateTime?
   createdById     String
@@ -194,6 +196,15 @@ model Animal {
   @@index([admittedAt])
   @@index([species])
   @@index([deletedAt])
+}
+
+model Cage {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  occupant Animal? // 0..1 — the patient currently in this cage
 }
 
 model Activity {
