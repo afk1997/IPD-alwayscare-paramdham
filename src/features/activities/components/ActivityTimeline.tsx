@@ -1,6 +1,7 @@
 'use client';
 import { Photo } from '@/components/media/Photo';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
 import {
   Activity as ActivityIcon,
@@ -14,7 +15,7 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import type { SerializedActivity } from '../serialized';
 import { ActivitySheet, type ActivitySummary } from './ActivitySheet';
@@ -46,6 +47,25 @@ export function ActivityTimeline({ activities: initial }: Props) {
   useEffect(() => {
     setActivities(initial);
   }, [initial]);
+
+  const { lastEvent } = useActivityFeed();
+  const lastSeenEventRef = useRef<ActivityFeedEvent | null>(null);
+
+  useEffect(() => {
+    if (!lastEvent || lastEvent === lastSeenEventRef.current) return;
+    lastSeenEventRef.current = lastEvent;
+    if (lastEvent.kind === 'created') {
+      const ownAnimalId = activities[0]?.animalId ?? initial[0]?.animalId;
+      if (lastEvent.activity.animalId === ownAnimalId) {
+        setActivities((prev) =>
+          prev.some((a) => a.id === lastEvent.activity.id) ? prev : [lastEvent.activity, ...prev],
+        );
+      }
+    } else if (lastEvent.kind === 'removed') {
+      setActivities((prev) => prev.filter((a) => a.id !== lastEvent.id));
+    }
+  }, [lastEvent, activities, initial]);
+
   const onSaved = (next: SerializedActivity) => {
     setActivities((prev) => prev.map((a) => (a.id === next.id ? next : a)));
   };
