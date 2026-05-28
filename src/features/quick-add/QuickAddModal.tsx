@@ -118,7 +118,6 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
   const finish = (animalId: string) => {
     onClose();
     router.push(`/patients/${animalId}`);
-    router.refresh();
   };
 
   const title = headerTitle(step);

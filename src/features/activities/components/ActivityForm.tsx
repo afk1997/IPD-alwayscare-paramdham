@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { useToast } from '@/components/ui/Toast';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { copyToClipboard } from '@/lib/clipboard';
+import { dispatchActivityCreated } from '@/lib/hooks/useActivityFeed';
 import { useMemo, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { createActivityAction, getActivityShareTextAction } from '../actions';
@@ -123,6 +124,13 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
       if (!result.ok) {
         setError(result.error ?? 'Failed to log');
         return;
+      }
+
+      // Dispatch the new activity into the feed bus so any mounted
+      // ActivityTimeline or TodayTimelineList updates without a
+      // router.refresh() round-trip.
+      if (result.activity) {
+        dispatchActivityCreated(result.activity);
       }
 
       // Fetch the formatted share-text and attach it as a Share action
