@@ -3,6 +3,7 @@ import { Photo } from '@/components/media/Photo';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Activity as ActivityIcon,
   Bath,
@@ -41,6 +42,20 @@ const TYPE_META: Record<ActivityType, TypeMeta> = {
   BATH: { icon: Bath, color: '#0EA5E9' },
   WALK: { icon: Footprints, color: '#A16207' },
 };
+
+type FlatRow =
+  | { kind: 'header'; day: string; count: number; key: string }
+  | { kind: 'activity'; activity: SerializedActivity; key: string };
+
+function flattenByDay(activities: SerializedActivity[]): FlatRow[] {
+  const groups = groupByDay(activities);
+  const out: FlatRow[] = [];
+  for (const [day, items] of groups) {
+    out.push({ kind: 'header', day, count: items.length, key: `h-${day}` });
+    for (const a of items) out.push({ kind: 'activity', activity: a, key: a.id });
+  }
+  return out;
+}
 
 export function ActivityTimeline({ activities: initial }: Props) {
   const [activities, setActivities] = useState<SerializedActivity[]>(initial);
@@ -84,6 +99,15 @@ export function ActivityTimeline({ activities: initial }: Props) {
   };
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
 
+  const rows = flattenByDay(activities);
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (i) => (rows[i]?.kind === 'header' ? 36 : 92),
+    overscan: 5,
+  });
+
   if (activities.length === 0) {
     return (
       <EmptyState
@@ -93,8 +117,6 @@ export function ActivityTimeline({ activities: initial }: Props) {
       />
     );
   }
-
-  const groups = groupByDay(activities);
 
   const onClickRow = (a: SerializedActivity) => {
     setSelected({
@@ -112,20 +134,38 @@ export function ActivityTimeline({ activities: initial }: Props) {
 
   return (
     <>
-      <div className="flex flex-col gap-5">
-        {groups.map(([day, items]) => (
-          <div key={day}>
-            <div className="mb-2 flex items-baseline gap-2 px-1">
-              <h3 className="font-display text-[13px] font-bold">{formatDayHeader(day)}</h3>
-              <span className="text-[11px] text-muted">{items.length} entries</span>
-            </div>
-            <ol className="flex flex-col gap-2">
-              {items.map((a) => (
-                <ActivityRow key={a.id} activity={a} onClick={() => onClickRow(a)} />
-              ))}
-            </ol>
-          </div>
-        ))}
+      <div ref={parentRef} className="max-h-[78vh] overflow-y-auto md:max-h-[80vh]">
+        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
+          {virtualizer.getVirtualItems().map((vi) => {
+            const row = rows[vi.index];
+            if (!row) return null;
+            return (
+              <div
+                key={row.key}
+                data-index={vi.index}
+                ref={virtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${vi.start}px)`,
+                }}
+              >
+                {row.kind === 'header' ? (
+                  <div className="mb-2 flex items-baseline gap-2 px-1 pt-2">
+                    <h3 className="font-display text-[13px] font-bold">{formatDayHeader(row.day)}</h3>
+                    <span className="text-[11px] text-muted">{row.count} entries</span>
+                  </div>
+                ) : (
+                  <div className="pb-2">
+                    <ActivityRow activity={row.activity} onClick={() => onClickRow(row.activity)} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
       <ActivitySheet
         activity={selected}
