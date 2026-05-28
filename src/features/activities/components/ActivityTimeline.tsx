@@ -17,26 +17,10 @@ import {
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
+import type { SerializedActivity } from '../serialized';
 import { ActivitySheet, type ActivitySummary } from './ActivitySheet';
 
-export interface SerializedActivity {
-  id: string;
-  animalId: string;
-  type: ActivityType;
-  occurredAt: string;
-  byName: string;
-  remarks: string | null;
-  editedAt: string | null;
-  // biome-ignore lint/suspicious/noExplicitAny: server-erased data shape
-  data: any;
-  media: {
-    id: string;
-    assetId: string;
-    kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
-    label: string | null;
-    url: string;
-  }[];
-}
+export type { SerializedActivity } from '../serialized';
 
 interface Props {
   activities: SerializedActivity[];

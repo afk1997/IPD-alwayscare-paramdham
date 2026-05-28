@@ -58,7 +58,7 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
           })),
         },
       },
-      include: { media: { include: { asset: true } } },
+      include: { media: { include: { asset: true } }, byUser: { select: { id: true, name: true } } },
     });
 
     await writeAuditLog(tx, {

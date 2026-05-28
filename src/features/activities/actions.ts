@@ -1,8 +1,10 @@
 'use server';
 import { getCurrentUser } from '@/lib/auth';
 import { RbacError } from '@/lib/errors';
+import { signMediaUrl } from '@/lib/media-sign';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { type CreateActivityInput, CreateActivitySchema, type UpdateActivityInput } from './schema';
+import { type SerializedActivity, serializeActivity } from './serialized';
 import {
   type ActivityActor,
   createActivity,
@@ -20,7 +22,9 @@ async function requireActor(): Promise<ActivityActor> {
 
 export interface ActivityActionResult {
   ok: boolean;
-  activityId?: string;
+  activity?: SerializedActivity;
+  /** Present on soft-delete success — the row id that was removed. */
+  deletedId?: string;
   error?: string;
 }
 
@@ -41,9 +45,9 @@ export async function createActivityAction(input: CreateActivityInput): Promise<
   try {
     const actor = await requireActor();
     const parsed = CreateActivitySchema.parse(input);
-    const activity = await createActivity(actor, parsed);
+    const created = await createActivity(actor, parsed);
     bustForActivityMutation(parsed.type);
-    return { ok: true, activityId: activity.id };
+    return { ok: true, activity: serializeActivity(created, signMediaUrl) };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     if (e && typeof e === 'object' && 'issues' in e) {
@@ -62,7 +66,7 @@ export async function deleteActivityAction(activityId: string): Promise<Activity
     if (!id.success) return { ok: false, error: 'Invalid activity id' };
     const result = await softDeleteActivity(actor, id.data);
     bustForActivityMutation(result.type);
-    return { ok: true };
+    return { ok: true, deletedId: id.data };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     console.error('[activities/actions] deleteActivity', e instanceof Error ? e.message : 'unknown');
@@ -78,7 +82,7 @@ export async function restoreActivityAction(activityId: string): Promise<Activit
     if (!id.success) return { ok: false, error: 'Invalid activity id' };
     const result = await restoreActivity(actor, id.data);
     bustForActivityMutation(result.type);
-    return { ok: true, activityId };
+    return { ok: true, activity: serializeActivity(result, signMediaUrl) };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     console.error('[activities/actions] restoreActivity', e instanceof Error ? e.message : 'unknown');
@@ -152,7 +156,7 @@ export async function updateActivityAction(
     const actor = await requireActor();
     const updated = await updateActivity(actor, activityId, patch);
     bustForActivityMutation(updated.type);
-    return { ok: true, activityId: updated.id };
+    return { ok: true, activity: serializeActivity(updated, signMediaUrl) };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     if (e && typeof e === 'object' && 'issues' in e) {
@@ -171,7 +175,7 @@ export async function duplicateActivityAction(activityId: string): Promise<Activ
     if (!id.success) return { ok: false, error: 'Invalid activity id' };
     const created = await duplicateActivity(actor, id.data);
     bustForActivityMutation(created.type);
-    return { ok: true, activityId: created.id };
+    return { ok: true, activity: serializeActivity(created, signMediaUrl) };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     console.error('[activities/actions] duplicate', e instanceof Error ? e.message : 'unknown');
