@@ -47,6 +47,7 @@ jobs:
       - run: pnpm exec prisma generate
       - run: pnpm exec prisma migrate deploy
       - run: pnpm run typecheck
+      - run: bash scripts/check-no-raw-file-urls.sh
       - run: pnpm run lint
       - run: pnpm run test
       - run: pnpm run build
