@@ -2,6 +2,9 @@
 import { Photo } from '@/components/media/Photo';
 import { ActivitySheet, type ActivitySummary } from '@/features/activities/components/ActivitySheet';
 import { ACTIVITY_LABELS, type ActivityType } from '@/features/activities/schema';
+import type { SerializedActivity } from '@/features/activities/serialized';
+import { summarizeActivity } from '@/features/activities/summary';
+import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
 import {
   Bath,
@@ -14,8 +17,7 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TypeMeta {
   icon: LucideIcon;
@@ -63,9 +65,58 @@ interface Props {
   items: TodayTimelineRow[];
 }
 
-export function TodayTimelineList({ items }: Props) {
-  const router = useRouter();
+/**
+ * Convert a SerializedActivity (returned by server actions) to the
+ * TodayTimelineRow shape used by this component.
+ *
+ * `prev` threads through existing animal-level fields (name, species,
+ * thumbnail) when updating a row in place — those fields come from
+ * the server-join and aren't present in SerializedActivity.  For new
+ * rows appended from QuickAdd, `prev` is undefined and those fields
+ * are blank; they'll be populated correctly on the next navigation.
+ */
+function activityToFeedItem(a: SerializedActivity, prev?: TodayTimelineRow): TodayTimelineRow {
+  return {
+    id: a.id,
+    animalId: a.animalId,
+    animalName: prev?.animalName ?? '',
+    animalSpecies: prev?.animalSpecies ?? '',
+    animalThumbnailUrl: prev?.animalThumbnailUrl ?? null,
+    type: a.type,
+    occurredAt: a.occurredAt,
+    byName: a.byName,
+    remarks: a.remarks,
+    data: a.data,
+    editedAt: a.editedAt,
+    media: a.media,
+    summary: summarizeActivity({ type: a.type, data: a.data, remarks: a.remarks }),
+  };
+}
+
+export function TodayTimelineList({ items: initial }: Props) {
+  const [items, setItems] = useState(initial);
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
+
+  useEffect(() => {
+    setItems(initial);
+  }, [initial]);
+
+  const { lastEvent } = useActivityFeed();
+  const lastSeenEventRef = useRef<ActivityFeedEvent | null>(null);
+
+  useEffect(() => {
+    if (!lastEvent || lastEvent === lastSeenEventRef.current) return;
+    lastSeenEventRef.current = lastEvent;
+    if (lastEvent.kind === 'created') {
+      setItems((prev) =>
+        prev.some((it) => it.id === lastEvent.activity.id)
+          ? prev
+          : [activityToFeedItem(lastEvent.activity), ...prev],
+      );
+    } else if (lastEvent.kind === 'removed') {
+      setItems((prev) => prev.filter((it) => it.id !== lastEvent.id));
+    }
+  }, [lastEvent]);
 
   const openSheet = (it: TodayTimelineRow) => {
     setSelected({
@@ -170,10 +221,18 @@ export function TodayTimelineList({ items }: Props) {
         activity={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
-        onSaved={() => router.refresh()}
-        onDeleted={() => router.refresh()}
-        onDuplicated={() => router.refresh()}
-        onRestored={() => router.refresh()}
+        onSaved={(next) => {
+          setItems((prev) => prev.map((it) => (it.id === next.id ? activityToFeedItem(next, it) : it)));
+        }}
+        onDeleted={(id) => {
+          setItems((prev) => prev.filter((it) => it.id !== id));
+        }}
+        onDuplicated={(next) => {
+          setItems((prev) => [activityToFeedItem(next), ...prev]);
+        }}
+        onRestored={(next) => {
+          setItems((prev) => [activityToFeedItem(next), ...prev]);
+        }}
       />
     </>
   );
