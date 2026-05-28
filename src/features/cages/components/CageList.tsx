@@ -3,37 +3,35 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { deleteCageAction, renameCageAction } from '../actions';
+import { type CageRow, deleteCageAction, renameCageAction } from '../actions';
 
-interface Occupant {
-  id: string;
-  name: string;
-  species: string;
-  status: string;
-}
-interface Cage {
-  id: string;
-  name: string;
-  occupant: Occupant | null;
+interface Props {
+  cages: CageRow[];
+  onRenamed: (cage: CageRow) => void;
+  onDeleted: (id: string) => void;
 }
 
-export function CageList({ cages }: { cages: Cage[] }) {
+export function CageList({ cages, onRenamed, onDeleted }: Props) {
   if (cages.length === 0) {
     return <p className="text-sm text-muted">No cages yet. Add your first cage above.</p>;
   }
   return (
     <div className="flex flex-col gap-2">
       {cages.map((cage) => (
-        <CageRow key={cage.id} cage={cage} />
+        <CageRowItem key={cage.id} cage={cage} onRenamed={onRenamed} onDeleted={onDeleted} />
       ))}
     </div>
   );
 }
 
-function CageRow({ cage }: { cage: Cage }) {
-  const router = useRouter();
+interface RowProps {
+  cage: CageRow;
+  onRenamed: (cage: CageRow) => void;
+  onDeleted: (id: string) => void;
+}
+
+function CageRowItem({ cage, onRenamed, onDeleted }: RowProps) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(cage.name);
   const [pending, start] = useTransition();
@@ -46,7 +44,7 @@ function CageRow({ cage }: { cage: Cage }) {
       if (!result.ok) setError(result.error ?? 'Rename failed');
       else {
         setEditing(false);
-        router.refresh();
+        if (result.cage) onRenamed(result.cage);
       }
     });
   };
@@ -57,7 +55,7 @@ function CageRow({ cage }: { cage: Cage }) {
     start(async () => {
       const result = await deleteCageAction(cage.id);
       if (!result.ok) setError(result.error ?? 'Delete failed');
-      else router.refresh();
+      else onDeleted(cage.id);
     });
   };
 

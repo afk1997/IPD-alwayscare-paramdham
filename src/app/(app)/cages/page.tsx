@@ -1,5 +1,4 @@
-import { AddCageForm } from '@/features/cages/components/AddCageForm';
-import { CageList } from '@/features/cages/components/CageList';
+import { CagesPanel } from '@/features/cages/components/CagesPanel';
 import { listCagesWithOccupancy } from '@/features/cages/queries';
 import { requireCageManageRole } from '@/lib/auth';
 
@@ -11,11 +10,10 @@ export default async function CagesPage() {
       <div>
         <h1 className="font-display text-2xl font-bold tracking-tight">Cages</h1>
         <p className="mt-1 text-sm text-muted">
-          Add cages and see who’s in each. A cage frees automatically on discharge or death.
+          Add cages and see who's in each. A cage frees automatically on discharge or death.
         </p>
       </div>
-      <AddCageForm />
-      <CageList cages={cages} />
+      <CagesPanel initial={cages} />
     </div>
   );
 }

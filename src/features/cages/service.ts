@@ -27,7 +27,12 @@ export async function createCage(actor: Actor, input: CreateCageInput) {
   const parsed = CreateCageSchema.parse(input);
   await assertNameFree(parsed.name);
   return prisma.$transaction(async (tx) => {
-    const cage = await tx.cage.create({ data: { name: parsed.name } });
+    const cage = await tx.cage.create({
+      data: { name: parsed.name },
+      include: {
+        occupant: { select: { id: true, name: true, species: true, status: true } },
+      },
+    });
     await writeAuditLog(tx, {
       actorId: actor.id,
       action: 'create',
@@ -46,7 +51,13 @@ export async function renameCage(actor: Actor, input: RenameCageInput) {
   if (!before) throw new NotFoundError('Cage', parsed.id);
   await assertNameFree(parsed.name, parsed.id);
   return prisma.$transaction(async (tx) => {
-    const cage = await tx.cage.update({ where: { id: parsed.id }, data: { name: parsed.name } });
+    const cage = await tx.cage.update({
+      where: { id: parsed.id },
+      data: { name: parsed.name },
+      include: {
+        occupant: { select: { id: true, name: true, species: true, status: true } },
+      },
+    });
     await writeAuditLog(tx, {
       actorId: actor.id,
       action: 'update',

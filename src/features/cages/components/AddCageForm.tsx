@@ -1,12 +1,14 @@
 'use client';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { createCageAction } from '../actions';
+import { type CageRow, createCageAction } from '../actions';
 
-export function AddCageForm() {
-  const router = useRouter();
+interface Props {
+  onCreated: (cage: CageRow) => void;
+}
+
+export function AddCageForm({ onCreated }: Props) {
   const [name, setName] = useState('');
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export function AddCageForm() {
       if (!result.ok) setError(result.error ?? 'Could not add cage');
       else {
         setName('');
-        router.refresh();
+        if (result.cage) onCreated(result.cage);
       }
     });
   };

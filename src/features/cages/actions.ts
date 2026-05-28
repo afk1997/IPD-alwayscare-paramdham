@@ -10,8 +10,20 @@ async function requireActor() {
   return { id: user.id, role: user.role };
 }
 
+export interface CageRow {
+  id: string;
+  name: string;
+  occupant: {
+    id: string;
+    name: string;
+    species: string;
+    status: string;
+  } | null;
+}
+
 export interface CageActionResult {
   ok: boolean;
+  cage?: CageRow;
   error?: string;
 }
 
@@ -35,9 +47,9 @@ function revalidateCages() {
 export async function createCageAction(name: string): Promise<CageActionResult> {
   try {
     const actor = await requireActor();
-    await createCage(actor, { name });
+    const created = await createCage(actor, { name });
     revalidateCages();
-    return { ok: true };
+    return { ok: true, cage: created };
   } catch (e) {
     return mapError(e);
   }
@@ -46,9 +58,9 @@ export async function createCageAction(name: string): Promise<CageActionResult> 
 export async function renameCageAction(id: string, name: string): Promise<CageActionResult> {
   try {
     const actor = await requireActor();
-    await renameCage(actor, { id, name });
+    const updated = await renameCage(actor, { id, name });
     revalidateCages();
-    return { ok: true };
+    return { ok: true, cage: updated };
   } catch (e) {
     return mapError(e);
   }
