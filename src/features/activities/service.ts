@@ -116,6 +116,7 @@ export async function updateActivity(actor: ActivityActor, activityId: string, p
     const updated = await tx.activity.update({
       where: { id: activityId },
       data: updateData,
+      include: { media: { include: { asset: true } }, byUser: { select: { id: true, name: true } } },
     });
     // Audit diff now captures byName + occurredAt alongside the existing
     // remarks/data.  A re-attribution edit ("by Dr. Mehta" → "by Dr. Iyer")
@@ -158,6 +159,7 @@ export async function duplicateActivity(actor: ActivityActor, activityId: string
         data: original.data as Prisma.InputJsonValue,
         duplicatedFromId: original.id,
       },
+      include: { media: { include: { asset: true } }, byUser: { select: { id: true, name: true } } },
     });
     await writeAuditLog(tx, {
       actorId: actor.id,
@@ -195,7 +197,7 @@ export async function softDeleteActivity(actor: Actor, activityId: string) {
       const u = await tx.activity.update({
         where: { id: activityId, deletedAt: null },
         data: { deletedAt: new Date(), editedById: actor.id, editedAt: new Date() },
-        include: { media: { include: { asset: true } } },
+        include: { media: { include: { asset: true } }, byUser: { select: { id: true, name: true } } },
       });
       await writeAuditLog(tx, {
         actorId: actor.id,
@@ -244,6 +246,7 @@ export async function restoreActivity(actor: Actor, activityId: string) {
     const u = await tx.activity.update({
       where: { id: activityId },
       data: { deletedAt: null, editedById: actor.id, editedAt: new Date() },
+      include: { media: { include: { asset: true } }, byUser: { select: { id: true, name: true } } },
     });
     await writeAuditLog(tx, {
       actorId: actor.id,
