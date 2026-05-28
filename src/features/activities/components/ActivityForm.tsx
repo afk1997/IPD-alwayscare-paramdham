@@ -128,7 +128,7 @@ export function ActivityForm({ animalId, type, onDone }: Props) {
       // Fetch the formatted share-text and attach it as a Share action
       // on the success toast.  If the fetch fails for any reason the
       // form still closes with a plain "saved" toast.
-      const activityId = result.activityId;
+      const activityId = result.activity?.id;
       const share = activityId ? await getActivityShareTextAction(activityId) : null;
       const shareText = share?.ok ? share.text : undefined;
       showToast({

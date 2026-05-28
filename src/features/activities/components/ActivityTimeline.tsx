@@ -14,29 +14,12 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
+import type { SerializedActivity } from '../serialized';
 import { ActivitySheet, type ActivitySummary } from './ActivitySheet';
 
-export interface SerializedActivity {
-  id: string;
-  animalId: string;
-  type: ActivityType;
-  occurredAt: string;
-  byName: string;
-  remarks: string | null;
-  editedAt: string | null;
-  // biome-ignore lint/suspicious/noExplicitAny: server-erased data shape
-  data: any;
-  media: {
-    id: string;
-    assetId: string;
-    kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
-    label: string | null;
-    url: string;
-  }[];
-}
+export type { SerializedActivity } from '../serialized';
 
 interface Props {
   activities: SerializedActivity[];
@@ -58,8 +41,27 @@ const TYPE_META: Record<ActivityType, TypeMeta> = {
   WALK: { icon: Footprints, color: '#A16207' },
 };
 
-export function ActivityTimeline({ activities }: Props) {
-  const router = useRouter();
+export function ActivityTimeline({ activities: initial }: Props) {
+  const [activities, setActivities] = useState<SerializedActivity[]>(initial);
+  useEffect(() => {
+    setActivities(initial);
+  }, [initial]);
+  const onSaved = (next: SerializedActivity) => {
+    setActivities((prev) => prev.map((a) => (a.id === next.id ? next : a)));
+  };
+  const onDeleted = (id: string) => {
+    setActivities((prev) => prev.filter((a) => a.id !== id));
+  };
+  const onDuplicated = (next: SerializedActivity) => {
+    setActivities((prev) => [next, ...prev]);
+  };
+  const onRestored = (next: SerializedActivity) => {
+    setActivities((prev) =>
+      [next, ...prev].sort((a, b) =>
+        a.occurredAt < b.occurredAt ? 1 : a.occurredAt > b.occurredAt ? -1 : 0,
+      ),
+    );
+  };
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
 
   if (activities.length === 0) {
@@ -109,7 +111,10 @@ export function ActivityTimeline({ activities }: Props) {
         activity={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
-        onChanged={() => router.refresh()}
+        onSaved={onSaved}
+        onDeleted={onDeleted}
+        onDuplicated={onDuplicated}
+        onRestored={onRestored}
       />
     </>
   );

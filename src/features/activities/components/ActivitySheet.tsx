@@ -18,8 +18,30 @@ import {
   updateActivityAction,
 } from '../actions';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
+import type { SerializedActivity } from '../serialized';
 import { summarizeActivity } from '../summary';
 import { ActivityEditFields, type EditDraft, toLocalDatetime } from './ActivityEditFields';
+
+function buildOptimisticUpdate(
+  activity: ActivitySummary,
+  draft: EditDraft,
+  media: SerializedActivity['media'],
+): SerializedActivity {
+  const occurredAtISO = draft.occurredAtLocal
+    ? new Date(draft.occurredAtLocal).toISOString()
+    : activity.occurredAt.toISOString();
+  return {
+    id: activity.id,
+    animalId: activity.animalId,
+    type: activity.type,
+    occurredAt: occurredAtISO,
+    byName: draft.byName.trim() || activity.byName,
+    remarks: draft.remarks || null,
+    editedAt: new Date().toISOString(),
+    data: draft.data,
+    media,
+  };
+}
 
 export interface ActivitySummary {
   id: string;
@@ -48,7 +70,10 @@ interface Props {
   activity: ActivitySummary | null;
   open: boolean;
   onClose: () => void;
-  onChanged: () => void;
+  onSaved: (next: SerializedActivity) => void;
+  onDeleted: (id: string) => void;
+  onDuplicated: (next: SerializedActivity) => void;
+  onRestored: (next: SerializedActivity) => void;
 }
 
 type Mode = 'view' | 'edit' | 'confirmDelete';
@@ -64,7 +89,15 @@ const TYPE_COLOR: Record<ActivityType, string> = {
   WALK: '#A16207',
 };
 
-export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
+export function ActivitySheet({
+  activity,
+  open,
+  onClose,
+  onSaved,
+  onDeleted,
+  onDuplicated,
+  onRestored,
+}: Props) {
   const { showToast } = useToast();
   const { currentUserRole } = useActiveUsers();
   const canWrite = currentUserRole !== 'VIEWER';
@@ -98,6 +131,24 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   if (!open || !activity) return null;
 
   const save = () => {
+    // Snapshot for revert
+    const snapshot: SerializedActivity = {
+      id: activity.id,
+      animalId: activity.animalId,
+      type: activity.type,
+      occurredAt: activity.occurredAt.toISOString(),
+      byName: activity.byName,
+      remarks: activity.remarks,
+      editedAt: activity.editedAt ? activity.editedAt.toISOString() : null,
+      data: activity.data,
+      media: activity.media as SerializedActivity['media'],
+    };
+    const optimistic = buildOptimisticUpdate(activity, draft, activity.media as SerializedActivity['media']);
+    // Apply immediately — sheet closes, timeline shows new content
+    onSaved(optimistic);
+    setMode('view');
+    onClose();
+
     start(async () => {
       const occurredAtISO = draft.occurredAtLocal ? new Date(draft.occurredAtLocal).toISOString() : undefined;
       const result = await updateActivityAction(activity.id, {
@@ -106,13 +157,13 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
         ...(occurredAtISO ? { occurredAt: occurredAtISO } : {}),
         ...(draft.byName.trim() ? { byName: draft.byName.trim() } : {}),
       });
-      if (result.ok) {
+      if (result.ok && result.activity) {
         showToast({ message: `${ACTIVITY_LABELS[activity.type]} updated` });
-        setMode('view');
-        onChanged();
-        onClose();
+        // Overlay canonical row over the optimistic one
+        onSaved(result.activity);
       } else {
-        setError(result.error ?? 'Update failed');
+        onSaved(snapshot);
+        showToast({ message: result.error ?? 'Update failed — reverted' });
       }
     });
   };
@@ -120,11 +171,23 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   const del = () => {
     const id = activity.id;
     const typeLabel = ACTIVITY_LABELS[activity.type];
+    const snapshot: SerializedActivity = {
+      id: activity.id,
+      animalId: activity.animalId,
+      type: activity.type,
+      occurredAt: activity.occurredAt.toISOString(),
+      byName: activity.byName,
+      remarks: activity.remarks,
+      editedAt: activity.editedAt ? activity.editedAt.toISOString() : null,
+      data: activity.data,
+      media: activity.media as SerializedActivity['media'],
+    };
+    onDeleted(id);
+    onClose();
+
     start(async () => {
       const result = await deleteActivityAction(id);
       if (result.ok) {
-        onChanged();
-        onClose();
         showToast({
           message: `${typeLabel} deleted`,
           duration: 12000,
@@ -132,12 +195,13 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
             label: 'Undo',
             onClick: async () => {
               const r = await restoreActivityAction(id);
-              if (r.ok) onChanged();
+              if (r.ok && r.activity) onRestored(r.activity);
             },
           },
         });
       } else {
-        setError(result.error ?? 'Delete failed');
+        onRestored(snapshot);
+        showToast({ message: result.error ?? 'Delete failed — restored' });
       }
     });
   };
@@ -160,8 +224,8 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   const dup = () => {
     start(async () => {
       const result = await duplicateActivityAction(activity.id);
-      if (result.ok) {
-        onChanged();
+      if (result.ok && result.activity) {
+        onDuplicated(result.activity);
         onClose();
       } else {
         setError(result.error ?? 'Duplicate failed');
