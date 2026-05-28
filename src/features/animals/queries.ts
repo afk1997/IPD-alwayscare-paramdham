@@ -1,3 +1,4 @@
+import { signMediaUrl } from '@/lib/media-sign';
 import { prisma } from '@/lib/prisma';
 import type { AnimalStatus, Prisma } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
@@ -22,11 +23,10 @@ export interface AnimalListItem {
   aggressive: boolean;
   admittedAt: Date;
   lastActivityAt: Date | null;
-  // MediaAsset.id of the first photo — used to build a `/api/files/[id]`
-  // URL.  Previously this column held the raw storageKey ("gdrive:1abc…")
-  // and the UI split out the Drive ID, which 404'd because the API
-  // expects a CUID.  Storing the asset id makes the URL trivially correct.
-  thumbnailAssetId: string | null;
+  // Pre-signed URL for the first photo, ready to use directly in <img src>.
+  // The URL is HMAC-signed with AUTH_SECRET so it can be served from the
+  // edge cache without a cookie check.
+  thumbnailUrl: string | null;
 }
 
 export async function listAnimals(params: ListAnimalsParams = {}): Promise<AnimalListItem[]> {
@@ -95,7 +95,7 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
     aggressive: r.aggressive,
     admittedAt: r.admittedAt,
     lastActivityAt: r.activities[0]?.occurredAt ?? null,
-    thumbnailAssetId: r.media[0]?.asset.id ?? null,
+    thumbnailUrl: r.media[0]?.asset.id ? signMediaUrl(r.media[0].asset.id) : null,
   }));
 }
 
