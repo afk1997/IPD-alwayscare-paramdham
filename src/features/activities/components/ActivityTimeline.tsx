@@ -3,7 +3,6 @@ import { Photo } from '@/components/media/Photo';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
-import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   Activity as ActivityIcon,
   Bath,
@@ -16,7 +15,7 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import type { SerializedActivity } from '../serialized';
 import { ActivitySheet, type ActivitySummary } from './ActivitySheet';
@@ -103,21 +102,6 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
 
   const rows = flattenByDay(activities);
-  // Measure the list's distance from the document top on mount so the window
-  // virtualizer positions rows correctly on first paint. Reading
-  // `ref.current?.offsetTop` during render yields 0 until the ref attaches,
-  // which offsets every row by the full hero/tabs height. A callback ref sets
-  // state during commit → a synchronous re-render before the browser paints.
-  const [scrollMargin, setScrollMargin] = useState(0);
-  const setListRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) setScrollMargin(node.offsetTop);
-  }, []);
-  const virtualizer = useWindowVirtualizer({
-    count: rows.length,
-    estimateSize: (i) => (rows[i]?.kind === 'header' ? 36 : 92),
-    overscan: 5,
-    scrollMargin,
-  });
 
   if (activities.length === 0) {
     return (
@@ -145,36 +129,19 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
 
   return (
     <>
-      <div ref={setListRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
-        {virtualizer.getVirtualItems().map((vi) => {
-          const row = rows[vi.index];
-          if (!row) return null;
-          return (
-            <div
-              key={row.key}
-              data-index={vi.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
-              }}
-            >
-              {row.kind === 'header' ? (
-                <div className="mb-2 flex items-baseline gap-2 px-1 pt-2">
-                  <h3 className="font-display text-[13px] font-bold">{formatDayHeader(row.day)}</h3>
-                  <span className="text-[11px] text-muted">{row.count} entries</span>
-                </div>
-              ) : (
-                <div className="pb-2">
-                  <ActivityRow activity={row.activity} onClick={() => onClickRow(row.activity)} />
-                </div>
-              )}
+      <div className="relative">
+        {rows.map((row) =>
+          row.kind === 'header' ? (
+            <div key={row.key} className="mb-2 flex items-baseline gap-2 px-1 pt-2">
+              <h3 className="font-display text-[13px] font-bold">{formatDayHeader(row.day)}</h3>
+              <span className="text-[11px] text-muted">{row.count} entries</span>
             </div>
-          );
-        })}
+          ) : (
+            <div key={row.key} className="pb-2">
+              <ActivityRow activity={row.activity} onClick={() => onClickRow(row.activity)} />
+            </div>
+          ),
+        )}
       </div>
       <ActivitySheet
         activity={selected}
@@ -208,8 +175,6 @@ function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; o
     : null;
 
   return (
-    // Plain <div>, not <li>: the window virtualizer wraps each row in an
-    // absolutely-positioned <div>, so there is no <ol>/<ul> parent for an <li>.
     <div>
       <button
         type="button"

@@ -8,7 +8,10 @@ const ACTIVITY_FEED_CAP = 500;
 
 export async function listActivitiesForAnimal(animalId: string) {
   const rows = await prisma.activity.findMany({
-    where: { animalId, deletedAt: null },
+    // Join the parent's deletedAt so a trashed animal's feed never leaks,
+    // consistent with the report/search queries (callers already 404 trashed
+    // animals, but don't rely on caller ordering for the invariant).
+    where: { animalId, deletedAt: null, animal: { deletedAt: null } },
     orderBy: { occurredAt: 'desc' },
     take: ACTIVITY_FEED_CAP,
     include: {
@@ -27,7 +30,7 @@ export async function listActivitiesForAnimal(animalId: string) {
 
 export async function getLastActivityAt(animalId: string): Promise<Date | null> {
   const last = await prisma.activity.findFirst({
-    where: { animalId, deletedAt: null },
+    where: { animalId, deletedAt: null, animal: { deletedAt: null } },
     orderBy: { occurredAt: 'desc' },
     select: { occurredAt: true },
   });

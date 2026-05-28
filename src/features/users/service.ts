@@ -6,35 +6,53 @@ import type { Role as PrismaRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { type InviteUserInput, InviteUserSchema, type UpdateUserInput, UpdateUserSchema } from './schema';
 
+function isUniqueViolation(e: unknown): boolean {
+  return Boolean(e && typeof e === 'object' && 'code' in e && (e as { code?: string }).code === 'P2002');
+}
+
 export async function inviteUser(actor: Actor, input: InviteUserInput) {
   assertCan(actor, 'user.manage');
   const parsed = InviteUserSchema.parse(input);
+
+  // D4: SUPER_ADMIN is a protected tier. Only an existing SUPER_ADMIN may
+  // mint another one — a plain ADMIN cannot create or escalate into it.
+  if (parsed.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+    throw new RbacError('only a super admin can create a super admin');
+  }
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.email.toLowerCase() } });
   if (existing) throw new ValidationError('Email already in use');
   const passwordHash = await bcrypt.hash(parsed.temporaryPassword, 12);
 
-  return prisma.$transaction(async (tx) => {
-    const created = await tx.user.create({
-      data: {
-        email: parsed.email.toLowerCase(),
-        name: parsed.name,
-        role: parsed.role as PrismaRole,
-        passwordHash,
-        active: true,
-        invitedById: actor.id,
-        invitedAt: new Date(),
-      },
+  return prisma
+    .$transaction(async (tx) => {
+      const created = await tx.user.create({
+        data: {
+          email: parsed.email.toLowerCase(),
+          name: parsed.name,
+          role: parsed.role as PrismaRole,
+          passwordHash,
+          active: true,
+          invitedById: actor.id,
+          invitedAt: new Date(),
+        },
+      });
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'create',
+        entityType: 'User',
+        entityId: created.id,
+        after: { email: created.email, name: created.name, role: created.role },
+      });
+      return created;
+    })
+    .catch((e) => {
+      // The findUnique pre-check above is not atomic with the create; two
+      // concurrent invites of the same email race past it and one hits the
+      // User.email unique index. Translate P2002 to the same friendly error.
+      if (isUniqueViolation(e)) throw new ValidationError('Email already in use');
+      throw e;
     });
-    await writeAuditLog(tx, {
-      actorId: actor.id,
-      action: 'create',
-      entityType: 'User',
-      entityId: created.id,
-      after: { email: created.email, name: created.name, role: created.role },
-    });
-    return created;
-  });
 }
 
 export async function updateUser(actor: Actor, input: UpdateUserInput) {
@@ -42,6 +60,20 @@ export async function updateUser(actor: Actor, input: UpdateUserInput) {
   const parsed = UpdateUserSchema.parse(input);
   const before = await prisma.user.findUnique({ where: { id: parsed.id } });
   if (!before) throw new NotFoundError('User', parsed.id);
+
+  // D4: the SUPER_ADMIN tier is protected from plain ADMINs. A non-super
+  // actor may neither modify an existing SUPER_ADMIN (demote / rename /
+  // deactivate / reset password) nor promote anyone into the tier. A
+  // SUPER_ADMIN acting on their own row is still bound by the self-role and
+  // last-admin guards below.
+  if (actor.role !== 'SUPER_ADMIN') {
+    if (before.role === 'SUPER_ADMIN') {
+      throw new RbacError('only a super admin can modify a super admin');
+    }
+    if (parsed.role === 'SUPER_ADMIN') {
+      throw new RbacError('only a super admin can grant super admin');
+    }
+  }
 
   // H3-s: refuse self-role-change.  Without this, an ADMIN editing their
   // own row could downgrade to STAFF and lose access mid-shift; worse,

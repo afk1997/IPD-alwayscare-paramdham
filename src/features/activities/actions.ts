@@ -211,7 +211,10 @@ export async function getActivityShareTextAction(activityId: string): Promise<Ac
         remarks: true,
         byName: true,
         animal: { select: { name: true, species: true, ward: true } },
-        _count: { select: { media: true } },
+        // Only READY media — PENDING/FAILED uploads would otherwise inflate the
+        // "📎 N attachments" indicator in the shared text (matches the report
+        // queries).
+        _count: { select: { media: { where: { asset: { status: 'READY' } } } } },
       },
     });
     if (!row) return { ok: false, error: 'Activity not found' };

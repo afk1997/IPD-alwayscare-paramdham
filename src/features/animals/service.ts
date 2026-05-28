@@ -146,7 +146,10 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
   // Validate the patch — without this, `animal.update` callers could write
   // a multi-MB name or an invalid enum straight to the DB (H1-s).
   const parsed = UpdateAnimalSchema.parse(patch);
-  const before = await prisma.animal.findUnique({ where: { id: animalId } });
+  // M6: refuse to edit a soft-deleted animal. The edit page goes through
+  // getAnimal (which 404s on trashed), but a direct action call would
+  // otherwise re-stamp editedAt and could re-occupy a cage while trashed.
+  const before = await prisma.animal.findFirst({ where: { id: animalId, deletedAt: null } });
   if (!before) throw new NotFoundError('Animal', animalId);
 
   const data: Prisma.AnimalUncheckedUpdateInput = {

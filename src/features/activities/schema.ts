@@ -40,6 +40,9 @@ export const TreatmentData = z.object({
         name: z.string().min(1, 'Medicine name required'),
         dose: z.string().min(1, 'Dose required'),
         route: z.enum(ROUTES),
+        // Per-medicine note ("give slowly", "with food"). The editor collects
+        // it and ActivitySheet renders it, so it must persist.
+        remarks: z.string().max(500).optional(),
       }),
     )
     .min(1, 'Add at least one medicine'),
@@ -102,19 +105,24 @@ export const AdmissionData = z.object({
   summary: z.string().min(1),
 });
 
+// `<input type="datetime-local">` posts `2026-05-22T14:30` (no Z) which Date
+// treats as local (server is pinned to IST). A garbage value is rejected, and
+// a future timestamp is rejected too (mirrors the client `max=now`): a
+// mistyped year would otherwise float to the top of the feed and poison the
+// staleness signal. A small skew tolerates client/server clock drift.
+const OCCURRED_AT_SKEW_MS = 5 * 60 * 1000;
+const occurredAtField = z
+  .string()
+  .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date/time')
+  .refine((s) => Date.parse(s) <= Date.now() + OCCURRED_AT_SKEW_MS, 'Date cannot be in the future')
+  .optional();
+
 const Base = z.object({
   animalId: z.string().min(1),
   remarks: z.string().optional(),
   mediaAssetIds: z.array(z.string()).default([]),
   // ACT-13: refine to a string that `new Date()` can actually parse.
-  // `<input type="datetime-local">` posts `2026-05-22T14:30` (no Z) which
-  // Date treats as local time; we accept that. A garbage value like
-  // `not-a-date` is now rejected at the action boundary instead of
-  // surfacing as a Prisma error.
-  occurredAt: z
-    .string()
-    .refine((s) => !Number.isNaN(Date.parse(s)), 'Invalid date/time')
-    .optional(),
+  occurredAt: occurredAtField,
   // Optional override for the "logged by" name shown in the timeline.
   // Defaults to the signed-in actor's name.  byUserId always tracks the
   // actual user who saved the row (for audit + RBAC ownership).
@@ -144,7 +152,10 @@ export type CreateActivityInput = z.infer<typeof CreateActivitySchema>;
 export const UpdateActivitySchema = z.object({
   remarks: z.string().nullable().optional(),
   data: z.unknown().optional(),
-  occurredAt: z.string().optional(),
+  // M3: mirror create's validation (parseable + not future) — the edit path
+  // previously accepted any string, surfacing a garbage date as an opaque
+  // Prisma error.
+  occurredAt: occurredAtField,
   byName: z.string().min(1).max(120).optional(),
 });
 export type UpdateActivityInput = z.infer<typeof UpdateActivitySchema>;

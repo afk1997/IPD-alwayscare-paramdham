@@ -1,4 +1,5 @@
 'use client';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useSwipeHorizontal } from '@/lib/hooks/useSwipeHorizontal';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import Image from 'next/image';
@@ -45,6 +46,8 @@ export function Lightbox({ items, index, onClose, onChange }: Props) {
       if (hasPrev) onChange((index as number) - 1);
     },
   });
+
+  useBodyScrollLock(index !== null);
 
   if (index === null) return null;
   const current = items[index];

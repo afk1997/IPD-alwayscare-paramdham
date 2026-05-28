@@ -52,10 +52,22 @@ describe('user service — role assignment + password reset', () => {
   });
   afterAll(purgeRolesQa);
 
-  it('ADMIN can invite a SUPER_ADMIN', async () => {
-    const invited = await inviteUser(toActor(qaAdmin), {
-      email: qaEmail('newSA'),
-      name: '__qa__newSA',
+  it('ADMIN cannot invite a SUPER_ADMIN (protected tier)', async () => {
+    await expect(
+      inviteUser(toActor(qaAdmin), {
+        email: qaEmail('newSA'),
+        name: '__qa__newSA',
+        role: 'SUPER_ADMIN',
+        temporaryPassword: 'TmpPass1',
+      }),
+    ).rejects.toBeInstanceOf(RbacError);
+  });
+
+  it('SUPER_ADMIN can invite a SUPER_ADMIN', async () => {
+    const sa = await makeUser('SUPER_ADMIN');
+    const invited = await inviteUser(toActor(sa), {
+      email: qaEmail('newSA2'),
+      name: '__qa__newSA2',
       role: 'SUPER_ADMIN',
       temporaryPassword: 'TmpPass1',
     });
@@ -72,13 +84,39 @@ describe('user service — role assignment + password reset', () => {
     expect(invited.role).toBe('VIEWER');
   });
 
-  it('ADMIN can promote and demote any user, including SUPER_ADMIN and VIEWER', async () => {
+  it('ADMIN can promote and demote among non-super roles', async () => {
     const target = await makeUser('STAFF');
-    const promoted = await updateUser(toActor(qaAdmin), { id: target.id, role: 'SUPER_ADMIN' });
-    expect(promoted.role).toBe('SUPER_ADMIN');
+    const promoted = await updateUser(toActor(qaAdmin), { id: target.id, role: 'DOCTOR' });
+    expect(promoted.role).toBe('DOCTOR');
     const sideways = await updateUser(toActor(qaAdmin), { id: target.id, role: 'VIEWER' });
     expect(sideways.role).toBe('VIEWER');
     const back = await updateUser(toActor(qaAdmin), { id: target.id, role: 'STAFF' });
+    expect(back.role).toBe('STAFF');
+  });
+
+  it('ADMIN cannot promote a user into SUPER_ADMIN', async () => {
+    const target = await makeUser('STAFF');
+    await expect(updateUser(toActor(qaAdmin), { id: target.id, role: 'SUPER_ADMIN' })).rejects.toBeInstanceOf(
+      RbacError,
+    );
+  });
+
+  it('ADMIN cannot modify a SUPER_ADMIN (demote / rename)', async () => {
+    const sa = await makeUser('SUPER_ADMIN');
+    await expect(updateUser(toActor(qaAdmin), { id: sa.id, name: 'hacked' })).rejects.toBeInstanceOf(
+      RbacError,
+    );
+    await expect(updateUser(toActor(qaAdmin), { id: sa.id, role: 'STAFF' })).rejects.toBeInstanceOf(
+      RbacError,
+    );
+  });
+
+  it('SUPER_ADMIN can promote into and demote out of SUPER_ADMIN', async () => {
+    const actorSA = await makeUser('SUPER_ADMIN');
+    const target = await makeUser('STAFF');
+    const promoted = await updateUser(toActor(actorSA), { id: target.id, role: 'SUPER_ADMIN' });
+    expect(promoted.role).toBe('SUPER_ADMIN');
+    const back = await updateUser(toActor(actorSA), { id: target.id, role: 'STAFF' });
     expect(back.role).toBe('STAFF');
   });
 

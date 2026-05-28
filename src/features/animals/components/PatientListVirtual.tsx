@@ -1,6 +1,4 @@
 'use client';
-import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { useRef } from 'react';
 import type { AnimalListItem } from '../queries';
 import { PatientCard } from './PatientCard';
 
@@ -8,42 +6,19 @@ interface Props {
   animals: AnimalListItem[];
 }
 
+// Renders the full admitted-patient list without virtualization. The app
+// shell scrolls an inner `overflow-auto` container (AppShell), not the
+// window, so the previous `useWindowVirtualizer` only ever mounted the first
+// viewport of rows (the inner scroll never reached the window listener) —
+// patients past the fold silently never rendered. At clinic scale (tens of
+// admitted patients, capped at 200 by the query) a plain list is correct and
+// cheaper than wiring a scroll-element virtualizer.
 export function PatientListVirtual({ animals }: Props) {
-  const listRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useWindowVirtualizer({
-    count: animals.length,
-    // PatientCard renders an h-[60px] image + content padding.  The full
-    // card is roughly 86–92px tall on mobile; 86 is a good lower-bound
-    // estimate, measureElement adapts.
-    estimateSize: () => 86,
-    overscan: 5,
-    scrollMargin: listRef.current?.offsetTop ?? 0,
-  });
-
   return (
-    <div ref={listRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
-      {virtualizer.getVirtualItems().map((vi) => {
-        const animal = animals[vi.index];
-        if (!animal) return null;
-        return (
-          <div
-            key={animal.id}
-            data-index={vi.index}
-            ref={virtualizer.measureElement}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
-            }}
-          >
-            <div className="pb-2">
-              <PatientCard animal={animal} />
-            </div>
-          </div>
-        );
-      })}
+    <div className="flex flex-col gap-2">
+      {animals.map((animal) => (
+        <PatientCard key={animal.id} animal={animal} />
+      ))}
     </div>
   );
 }

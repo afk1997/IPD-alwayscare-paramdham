@@ -183,7 +183,15 @@ export const getCachedTodayCounts = unstable_cache(
       prisma.animal.count({ where: { dischargedAt: { gte: today }, deletedAt: null } }),
       prisma.animal.count({ where: { deceasedAt: { gte: today }, deletedAt: null } }),
       prisma.activity.count({
-        where: { type: 'SURGERY', occurredAt: { gte: today }, deletedAt: null },
+        // Soft-deleting an animal doesn't cascade to its activities, so join
+        // the parent's deletedAt to avoid counting surgeries on trashed
+        // patients in today's stats.
+        where: {
+          type: 'SURGERY',
+          occurredAt: { gte: today },
+          deletedAt: null,
+          animal: { deletedAt: null },
+        },
       }),
       prisma.animal.count({
         where: { status: 'CRITICAL', deletedAt: null, dischargedAt: null, deceasedAt: null },

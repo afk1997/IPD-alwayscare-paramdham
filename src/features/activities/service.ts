@@ -144,7 +144,12 @@ export async function updateActivity(actor: ActivityActor, activityId: string, p
 }
 
 export async function duplicateActivity(actor: ActivityActor, activityId: string) {
-  const original = await prisma.activity.findUnique({ where: { id: activityId } });
+  // Mirror createActivity's ACT-3 guard: never duplicate a trashed activity or
+  // attach a fresh copy to a soft-deleted patient (which would resurrect
+  // deleted clinical content and bypass the delete audit trail).
+  const original = await prisma.activity.findFirst({
+    where: { id: activityId, deletedAt: null, animal: { deletedAt: null } },
+  });
   if (!original) throw new NotFoundError('Activity', activityId);
   assertCan(actor, requiredAction(original.type) as 'activity.create' | 'activity.create.clinical');
 
@@ -237,10 +242,16 @@ export async function restoreActivity(actor: Actor, activityId: string) {
   }
   const activity = await prisma.activity.findUnique({
     where: { id: activityId },
-    include: { media: { include: { asset: true } } },
+    include: { media: { include: { asset: true } }, animal: { select: { deletedAt: true } } },
   });
   if (!activity) throw new NotFoundError('Activity', activityId);
   if (!activity.deletedAt) return activity;
+  // Don't resurrect an entry onto a still-trashed patient: every read joins
+  // `animal.deletedAt: null`, so the restored row would be live but invisible
+  // everywhere (and absent from Trash too). Require restoring the patient first.
+  if (activity.animal.deletedAt) {
+    throw new ValidationError('Restore the patient first — this activity belongs to a deleted patient');
+  }
 
   const updated = await prisma.$transaction(async (tx) => {
     const u = await tx.activity.update({
