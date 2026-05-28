@@ -15,6 +15,7 @@ interface Props {
     weightKg: unknown;
     color: string | null;
     ward: string | null;
+    cage: { name: string } | null;
     contagious: boolean;
     aggressive: boolean;
     vaccination: string;
@@ -65,6 +66,7 @@ export function AnimalHero({ animal, lastActivityAt }: Props) {
           )}
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {animal.ward && <Chip>{animal.ward}</Chip>}
+            {animal.cage && <Chip>🏠 {animal.cage.name}</Chip>}
             {animal.contagious && <Pill status="critical">Contagious</Pill>}
             {animal.aggressive && <Pill status="observation">Aggressive</Pill>}
             <Chip>Vacc: {capitalize(animal.vaccination)}</Chip>

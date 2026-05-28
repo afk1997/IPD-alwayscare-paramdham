@@ -1,5 +1,6 @@
 import { AnimalEditForm } from '@/features/animals/components/AnimalEditForm';
 import { getAnimal } from '@/features/animals/queries';
+import { listAssignableCages } from '@/features/cages/queries';
 import { requireWriteRole } from '@/lib/auth';
 import { notFound } from 'next/navigation';
 
@@ -8,11 +9,13 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const animal = await getAnimal(id);
   if (!animal) notFound();
+  const cages = await listAssignableCages(id);
 
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-display text-2xl font-bold tracking-tight">Edit {animal.name}</h1>
       <AnimalEditForm
+        cages={cages}
         animal={{
           id: animal.id,
           name: animal.name,
@@ -25,6 +28,7 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
           aggressive: animal.aggressive,
           contagious: animal.contagious,
           ward: animal.ward,
+          cageId: animal.cageId,
           status: animal.status,
           complaint: animal.complaint,
           history: animal.history,

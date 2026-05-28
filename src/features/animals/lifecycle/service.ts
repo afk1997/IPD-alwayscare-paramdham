@@ -32,6 +32,7 @@ export async function dischargeAnimal(actor: ActorWithName, input: DischargeInpu
       data: {
         status: 'DISCHARGED',
         dischargedAt: now,
+        cageId: null,
         editedAt: now,
         editedById: actor.id,
       },
@@ -97,6 +98,7 @@ export async function recordDeath(actor: ActorWithName, input: DeathInput) {
       data: {
         status: 'DECEASED',
         deceasedAt: now,
+        cageId: null,
         editedAt: now,
         editedById: actor.id,
       },

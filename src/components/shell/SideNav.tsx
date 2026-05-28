@@ -1,7 +1,17 @@
 'use client';
 import { useQuickAdd } from '@/features/quick-add/QuickAddProvider';
 import type { Role } from '@/features/users/schema';
-import { CalendarRange, FileText, History, Home, PawPrint, Plus, Trash2, Users } from 'lucide-react';
+import {
+  CalendarRange,
+  FileText,
+  History,
+  Home,
+  LayoutGrid,
+  PawPrint,
+  Plus,
+  Trash2,
+  Users,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -98,6 +108,10 @@ export function SideNav({ isAdmin, userRole, user, forceVisible = false }: Props
         {nav.map((it) => (
           <NavLink key={it.href} item={it} active={isActive(it.href)} />
         ))}
+
+        {(userRole === 'DOCTOR' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && (
+          <NavLink item={{ href: '/cages', label: 'Cages', icon: LayoutGrid }} active={isActive('/cages')} />
+        )}
 
         {isAdmin && (
           <>

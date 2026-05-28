@@ -1,5 +1,5 @@
 import { writeAuditLog } from '@/lib/audit';
-import { NotFoundError } from '@/lib/errors';
+import { NotFoundError, ValidationError } from '@/lib/errors';
 import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan } from '@/lib/rbac';
@@ -16,6 +16,20 @@ function nz(v: string | undefined | null): string | null {
   return v;
 }
 
+// Animal.cageId is the only unique column on Animal, so a P2002 here always
+// means the chosen cage is taken; P2025 means the connected cage is gone.
+// Rethrow as ValidationError so callers surface a friendly message.
+function translateCageError(e: unknown): never {
+  if (e && typeof e === 'object' && 'code' in e) {
+    const code = (e as { code?: string }).code;
+    if (code === 'P2002') throw new ValidationError('That cage is already occupied');
+    // P2003 = FK violation (scalar cageId → missing cage); P2025 = relational
+    // record-not-found. The only user-supplied FK on these writes is cageId.
+    if (code === 'P2003' || code === 'P2025') throw new ValidationError('Selected cage no longer exists');
+  }
+  throw e;
+}
+
 export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
   assertCan(actor, 'animal.create');
   const parsed = CreateAnimalSchema.parse(input);
@@ -23,7 +37,7 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
   const { assertOwnedReadyAssets } = await import('../media/service');
   await assertOwnedReadyAssets(actor, parsed.mediaAssetIds);
 
-  const data: Prisma.AnimalCreateInput = {
+  const data: Prisma.AnimalUncheckedCreateInput = {
     name: parsed.name,
     species: parsed.species,
     breed: nz(parsed.breed),
@@ -48,7 +62,12 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
     contagious: parsed.contagious,
     status: parsed.status as AnimalStatus,
     ward: nz(parsed.ward),
-    createdBy: { connect: { id: actor.id } },
+    // Set the FK scalar directly (not `cage: { connect }`): a relational
+    // connect on this 1-to-1 would STEAL an occupied cage by nulling its
+    // current occupant. The scalar write instead trips the unique index
+    // (P2002) when the cage is already taken — race-proof single occupancy.
+    cageId: nz(parsed.cageId),
+    createdById: actor.id,
     testsAdvised: {
       create: parsed.testsAdvised.map((test) => ({ test: test as TestKind })),
     },
@@ -61,27 +80,29 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
     },
   };
 
-  const created = await prisma.$transaction(async (tx) => {
-    const animal = await tx.animal.create({
-      data,
-      include: { testsAdvised: true, media: { include: { asset: true } } },
-    });
+  const created = await prisma
+    .$transaction(async (tx) => {
+      const animal = await tx.animal.create({
+        data,
+        include: { testsAdvised: true, media: { include: { asset: true } } },
+      });
 
-    await writeAuditLog(tx, {
-      actorId: actor.id,
-      action: 'create',
-      entityType: 'Animal',
-      entityId: animal.id,
-      after: {
-        id: animal.id,
-        name: animal.name,
-        species: animal.species,
-        status: animal.status,
-      },
-    });
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'create',
+        entityType: 'Animal',
+        entityId: animal.id,
+        after: {
+          id: animal.id,
+          name: animal.name,
+          species: animal.species,
+          status: animal.status,
+        },
+      });
 
-    return animal;
-  });
+      return animal;
+    })
+    .catch((e) => translateCageError(e));
 
   // After the DB transaction commits, move any staged Drive files into the
   // animal's admission folder. A Drive failure shouldn't roll back the
@@ -128,7 +149,7 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
   const before = await prisma.animal.findUnique({ where: { id: animalId } });
   if (!before) throw new NotFoundError('Animal', animalId);
 
-  const data: Prisma.AnimalUpdateInput = {
+  const data: Prisma.AnimalUncheckedUpdateInput = {
     editedAt: new Date(),
     editedById: actor.id,
   };
@@ -154,26 +175,31 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
   if (parsed.contagious !== undefined) data.contagious = parsed.contagious;
   if (parsed.status !== undefined) data.status = parsed.status;
   if (parsed.ward !== undefined) data.ward = parsed.ward;
+  // Scalar FK write (not `cage: { connect }`) so reassigning to an occupied
+  // cage trips the unique index (P2002) instead of silently stealing it.
+  if (parsed.cageId !== undefined) data.cageId = parsed.cageId;
 
-  return prisma.$transaction(async (tx) => {
-    const updated = await tx.animal.update({ where: { id: animalId }, data });
-    // SD-10: per-field diff. The prior implementation only recorded
-    // {name, status, ward, complaint} — silently dropping clinical edits
-    // like diagnosis, contagious, weightKg, vaccination, etc.
-    const diff = diffAnimalFields(before, updated);
-    if (diff.changedKeys.length > 0) {
-      await writeAuditLog(tx, {
-        actorId: actor.id,
-        action: 'update',
-        entityType: 'Animal',
-        entityId: animalId,
-        before: diff.before,
-        after: diff.after,
-        context: { changedFields: diff.changedKeys },
-      });
-    }
-    return updated;
-  });
+  return prisma
+    .$transaction(async (tx) => {
+      const updated = await tx.animal.update({ where: { id: animalId }, data });
+      // SD-10: per-field diff. The prior implementation only recorded
+      // {name, status, ward, complaint} — silently dropping clinical edits
+      // like diagnosis, contagious, weightKg, vaccination, etc.
+      const diff = diffAnimalFields(before, updated);
+      if (diff.changedKeys.length > 0) {
+        await writeAuditLog(tx, {
+          actorId: actor.id,
+          action: 'update',
+          entityType: 'Animal',
+          entityId: animalId,
+          before: diff.before,
+          after: diff.after,
+          context: { changedFields: diff.changedKeys },
+        });
+      }
+      return updated;
+    })
+    .catch((e) => translateCageError(e));
 }
 
 const AUDITED_ANIMAL_FIELDS = [
@@ -201,6 +227,7 @@ const AUDITED_ANIMAL_FIELDS = [
   'contagious',
   'status',
   'ward',
+  'cageId',
 ] as const;
 
 type AuditedKey = (typeof AUDITED_ANIMAL_FIELDS)[number];
@@ -240,7 +267,7 @@ export async function softDeleteAnimal(actor: Actor, animalId: string) {
   return prisma.$transaction(async (tx) => {
     const updated = await tx.animal.update({
       where: { id: animalId },
-      data: { deletedAt: new Date(), editedAt: new Date(), editedById: actor.id },
+      data: { deletedAt: new Date(), cageId: null, editedAt: new Date(), editedById: actor.id },
     });
     await writeAuditLog(tx, {
       actorId: actor.id,

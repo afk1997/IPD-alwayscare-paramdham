@@ -5,12 +5,14 @@ import { Select } from '@/components/ui/Select';
 import { Textarea } from '@/components/ui/Textarea';
 import type { UseFormReturn } from 'react-hook-form';
 import { type CreateAnimalInput, STATUSES } from '../../schema';
+import { CageSelect } from '../CageSelect';
 
 interface Props {
   form: UseFormReturn<CreateAnimalInput>;
+  cages: { id: string; name: string }[];
 }
 
-export function Step3Medical({ form }: Props) {
+export function Step3Medical({ form, cages }: Props) {
   const { register } = form;
   return (
     <FormSection title="Medical condition" description="Why is this animal in IPD?">
@@ -21,10 +23,13 @@ export function Step3Medical({ form }: Props) {
         <FormField label="Injury type" htmlFor="injuryType" hint="Trauma, medical, post-op, etc.">
           <Input id="injuryType" {...register('injuryType')} />
         </FormField>
-        <FormField label="Ward" htmlFor="ward">
-          <Input id="ward" placeholder="ICU-1, Cat ward…" {...register('ward')} />
+        <FormField label="Cage" htmlFor="cageId" hint="Assign now or leave unassigned">
+          <CageSelect id="cageId" options={cages} {...register('cageId')} />
         </FormField>
       </div>
+      <FormField label="Ward (legacy)" htmlFor="ward">
+        <Input id="ward" placeholder="ICU-1, Cat ward…" {...register('ward')} />
+      </FormField>
       <FormField label="History" htmlFor="history">
         <Textarea id="history" rows={3} {...register('history')} />
       </FormField>
