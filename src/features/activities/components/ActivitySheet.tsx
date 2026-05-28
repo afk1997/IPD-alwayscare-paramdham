@@ -18,6 +18,7 @@ import {
   updateActivityAction,
 } from '../actions';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
+import type { SerializedActivity } from '../serialized';
 import { summarizeActivity } from '../summary';
 import { ActivityEditFields, type EditDraft, toLocalDatetime } from './ActivityEditFields';
 
@@ -48,7 +49,10 @@ interface Props {
   activity: ActivitySummary | null;
   open: boolean;
   onClose: () => void;
-  onChanged: () => void;
+  onSaved: (next: SerializedActivity) => void;
+  onDeleted: (id: string) => void;
+  onDuplicated: (next: SerializedActivity) => void;
+  onRestored: (next: SerializedActivity) => void;
 }
 
 type Mode = 'view' | 'edit' | 'confirmDelete';
@@ -64,7 +68,15 @@ const TYPE_COLOR: Record<ActivityType, string> = {
   WALK: '#A16207',
 };
 
-export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
+export function ActivitySheet({
+  activity,
+  open,
+  onClose,
+  onSaved,
+  onDeleted,
+  onDuplicated,
+  onRestored,
+}: Props) {
   const { showToast } = useToast();
   const { currentUserRole } = useActiveUsers();
   const canWrite = currentUserRole !== 'VIEWER';
@@ -106,10 +118,10 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
         ...(occurredAtISO ? { occurredAt: occurredAtISO } : {}),
         ...(draft.byName.trim() ? { byName: draft.byName.trim() } : {}),
       });
-      if (result.ok) {
+      if (result.ok && result.activity) {
         showToast({ message: `${ACTIVITY_LABELS[activity.type]} updated` });
         setMode('view');
-        onChanged();
+        onSaved(result.activity);
         onClose();
       } else {
         setError(result.error ?? 'Update failed');
@@ -123,7 +135,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
     start(async () => {
       const result = await deleteActivityAction(id);
       if (result.ok) {
-        onChanged();
+        onDeleted(id);
         onClose();
         showToast({
           message: `${typeLabel} deleted`,
@@ -132,7 +144,7 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
             label: 'Undo',
             onClick: async () => {
               const r = await restoreActivityAction(id);
-              if (r.ok) onChanged();
+              if (r.ok && r.activity) onRestored(r.activity);
             },
           },
         });
@@ -160,8 +172,8 @@ export function ActivitySheet({ activity, open, onClose, onChanged }: Props) {
   const dup = () => {
     start(async () => {
       const result = await duplicateActivityAction(activity.id);
-      if (result.ok) {
-        onChanged();
+      if (result.ok && result.activity) {
+        onDuplicated(result.activity);
         onClose();
       } else {
         setError(result.error ?? 'Duplicate failed');

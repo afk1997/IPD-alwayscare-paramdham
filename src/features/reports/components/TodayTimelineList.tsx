@@ -170,7 +170,10 @@ export function TodayTimelineList({ items }: Props) {
         activity={selected}
         open={!!selected}
         onClose={() => setSelected(null)}
-        onChanged={() => router.refresh()}
+        onSaved={() => router.refresh()}
+        onDeleted={() => router.refresh()}
+        onDuplicated={() => router.refresh()}
+        onRestored={() => router.refresh()}
       />
     </>
   );
