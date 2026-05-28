@@ -2,15 +2,61 @@ import { Readable } from 'node:stream';
 import { getMediaForRead } from '@/features/media/service';
 import { getCurrentUser } from '@/lib/auth';
 import { NotFoundError, RbacError } from '@/lib/errors';
+import { verifyMediaUrl } from '@/lib/media-sign';
+import { prisma } from '@/lib/prisma';
 import { createTimings } from '@/lib/server-timing';
 import { getStorage } from '@/lib/storage';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const t = createTimings();
+function toWebStream(stream: NodeJS.ReadableStream): ReadableStream<Uint8Array> {
+  if (stream instanceof Readable) return Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>;
+  return stream as unknown as ReadableStream<Uint8Array>;
+}
 
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const t = createTimings();
+  const { id } = await params;
+  const search = new URL(req.url).searchParams;
+
+  if (search.has('sig')) {
+    // ── Signed path — no cookie, no DB authz, no Drive metadata RTT ──
+    const v = verifyMediaUrl(id, search);
+    t.mark('sig');
+    if (!v.ok) {
+      return NextResponse.json(
+        { error: v.reason },
+        { status: 401, headers: { 'server-timing': t.header() } },
+      );
+    }
+    const asset = await prisma.mediaAsset.findUnique({
+      where: { id },
+      select: { id: true, status: true, storageKey: true, mimeType: true, size: true },
+    });
+    t.mark('db');
+    if (!asset || asset.status !== 'READY' || !asset.storageKey) {
+      return NextResponse.json(
+        { error: 'unavailable' },
+        { status: 410, headers: { 'server-timing': t.header() } },
+      );
+    }
+    const { stream } = await getStorage().getStreamOnly(asset.storageKey);
+    t.mark('storage');
+    const headers: Record<string, string> = {
+      'content-type': asset.mimeType,
+      'cache-control': 'public, max-age=600, s-maxage=600, immutable',
+      etag: `"${asset.id}-${v.variant}"`,
+      'x-content-type-options': 'nosniff',
+      'content-security-policy': "default-src 'none'; img-src 'self'; media-src 'self'",
+      'referrer-policy': 'no-referrer',
+      'server-timing': t.header(),
+    };
+    if (asset.size > 0) headers['content-length'] = String(asset.size);
+    return new NextResponse(toWebStream(stream), { headers });
+  }
+
+  // ── Cookie path (unchanged behavior, kept for backward compat) ──
   const user = await getCurrentUser();
   t.mark('auth');
   if (!user) {
@@ -19,8 +65,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       { status: 401, headers: { 'server-timing': t.header() } },
     );
   }
-
-  const { id } = await params;
 
   let asset: Awaited<ReturnType<typeof getMediaForRead>>;
   try {
@@ -57,23 +101,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   const { stream, size } = await getStorage().get(asset.storageKey);
   t.mark('storage');
-  const webStream =
-    stream instanceof Readable
-      ? (Readable.toWeb(stream) as unknown as ReadableStream<Uint8Array>)
-      : (stream as unknown as ReadableStream<Uint8Array>);
 
   const headers: Record<string, string> = {
     'content-type': asset.mimeType,
-    // API-5: medical media ACLs can change (activity soft-delete, animal
-    // soft-delete, role demotion). A 24h cache let stale-ACL exposure
-    // linger. Switch to no-cache with revalidation — the ETag lets the
-    // client get a cheap 304 when the asset hasn't changed.
     'cache-control': 'private, no-cache, max-age=0, must-revalidate',
     vary: 'cookie',
     etag: `"${asset.id}"`,
-    // Hardening: don't let browsers sniff content they weren't told to.
-    // Combined with finalize-time mime-family check this closes the
-    // SVG-as-image stored-XSS path on the same origin.
     'x-content-type-options': 'nosniff',
     'content-security-policy': "default-src 'none'; img-src 'self'; media-src 'self'",
     'referrer-policy': 'no-referrer',
@@ -81,5 +114,5 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   };
   if (size > 0) headers['content-length'] = String(size);
 
-  return new NextResponse(webStream, { headers });
+  return new NextResponse(toWebStream(stream), { headers });
 }
