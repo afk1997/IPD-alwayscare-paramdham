@@ -42,8 +42,41 @@ export async function createAnimalAction(input: CreateAnimalInput): Promise<Admi
   redirect(`/patients/${animalId}`);
 }
 
+export interface AnimalDetailRow {
+  id: string;
+  name: string;
+  species: string;
+  breed: string | null;
+  gender: string | null;
+  ageText: string | null;
+  color: string | null;
+  weightKg: string | null;
+  vaccination: string;
+  sterilized: boolean;
+  aggressive: boolean;
+  contagious: boolean;
+  ward: string | null;
+  cage: string | null;
+  cageId: string | null;
+  status: string;
+  admittedAt: string;
+  complaint: string | null;
+  history: string | null;
+  injuryType: string | null;
+  diagnosis: string | null;
+  immediateTreatment: string | null;
+  surgeryRequired: string | null;
+  rescuer: string | null;
+  rescuerPhone: string | null;
+  address: string | null;
+  ngo: string | null;
+  broughtBy: string | null;
+  testsAdvised: string[];
+}
+
 export interface UpdateAnimalActionResult {
   ok: boolean;
+  animal?: AnimalDetailRow;
   error?: string;
 }
 
@@ -53,11 +86,42 @@ export async function updateAnimalAction(
 ): Promise<UpdateAnimalActionResult> {
   try {
     const actor = await requireActor();
-    await updateAnimal(actor, animalId, patch);
+    const updated = await updateAnimal(actor, animalId, patch);
     revalidateTag('animals');
     revalidateTag('today-counts');
     revalidateTag('today-timeline');
-    return { ok: true };
+    const animal: AnimalDetailRow = {
+      id: updated.id,
+      name: updated.name,
+      species: updated.species,
+      breed: updated.breed,
+      gender: updated.gender,
+      ageText: updated.ageText,
+      color: updated.color,
+      weightKg: updated.weightKg ? String(updated.weightKg) : null,
+      vaccination: updated.vaccination,
+      sterilized: updated.sterilized,
+      aggressive: updated.aggressive,
+      contagious: updated.contagious,
+      ward: updated.ward,
+      cage: updated.cage?.name ?? null,
+      cageId: updated.cageId,
+      status: updated.status,
+      admittedAt: updated.admittedAt.toISOString(),
+      complaint: updated.complaint,
+      history: updated.history,
+      injuryType: updated.injuryType,
+      diagnosis: updated.diagnosis,
+      immediateTreatment: updated.immediateTreatment,
+      surgeryRequired: updated.surgeryRequired,
+      rescuer: updated.rescuer,
+      rescuerPhone: updated.rescuerPhone,
+      address: updated.address,
+      ngo: updated.ngo,
+      broughtBy: updated.broughtBy,
+      testsAdvised: updated.testsAdvised.map((t) => t.test),
+    };
+    return { ok: true, animal };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     if (e instanceof ValidationError) return { ok: false, error: e.message };

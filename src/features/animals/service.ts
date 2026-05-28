@@ -181,7 +181,11 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
 
   return prisma
     .$transaction(async (tx) => {
-      const updated = await tx.animal.update({ where: { id: animalId }, data });
+      const updated = await tx.animal.update({
+        where: { id: animalId },
+        data,
+        include: { testsAdvised: true, cage: { select: { id: true, name: true } } },
+      });
       // SD-10: per-field diff. The prior implementation only recorded
       // {name, status, ward, complaint} — silently dropping clinical edits
       // like diagnosis, contagious, weightKg, vaccination, etc.
