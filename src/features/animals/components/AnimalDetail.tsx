@@ -19,13 +19,13 @@ interface Props {
 }
 
 export async function AnimalDetail({ animalId }: Props) {
-  const [animal, activities, documents] = await Promise.all([
+  const [animal, activities, documents, cages] = await Promise.all([
     getAnimal(animalId),
     listActivitiesForAnimal(animalId),
     listDocumentsForAnimal(animalId),
+    listAssignableCages(animalId),
   ]);
   if (!animal) notFound();
-  const cages = await listAssignableCages(animalId);
   const lastActivityAt = activities[0]?.occurredAt ?? null;
 
   // Aggregate every photo / x-ray / video the patient has — admission media,
