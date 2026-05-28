@@ -150,20 +150,31 @@ export function ActivitySheet({
     onClose();
 
     start(async () => {
-      const occurredAtISO = draft.occurredAtLocal ? new Date(draft.occurredAtLocal).toISOString() : undefined;
-      const result = await updateActivityAction(activity.id, {
-        remarks: draft.remarks,
-        data: draft.data,
-        ...(occurredAtISO ? { occurredAt: occurredAtISO } : {}),
-        ...(draft.byName.trim() ? { byName: draft.byName.trim() } : {}),
-      });
-      if (result.ok && result.activity) {
-        showToast({ message: `${ACTIVITY_LABELS[activity.type]} updated` });
-        // Overlay canonical row over the optimistic one
-        onSaved(result.activity);
-      } else {
+      try {
+        const occurredAtISO = draft.occurredAtLocal
+          ? new Date(draft.occurredAtLocal).toISOString()
+          : undefined;
+        const result = await updateActivityAction(activity.id, {
+          remarks: draft.remarks,
+          data: draft.data,
+          ...(occurredAtISO ? { occurredAt: occurredAtISO } : {}),
+          ...(draft.byName.trim() ? { byName: draft.byName.trim() } : {}),
+        });
+        if (result.ok && result.activity) {
+          showToast({ message: `${ACTIVITY_LABELS[activity.type]} updated` });
+          // Overlay canonical row over the optimistic one
+          onSaved(result.activity);
+        } else {
+          onSaved(snapshot);
+          showToast({ message: result.error ?? 'Update failed — reverted' });
+        }
+      } catch {
+        // The action returns {ok:false} for handled errors, but a transport-
+        // level rejection (offline, aborted navigation, 5xx HTML) throws here.
+        // Without this catch the optimistic edit would stay applied despite the
+        // save having failed. Revert it.
         onSaved(snapshot);
-        showToast({ message: result.error ?? 'Update failed — reverted' });
+        showToast({ message: 'Update failed — reverted' });
       }
     });
   };
@@ -186,26 +197,36 @@ export function ActivitySheet({
     onClose();
 
     start(async () => {
-      const result = await deleteActivityAction(id);
-      if (result.ok) {
-        showToast({
-          message: `${typeLabel} deleted`,
-          duration: 12000,
-          action: {
-            label: 'Undo',
-            onClick: async () => {
-              const r = await restoreActivityAction(id);
-              if (r.ok && r.activity) {
-                onRestored(r.activity);
-              } else {
-                showToast({ message: r.error ?? 'Could not restore — check Trash page' });
-              }
+      try {
+        const result = await deleteActivityAction(id);
+        if (result.ok) {
+          showToast({
+            message: `${typeLabel} deleted`,
+            duration: 12000,
+            action: {
+              label: 'Undo',
+              onClick: async () => {
+                try {
+                  const r = await restoreActivityAction(id);
+                  if (r.ok && r.activity) {
+                    onRestored(r.activity);
+                  } else {
+                    showToast({ message: r.error ?? 'Could not restore — check Trash page' });
+                  }
+                } catch {
+                  showToast({ message: 'Could not restore — check Trash page' });
+                }
+              },
             },
-          },
-        });
-      } else {
+          });
+        } else {
+          onRestored(snapshot);
+          showToast({ message: result.error ?? 'Delete failed — restored' });
+        }
+      } catch {
+        // Transport-level rejection — re-add the optimistically removed row.
         onRestored(snapshot);
-        showToast({ message: result.error ?? 'Delete failed — restored' });
+        showToast({ message: 'Delete failed — restored' });
       }
     });
   };
@@ -213,26 +234,34 @@ export function ActivitySheet({
   const share = () => {
     const id = activity.id;
     start(async () => {
-      const result = await getActivityShareTextAction(id);
-      if (!result.ok || !result.text) {
-        setError(result.error ?? 'Could not prepare share text');
-        return;
+      try {
+        const result = await getActivityShareTextAction(id);
+        if (!result.ok || !result.text) {
+          setError(result.error ?? 'Could not prepare share text');
+          return;
+        }
+        await copyToClipboard(result.text, {
+          onSuccess: () => showToast({ message: 'Activity copied — paste in WhatsApp / Slack / etc.' }),
+          onFallback: () => showToast({ message: 'Activity copied (fallback)' }),
+        });
+      } catch {
+        setError('Could not prepare share text');
       }
-      await copyToClipboard(result.text, {
-        onSuccess: () => showToast({ message: 'Activity copied — paste in WhatsApp / Slack / etc.' }),
-        onFallback: () => showToast({ message: 'Activity copied (fallback)' }),
-      });
     });
   };
 
   const dup = () => {
     start(async () => {
-      const result = await duplicateActivityAction(activity.id);
-      if (result.ok && result.activity) {
-        onDuplicated(result.activity);
-        onClose();
-      } else {
-        setError(result.error ?? 'Duplicate failed');
+      try {
+        const result = await duplicateActivityAction(activity.id);
+        if (result.ok && result.activity) {
+          onDuplicated(result.activity);
+          onClose();
+        } else {
+          setError(result.error ?? 'Duplicate failed');
+        }
+      } catch {
+        setError('Duplicate failed');
       }
     });
   };
