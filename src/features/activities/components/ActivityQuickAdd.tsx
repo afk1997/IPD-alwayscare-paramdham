@@ -12,7 +12,6 @@ import {
   Stethoscope,
   X,
 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import { ActivityForm } from './ActivityForm';
@@ -36,7 +35,6 @@ interface Props {
 }
 
 export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
-  const router = useRouter();
   const [selected, setSelected] = useState<ActivityType | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
@@ -56,14 +54,12 @@ export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
 
   if (!open) return null;
 
-  // After a successful save: close the modal, reset the type, AND
-  // router.refresh() so the patient page's ActivityTimeline picks up
-  // the new row immediately.  Without the refresh the user has to
-  // navigate away and back to see what they just logged.
+  // After a successful save: close the modal and reset the type.
+  // ActivityForm already dispatched the new activity into useActivityFeed,
+  // which wakes up any mounted ActivityTimeline — no router.refresh() needed.
   const handleSaved = () => {
     setSelected(null);
     onClose();
-    router.refresh();
   };
 
   return (
