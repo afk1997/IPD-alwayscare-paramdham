@@ -77,7 +77,11 @@ export const FoodData = z.object({
   qty: z.string().optional(),
   water: z.string().optional(),
   intake: z.enum(INTAKE),
-  vomiting: z.coerce.boolean().default(false),
+  // Strict boolean (not z.coerce.boolean): a stringly value like "on" or
+  // "false" coerces to TRUE under JS Boolean() semantics, which would
+  // silently flip vomiting=true. With z.boolean() any non-boolean input
+  // fails validation loudly at the action boundary instead.
+  vomiting: z.boolean().default(false),
 });
 
 export const BathData = z.object({
