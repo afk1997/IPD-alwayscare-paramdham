@@ -87,8 +87,18 @@ export function AnimalEditForm({ animal, cages, onDone, onCancel }: Props) {
       if (!result.ok) setError(result.error ?? 'Update failed');
       else {
         showToast({ message: 'Patient updated' });
-        if (onDone && result.animal) onDone(result.animal);
-        else router.push(`/patients/${animal.id}`);
+        if (onDone && result.animal) {
+          onDone(result.animal);
+          // The inline edit lives inside AnimalDetailsTab, but the patient
+          // AnimalHero is a sibling rendered from server data with no client
+          // subscription, so onDone only updates the Details tab.  Re-render
+          // the server tree so the hero (name, status badge, contagious /
+          // aggressive pills, cage, weight) reflects the edit.  This is a
+          // low-frequency, user-initiated save on the Details tab (the activity
+          // feed isn't even mounted there) — not the per-mutation refresh storm
+          // Phase 2 removed from the timeline.
+          router.refresh();
+        } else router.push(`/patients/${animal.id}`);
       }
     });
   };
