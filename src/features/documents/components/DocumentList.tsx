@@ -36,22 +36,37 @@ export function DocumentList({ documents }: Props) {
             <ul className="flex flex-col gap-2">
               {docs.map((d) => (
                 <li key={d.id}>
-                  <Link
-                    href={d.fileUrl ?? '#'}
-                    target="_blank"
-                    rel="noopener"
-                    className="flex items-center gap-3 rounded-lg border border-line bg-paper p-3 transition hover:bg-paper-2"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
-                      <FileText size={15} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{d.kind}</div>
-                      <div className="truncate text-xs text-muted">
-                        {d.name} · {d.uploadedBy.name} · {relativeTime(d.createdAt)}
+                  {d.fileUrl ? (
+                    <Link
+                      href={d.fileUrl}
+                      target="_blank"
+                      rel="noopener"
+                      className="flex items-center gap-3 rounded-lg border border-line bg-paper p-3 transition hover:bg-paper-2"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-accent-soft text-accent-ink">
+                        <FileText size={15} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{d.kind}</div>
+                        <div className="truncate text-xs text-muted">
+                          {d.name} · {d.uploadedBy.name} · {relativeTime(d.createdAt)}
+                        </div>
+                      </div>
+                    </Link>
+                  ) : (
+                    <div
+                      className="flex items-center gap-3 rounded-lg border border-line bg-paper p-3 opacity-60"
+                      aria-label="File unavailable"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-paper-2 text-muted">
+                        <FileText size={15} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{d.kind}</div>
+                        <div className="truncate text-xs text-critical">File unavailable</div>
                       </div>
                     </div>
-                  </Link>
+                  )}
                 </li>
               ))}
             </ul>
