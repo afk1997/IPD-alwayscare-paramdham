@@ -127,6 +127,7 @@ export function TodayTimelineList({ items }: Props) {
                     rounded={12}
                     className="h-14 w-14"
                     alt=""
+                    sizes="56px"
                   />
                   {/* Type badge in the corner — mirrors the per-patient
                       ActivityTimeline so the visual grammar is shared. */}

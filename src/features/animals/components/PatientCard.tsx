@@ -25,6 +25,7 @@ export function PatientCard({ animal }: Props) {
         alt={animal.name}
         rounded={14}
         className="h-[60px] w-[60px] shrink-0"
+        sizes="64px"
       />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
