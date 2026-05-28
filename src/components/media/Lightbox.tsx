@@ -82,8 +82,7 @@ export function Lightbox({ items, index, onClose, onChange }: Props) {
             />
           ) : (
             // Photo / X-ray.  Use `fill` so the image fits the available
-            // box; unoptimized because the file is streamed through our
-            // /api/files proxy from Drive, not a CDN.
+            // box; sizes="100vw" lets Next pick the right srcset width.
             <div className="relative h-full w-full">
               <Image
                 src={current.url}
@@ -91,7 +90,6 @@ export function Lightbox({ items, index, onClose, onChange }: Props) {
                 fill
                 sizes="100vw"
                 className="rounded-lg object-contain"
-                unoptimized
               />
             </div>
           )}

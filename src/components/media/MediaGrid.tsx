@@ -20,6 +20,7 @@ export function MediaGrid({ items, emptyLabel, columns = 3 }: Props) {
   }
 
   const colClass = columns === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3';
+  const sizesValue = columns === 4 ? '(max-width: 768px) 25vw, 150px' : '(max-width: 768px) 33vw, 200px';
 
   return (
     <>
@@ -36,9 +37,8 @@ export function MediaGrid({ items, emptyLabel, columns = 3 }: Props) {
                 src={it.url}
                 alt={it.label || it.filename}
                 fill
-                sizes="200px"
+                sizes={sizesValue}
                 className="object-cover transition group-hover:scale-105"
-                unoptimized
               />
             ) : it.kind === 'VIDEO' ? (
               <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-black/80 px-2 text-white">
