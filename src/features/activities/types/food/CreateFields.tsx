@@ -6,6 +6,8 @@ import { Controller } from 'react-hook-form';
 import { INTAKE } from '../../schema';
 import type { CreateFieldsProps } from '../create-shared';
 
+const VOMITING_OPTIONS = ['No', 'Yes'] as const;
+
 export function FoodCreateFields({ form }: CreateFieldsProps) {
   const { register, control } = form;
   return (
@@ -30,10 +32,22 @@ export function FoodCreateFields({ form }: CreateFieldsProps) {
           )}
         />
       </FormField>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" {...register('data.vomiting')} className="h-4 w-4 accent-accent" />
-        Vomiting after feed
-      </label>
+      {/* Vomiting is a yes/no observation, rendered as a Segmented (not a small
+          checkbox) so the selected state is unambiguous at a glance and the
+          tap target is hard to hit by accident below the Intake row. */}
+      <FormField label="Vomiting after feed">
+        <Controller
+          control={control}
+          name="data.vomiting"
+          render={({ field }) => (
+            <Segmented
+              value={field.value ? 'Yes' : 'No'}
+              onChange={(v) => field.onChange(v === 'Yes')}
+              options={VOMITING_OPTIONS}
+            />
+          )}
+        />
+      </FormField>
     </div>
   );
 }

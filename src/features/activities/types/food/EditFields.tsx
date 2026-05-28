@@ -5,6 +5,8 @@ import { Segmented } from '@/components/ui/Segmented';
 import { INTAKE } from '../../schema';
 import type { EditFieldsProps } from '../shared';
 
+const VOMITING_OPTIONS = ['No', 'Yes'] as const;
+
 export function FoodEditFields({ value, setData }: EditFieldsProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -40,15 +42,13 @@ export function FoodEditFields({ value, setData }: EditFieldsProps) {
           options={INTAKE}
         />
       </FormField>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={!!value.data.vomiting}
-          onChange={(e) => setData({ vomiting: e.target.checked })}
-          className="h-4 w-4 accent-accent"
+      <FormField label="Vomiting after feed">
+        <Segmented
+          value={value.data.vomiting ? 'Yes' : 'No'}
+          onChange={(v) => setData({ vomiting: v === 'Yes' })}
+          options={VOMITING_OPTIONS}
         />
-        Vomiting after feed
-      </label>
+      </FormField>
     </div>
   );
 }
