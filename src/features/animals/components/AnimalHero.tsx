@@ -66,6 +66,7 @@ export function AnimalHero({ animal, lastActivityAt }: Props) {
               alt={animal.name}
               rounded={16}
               className="h-[68px] w-[68px] md:h-[78px] md:w-[78px]"
+              sizes="(max-width: 768px) 68px, 78px"
             />
           </button>
         ) : (
@@ -75,6 +76,7 @@ export function AnimalHero({ animal, lastActivityAt }: Props) {
             alt={animal.name}
             rounded={16}
             className="h-[68px] w-[68px] shrink-0 md:h-[78px] md:w-[78px]"
+            sizes="(max-width: 768px) 68px, 78px"
           />
         )}
         <div className="min-w-0 flex-1">
