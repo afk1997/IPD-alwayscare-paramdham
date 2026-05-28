@@ -12,6 +12,13 @@ export interface PutResult {
 export interface FileStorage {
   put(buf: Buffer, meta: { filename: string; mime: string }): Promise<PutResult>;
   get(key: string): Promise<{ stream: NodeJS.ReadableStream; mime: string; size: number }>;
+  /**
+   * Faster sibling of get() — returns only the byte stream and skips
+   * any storage-side metadata RTT.  Callers that already have the
+   * asset's mimeType and size from the DB (the /api/files signed
+   * path does) use this to avoid a redundant Drive `files.get`.
+   */
+  getStreamOnly(key: string): Promise<{ stream: NodeJS.ReadableStream }>;
   delete(key: string): Promise<void>;
   directUrl(key: string): string | null;
 }

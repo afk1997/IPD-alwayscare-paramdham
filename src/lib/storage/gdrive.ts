@@ -157,6 +157,17 @@ export class GoogleDriveStorage implements FileStorage {
     };
   }
 
+  async getStreamOnly(key: string): Promise<{ stream: NodeJS.ReadableStream }> {
+    if (!key.startsWith(PREFIX)) throw new Error(`Invalid gdrive key: ${key}`);
+    const fileId = key.slice(PREFIX.length);
+    const drive = this.drive();
+    // Single Drive call — skip the metadata fetch that get() does
+    // for mime/size.  Callers using this path already have those
+    // values from MediaAsset.mimeType / MediaAsset.size.
+    const dataRes = await drive.files.get({ ...SHARED, fileId, alt: 'media' }, { responseType: 'stream' });
+    return { stream: dataRes.data as unknown as NodeJS.ReadableStream };
+  }
+
   async delete(key: string): Promise<void> {
     if (!key.startsWith(PREFIX)) return;
     const fileId = key.slice(PREFIX.length);
