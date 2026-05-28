@@ -53,7 +53,10 @@ const PERMISSIONS: Record<Action, Role[]> = {
 };
 
 export function can(actor: Actor, action: Action): boolean {
+  // Fail closed: an unknown/typo'd action key (or one cast at runtime) denies
+  // rather than throwing a TypeError on `undefined.includes`.
   const allowed = PERMISSIONS[action];
+  if (!allowed) return false;
   return allowed.includes(actor.role);
 }
 

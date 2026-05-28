@@ -1,6 +1,6 @@
 import { assertOwnedReadyAssets } from '@/features/media/service';
 import { writeAuditLog } from '@/lib/audit';
-import { NotFoundError } from '@/lib/errors';
+import { NotFoundError, ValidationError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan } from '@/lib/rbac';
 import { type DeathInput, DeathSchema, type DischargeInput, DischargeSchema } from './schema';
@@ -25,6 +25,17 @@ export async function dischargeAnimal(actor: ActorWithName, input: DischargeInpu
       where: { id: parsed.animalId, deletedAt: null },
     });
     if (!animal) throw new NotFoundError('Animal', parsed.animalId);
+    // Lifecycle is terminal. Without this guard a second discharge hits the
+    // DischargeRecord PK (animalId) as an opaque P2002, and a
+    // discharge-after-death would leave contradictory status/timestamps and
+    // double-count the animal in today's stats.
+    if (animal.status === 'DISCHARGED' || animal.status === 'DECEASED') {
+      throw new ValidationError(
+        animal.status === 'DECEASED'
+          ? 'This patient is already recorded as deceased'
+          : 'This patient is already discharged',
+      );
+    }
     const now = new Date();
 
     const updated = await tx.animal.update({
@@ -91,6 +102,16 @@ export async function recordDeath(actor: ActorWithName, input: DeathInput) {
       where: { id: parsed.animalId, deletedAt: null },
     });
     if (!animal) throw new NotFoundError('Animal', parsed.animalId);
+    // Lifecycle is terminal — see dischargeAnimal. Blocks double-death (an
+    // opaque DeathRecord PK violation) and death-after-discharge (which would
+    // leave both records attached with contradictory timestamps).
+    if (animal.status === 'DISCHARGED' || animal.status === 'DECEASED') {
+      throw new ValidationError(
+        animal.status === 'DISCHARGED'
+          ? 'This patient is already discharged'
+          : 'This patient is already recorded as deceased',
+      );
+    }
     const now = new Date();
 
     const updated = await tx.animal.update({

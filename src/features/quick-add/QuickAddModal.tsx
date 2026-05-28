@@ -4,6 +4,7 @@ import type { ActivityType } from '@/features/activities/schema';
 import { LifecycleForm } from '@/features/animals/lifecycle/components/LifecycleForm';
 import type { ActiveAnimalLite } from '@/features/animals/queries';
 import { DocumentUpload } from '@/features/documents/components/DocumentUpload';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
 import { ArrowLeft, X } from 'lucide-react';
@@ -32,6 +33,7 @@ export function QuickAddModal({ open, onClose, prefill }: Props) {
   const [step, setStep] = useState<QuickAddStep>(INITIAL);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
+  useBodyScrollLock(open);
 
   // When the modal opens, apply any prefill from `useQuickAdd().open(...)`
   // by jumping straight to the patient picker (or, for admission, closing

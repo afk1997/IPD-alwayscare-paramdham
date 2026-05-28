@@ -1,5 +1,5 @@
 import { writeAuditLog } from '@/lib/audit';
-import { NotFoundError, RbacError } from '@/lib/errors';
+import { NotFoundError, RbacError, ValidationError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan, can } from '@/lib/rbac';
 import type { DocCategory } from '@prisma/client';
@@ -104,10 +104,19 @@ export async function restoreDocument(actor: Actor, documentId: string) {
   if (!can(actor, 'document.restore')) throw new RbacError('document.restore');
   const doc = await prisma.document.findUnique({
     where: { id: documentId },
-    include: { file: { select: { id: true, storageKey: true, filename: true } } },
+    include: {
+      file: { select: { id: true, storageKey: true, filename: true } },
+      animal: { select: { deletedAt: true } },
+    },
   });
   if (!doc) throw new NotFoundError('Document', documentId);
   if (!doc.deletedAt) return doc;
+  // Don't resurrect a document onto a still-trashed patient — the animal-join
+  // filters would hide it everywhere yet it'd be gone from Trash. Restore the
+  // patient first.
+  if (doc.animal.deletedAt) {
+    throw new ValidationError('Restore the patient first — this document belongs to a deleted patient');
+  }
   const updated = await prisma.$transaction(async (tx) => {
     const u = await tx.document.update({
       where: { id: documentId },

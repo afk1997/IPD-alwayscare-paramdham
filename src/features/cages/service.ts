@@ -11,6 +11,10 @@ import {
   RenameCageSchema,
 } from './schema';
 
+function isUniqueViolation(e: unknown): boolean {
+  return Boolean(e && typeof e === 'object' && 'code' in e && (e as { code?: string }).code === 'P2002');
+}
+
 async function assertNameFree(name: string, exceptId?: string): Promise<void> {
   const clash = await prisma.cage.findFirst({
     where: {
@@ -26,22 +30,30 @@ export async function createCage(actor: Actor, input: CreateCageInput) {
   assertCan(actor, 'cage.manage');
   const parsed = CreateCageSchema.parse(input);
   await assertNameFree(parsed.name);
-  return prisma.$transaction(async (tx) => {
-    const cage = await tx.cage.create({
-      data: { name: parsed.name },
-      include: {
-        occupant: { select: { id: true, name: true, species: true, status: true } },
-      },
+  return prisma
+    .$transaction(async (tx) => {
+      const cage = await tx.cage.create({
+        data: { name: parsed.name },
+        include: {
+          occupant: { select: { id: true, name: true, species: true, status: true } },
+        },
+      });
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'create',
+        entityType: 'Cage',
+        entityId: cage.id,
+        after: { name: cage.name },
+      });
+      return cage;
+    })
+    .catch((e) => {
+      // assertNameFree is case-insensitive but the DB unique index is
+      // case-sensitive; a concurrent exact-case create can still race past the
+      // pre-check and hit P2002 — surface it as a friendly message, not a 500.
+      if (isUniqueViolation(e)) throw new ValidationError('A cage with that name already exists');
+      throw e;
     });
-    await writeAuditLog(tx, {
-      actorId: actor.id,
-      action: 'create',
-      entityType: 'Cage',
-      entityId: cage.id,
-      after: { name: cage.name },
-    });
-    return cage;
-  });
 }
 
 export async function renameCage(actor: Actor, input: RenameCageInput) {
@@ -50,24 +62,29 @@ export async function renameCage(actor: Actor, input: RenameCageInput) {
   const before = await prisma.cage.findUnique({ where: { id: parsed.id } });
   if (!before) throw new NotFoundError('Cage', parsed.id);
   await assertNameFree(parsed.name, parsed.id);
-  return prisma.$transaction(async (tx) => {
-    const cage = await tx.cage.update({
-      where: { id: parsed.id },
-      data: { name: parsed.name },
-      include: {
-        occupant: { select: { id: true, name: true, species: true, status: true } },
-      },
+  return prisma
+    .$transaction(async (tx) => {
+      const cage = await tx.cage.update({
+        where: { id: parsed.id },
+        data: { name: parsed.name },
+        include: {
+          occupant: { select: { id: true, name: true, species: true, status: true } },
+        },
+      });
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'update',
+        entityType: 'Cage',
+        entityId: cage.id,
+        before: { name: before.name },
+        after: { name: cage.name },
+      });
+      return cage;
+    })
+    .catch((e) => {
+      if (isUniqueViolation(e)) throw new ValidationError('A cage with that name already exists');
+      throw e;
     });
-    await writeAuditLog(tx, {
-      actorId: actor.id,
-      action: 'update',
-      entityType: 'Cage',
-      entityId: cage.id,
-      before: { name: before.name },
-      after: { name: cage.name },
-    });
-    return cage;
-  });
 }
 
 export async function deleteCage(actor: Actor, input: DeleteCageInput) {

@@ -6,7 +6,6 @@ import type { SerializedActivity } from '@/features/activities/serialized';
 import { summarizeActivity } from '@/features/activities/summary';
 import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
-import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   Bath,
   Footprints,
@@ -18,7 +17,7 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TypeMeta {
   icon: LucideIcon;
@@ -238,46 +237,12 @@ export function TodayTimelineList({ items: initial }: Props) {
     });
   };
 
-  // Measure distance from the document top on mount so rows position correctly
-  // on first paint (reading offsetTop during render is 0 until the ref attaches
-  // — the list sits below the dashboard cards). Callback ref → commit-time
-  // setState → synchronous re-render before paint.
-  const [scrollMargin, setScrollMargin] = useState(0);
-  const setListRef = useCallback((node: HTMLDivElement | null) => {
-    if (node) setScrollMargin(node.offsetTop);
-  }, []);
-  const virtualizer = useWindowVirtualizer({
-    count: items.length,
-    estimateSize: () => 92,
-    overscan: 5,
-    scrollMargin,
-  });
-
   return (
     <>
-      <div ref={setListRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
-        {virtualizer.getVirtualItems().map((vi) => {
-          const it = items[vi.index];
-          if (!it) return null;
-          return (
-            <div
-              key={it.id}
-              data-index={vi.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
-              }}
-            >
-              <div className="pb-2">
-                <TodayTimelineRowItem item={it} isFirst={vi.index === 0} onClick={() => openSheet(it)} />
-              </div>
-            </div>
-          );
-        })}
+      <div className="relative">
+        {items.map((it, index) => (
+          <TodayTimelineRowItem key={it.id} item={it} isFirst={index === 0} onClick={() => openSheet(it)} />
+        ))}
       </div>
       <ActivitySheet
         activity={selected}

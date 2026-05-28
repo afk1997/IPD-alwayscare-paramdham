@@ -1,6 +1,7 @@
 'use client';
 import { Button } from '@/components/ui/Button';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -17,6 +18,7 @@ export function DocumentUploadDialog({ animalId, onCreated }: Props) {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
+  useBodyScrollLock(open);
 
   // UI-12: Escape closes the dialog.
   useEffect(() => {

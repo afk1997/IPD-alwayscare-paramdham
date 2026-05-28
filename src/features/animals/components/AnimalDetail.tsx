@@ -5,6 +5,7 @@ import type { ActivityType } from '@/features/activities/schema';
 import { listAssignableCages } from '@/features/cages/queries';
 import { DocumentsPanel } from '@/features/documents/components/DocumentsPanel';
 import { listDocumentsForAnimal } from '@/features/documents/queries';
+import { getCurrentUser } from '@/lib/auth';
 import { FileText, type Info } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { getAnimal } from '../queries';
@@ -19,13 +20,17 @@ interface Props {
 }
 
 export async function AnimalDetail({ animalId }: Props) {
-  const [animal, activities, documents, cages] = await Promise.all([
+  const [animal, activities, documents, cages, currentUser] = await Promise.all([
     getAnimal(animalId),
     listActivitiesForAnimal(animalId),
     listDocumentsForAnimal(animalId),
     listAssignableCages(animalId),
+    getCurrentUser(),
   ]);
   if (!animal) notFound();
+  // M5: VIEWER must not see the upload affordance (the createDocument action
+  // already denies them server-side; this keeps the UI honest).
+  const canWriteDocs = !!currentUser && currentUser.role !== 'VIEWER';
   const lastActivityAt = activities[0]?.occurredAt ?? null;
 
   // Aggregate every photo / x-ray / video the patient has — admission media,
@@ -191,7 +196,7 @@ export async function AnimalDetail({ animalId }: Props) {
                   fileUrl: d.fileUrl,
                   file: d.file ? { id: d.file.id, kind: d.file.kind, filename: d.file.filename } : null,
                 }))}
-                canWrite={true}
+                canWrite={canWriteDocs}
               />
             </section>
           </div>

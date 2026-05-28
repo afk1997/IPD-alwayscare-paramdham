@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { copyToClipboard } from '@/lib/clipboard';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { useSwipeDown } from '@/lib/hooks/useSwipeDown';
 import { formatDateTime, relativeTime } from '@/lib/time';
@@ -127,6 +128,7 @@ export function ActivitySheet({
   const swipe = useSwipeDown({ onClose });
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open && !!activity);
+  useBodyScrollLock(open && !!activity);
 
   if (!open || !activity) return null;
 

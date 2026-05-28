@@ -1,5 +1,6 @@
 'use client';
 import { Button } from '@/components/ui/Button';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import {
   Bath,
@@ -38,6 +39,7 @@ export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
   const [selected, setSelected] = useState<ActivityType | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
+  useBodyScrollLock(open);
 
   // UI-11: Escape closes the modal.
   useEffect(() => {

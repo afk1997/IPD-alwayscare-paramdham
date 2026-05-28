@@ -3,6 +3,7 @@ import { type ActivitySearchResult, searchActivitiesAction } from '@/features/ac
 import { ACTIVITY_LABELS, type ActivityType } from '@/features/activities/schema';
 import { searchAnimalsAction } from '@/features/animals/actions';
 import type { ActiveAnimalLite } from '@/features/animals/queries';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import { Activity as ActivityIcon, PawPrint, Search } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
@@ -29,6 +30,7 @@ export function CommandPaletteProvider({ children }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
+  useBodyScrollLock(isOpen);
 
   // Global ⌘K / Ctrl+K opens the palette.
   useEffect(() => {
