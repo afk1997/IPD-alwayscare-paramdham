@@ -140,7 +140,7 @@ export function MediaUploader({
               className="group relative aspect-square overflow-hidden rounded-lg border border-line"
             >
               {u.kind === 'PHOTO' || u.kind === 'XRAY' ? (
-                <Image src={u.url} alt={u.filename} fill className="object-cover" sizes="200px" unoptimized />
+                <Image src={u.url} alt={u.filename} fill className="object-cover" sizes="200px" />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-paper-2 px-2 text-center text-[10px] text-muted">
                   {u.kind === 'VIDEO' ? <Video size={18} /> : <FileText size={18} />}

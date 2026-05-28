@@ -158,6 +158,7 @@ function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; o
                 alt=""
                 rounded={11}
                 className="h-12 w-12 ring-2"
+                sizes="48px"
               />
               <span
                 className="-bottom-1 -right-1 absolute flex h-[22px] w-[22px] items-center justify-center rounded-full text-white"

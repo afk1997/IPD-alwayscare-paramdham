@@ -334,6 +334,13 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
     .filter((m) => m.kind !== 'VIDEO')
     .map((m) => ({ id: m.assetId, filename: m.label ?? '', kind: m.kind, label: m.label, url: m.url }));
   const photoIndexByAssetId = new Map(photoItems.map((p, i) => [p.id, i]));
+  const photoCount = photoItems.length;
+  const sizesValue =
+    photoCount === 1
+      ? '(max-width: 560px) 100vw, 560px'
+      : photoCount === 2
+        ? '(max-width: 560px) 50vw, 280px'
+        : '(max-width: 560px) 33vw, 180px';
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   return (
@@ -366,6 +373,7 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
                   alt={m.label ?? ''}
                   rounded={12}
                   className="aspect-square w-full"
+                  sizes={sizesValue}
                 />
               </button>
             ),

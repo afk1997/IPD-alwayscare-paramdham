@@ -34,6 +34,17 @@ const nextConfig: NextConfig = {
   typedRoutes: false,
   poweredByHeader: false,
   productionBrowserSourceMaps: false,
+  images: {
+    // Hold optimized variants for up to one year before re-running the
+    // transform.  Combined with stable signed URLs (PR 1's media-sign)
+    // this keeps total transformations to ~(assets × widths × formats)
+    // for the entire project's lifetime.
+    minimumCacheTTL: 60 * 60 * 24 * 365,
+    formats: ['image/avif', 'image/webp'],
+    // Cap variant explosion.  Each entry is one transformation per asset.
+    deviceSizes: [320, 640, 1080],
+    imageSizes: [64, 200, 400],
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

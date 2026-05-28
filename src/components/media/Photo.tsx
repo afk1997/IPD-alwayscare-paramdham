@@ -18,6 +18,7 @@ interface Props {
   showLabel?: boolean | undefined;
   onClick?: (() => void) | undefined;
   alt?: string | undefined;
+  sizes?: string | undefined;
 }
 
 const PHOTO_PALETTES: Array<[string, string, string]> = [
@@ -59,6 +60,7 @@ export function Photo({
   showLabel = true,
   onClick,
   alt = '',
+  sizes = '200px',
 }: Props) {
   const meta = useMemo(() => {
     const h = hashSeed(seed);
@@ -121,9 +123,8 @@ export function Photo({
           src={src}
           alt={alt}
           fill
-          sizes="200px"
+          sizes={sizes}
           className="object-cover"
-          unoptimized
           onError={() => setImageFailed(true)}
         />
         {label && showLabel && <LabelBand label={label} />}
