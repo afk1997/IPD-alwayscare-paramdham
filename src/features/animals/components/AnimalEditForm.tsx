@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { useToast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { updateAnimalAction } from '../actions';
+import { type AnimalDetailRow, updateAnimalAction } from '../actions';
 import { STATUSES, VACCINATION } from '../schema';
 import { CageSelect } from './CageSelect';
 
@@ -39,8 +39,8 @@ interface Props {
     broughtBy: string | null;
   };
   cages: { id: string; name: string }[];
-  /** Called on successful save.  Default: navigate to /patients/{id}. */
-  onDone?: () => void;
+  /** Called on successful save with the updated row.  Default: navigate to /patients/{id}. */
+  onDone?: (next: AnimalDetailRow) => void;
   /** When provided, renders a Cancel button next to Save. */
   onCancel?: () => void;
 }
@@ -87,8 +87,7 @@ export function AnimalEditForm({ animal, cages, onDone, onCancel }: Props) {
       if (!result.ok) setError(result.error ?? 'Update failed');
       else {
         showToast({ message: 'Patient updated' });
-        router.refresh();
-        if (onDone) onDone();
+        if (onDone && result.animal) onDone(result.animal);
         else router.push(`/patients/${animal.id}`);
       }
     });

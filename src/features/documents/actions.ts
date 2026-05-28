@@ -1,8 +1,10 @@
 'use server';
 import { getCurrentUser } from '@/lib/auth';
 import { NotFoundError, RbacError, ValidationError } from '@/lib/errors';
+import { signMediaUrl } from '@/lib/media-sign';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { z } from 'zod';
+import type { DocCategory } from './schema';
 import { type CreateDocumentInput, CreateDocumentSchema } from './schema';
 import { createDocument, softDeleteDocument } from './service';
 
@@ -12,9 +14,21 @@ async function requireActor() {
   return { id: user.id, role: user.role };
 }
 
+export interface DocumentRow {
+  id: string;
+  category: DocCategory;
+  kind: string;
+  name: string;
+  createdAt: string;
+  uploadedBy: { name: string };
+  fileUrl: string | null;
+  file: { id: string; kind: string; filename: string } | null;
+}
+
 export interface DocumentActionResult {
   ok: boolean;
   documentId?: string;
+  document?: DocumentRow;
   error?: string;
 }
 
@@ -22,10 +36,25 @@ export async function createDocumentAction(input: CreateDocumentInput): Promise<
   try {
     const actor = await requireActor();
     const parsed = CreateDocumentSchema.parse(input);
-    const doc = await createDocument(actor, parsed);
+    const created = await createDocument(actor, parsed);
     revalidateTag('documents');
     revalidatePath(`/patients/${parsed.animalId}`);
-    return { ok: true, documentId: doc.id };
+    return {
+      ok: true,
+      documentId: created.id,
+      document: {
+        id: created.id,
+        category: created.category as DocCategory,
+        kind: created.kind,
+        name: created.name,
+        createdAt: created.createdAt.toISOString(),
+        uploadedBy: { name: created.uploadedBy.name },
+        fileUrl: created.file ? signMediaUrl(created.file.id) : null,
+        file: created.file
+          ? { id: created.file.id, kind: created.file.kind, filename: created.file.filename }
+          : null,
+      },
+    };
   } catch (e) {
     if (e instanceof RbacError) return { ok: false, error: e.message };
     if (e instanceof NotFoundError) return { ok: false, error: 'Patient not found' };

@@ -1,19 +1,12 @@
 import { EmptyState } from '@/components/ui/EmptyState';
 import { relativeTime } from '@/lib/time';
-import type { Document, MediaAsset } from '@prisma/client';
 import { FileText } from 'lucide-react';
 import Link from 'next/link';
+import type { DocumentRow } from '../actions';
 import { DOC_CATEGORIES, DOC_CATEGORY_LABELS, type DocCategory } from '../schema';
 
-type DocWithFile = Document & {
-  file: MediaAsset | null;
-  uploadedBy: { name: string };
-  /** Pre-signed URL for the file asset, minted server-side. Null when file is null. */
-  fileUrl: string | null;
-};
-
 interface Props {
-  documents: DocWithFile[];
+  documents: DocumentRow[];
 }
 
 export function DocumentList({ documents }: Props) {
@@ -27,7 +20,7 @@ export function DocumentList({ documents }: Props) {
     );
   }
 
-  const byCategory = new Map<DocCategory, DocWithFile[]>();
+  const byCategory = new Map<DocCategory, DocumentRow[]>();
   for (const cat of DOC_CATEGORIES) byCategory.set(cat, []);
   for (const d of documents) byCategory.get(d.category)?.push(d);
 

@@ -2,43 +2,12 @@
 import { Button } from '@/components/ui/Button';
 import { formatDateTime } from '@/lib/time';
 import { Pencil } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { AnimalDetailRow } from '../actions';
 import { AnimalEditForm } from './AnimalEditForm';
 
-interface Animal {
-  id: string;
-  name: string;
-  species: string;
-  breed: string | null;
-  gender: string | null;
-  ageText: string | null;
-  color: string | null;
-  weightKg: string | null;
-  vaccination: string;
-  sterilized: boolean;
-  aggressive: boolean;
-  contagious: boolean;
-  ward: string | null;
-  cage: string | null;
-  cageId: string | null;
-  status: string;
-  admittedAt: string;
-  complaint: string | null;
-  history: string | null;
-  injuryType: string | null;
-  diagnosis: string | null;
-  immediateTreatment: string | null;
-  surgeryRequired: string | null;
-  rescuer: string | null;
-  rescuerPhone: string | null;
-  address: string | null;
-  ngo: string | null;
-  broughtBy: string | null;
-  testsAdvised: string[];
-}
-
 interface Props {
-  animal: Animal;
+  animal: AnimalDetailRow;
   cages: { id: string; name: string }[];
 }
 
@@ -51,8 +20,11 @@ const TEST_LABELS: Record<string, string> = {
   SONOGRAPHY: 'Sonography',
 };
 
-export function AnimalDetailsTab({ animal, cages }: Props) {
+export function AnimalDetailsTab({ animal: initial, cages }: Props) {
+  const [animal, setAnimal] = useState<AnimalDetailRow>(initial);
   const [editing, setEditing] = useState(false);
+
+  useEffect(() => setAnimal(initial), [initial]);
 
   if (editing) {
     return (
@@ -85,7 +57,10 @@ export function AnimalDetailsTab({ animal, cages }: Props) {
             ngo: animal.ngo,
             broughtBy: animal.broughtBy,
           }}
-          onDone={() => setEditing(false)}
+          onDone={(next) => {
+            setAnimal(next);
+            setEditing(false);
+          }}
           onCancel={() => setEditing(false)}
         />
       </div>
