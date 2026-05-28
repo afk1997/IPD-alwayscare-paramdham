@@ -44,6 +44,12 @@ const nextConfig: NextConfig = {
     // Cap variant explosion.  Each entry is one transformation per asset.
     deviceSizes: [320, 640, 1080],
     imageSizes: [64, 200, 400],
+    // Required from Next 16+; emits a console warning today.  Signed
+    // media URLs carry ?v=orig&sig=<22chars> as their search string.
+    localPatterns: [
+      { pathname: '/api/files/**', search: '' },
+      { pathname: '/api/files/**', search: '?v=orig&sig=*' },
+    ],
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

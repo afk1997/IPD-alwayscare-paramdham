@@ -195,7 +195,11 @@ export function ActivitySheet({
             label: 'Undo',
             onClick: async () => {
               const r = await restoreActivityAction(id);
-              if (r.ok && r.activity) onRestored(r.activity);
+              if (r.ok && r.activity) {
+                onRestored(r.activity);
+              } else {
+                showToast({ message: r.error ?? 'Could not restore — check Trash page' });
+              }
             },
           },
         });
