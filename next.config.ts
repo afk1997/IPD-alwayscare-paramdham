@@ -46,10 +46,14 @@ const nextConfig: NextConfig = {
     imageSizes: [64, 200, 400],
     // Required from Next 16+; emits a console warning today.  Signed
     // media URLs carry ?v=orig&sig=<22chars> as their search string.
-    localPatterns: [
-      { pathname: '/api/files/**', search: '' },
-      { pathname: '/api/files/**', search: '?v=orig&sig=*' },
-    ],
+    //
+    // NOTE: `search` is matched by EXACT string equality in Next's
+    // matchLocalPattern (`pattern.search !== url.search`), not glob — so a
+    // pattern like `?v=orig&sig=*` only ever matches the literal `*`, never a
+    // real 22-char signature.  Omitting `search` entirely skips the query
+    // check so any `?v=orig&sig=…` (and the no-query cookie path) is allowed
+    // through the optimizer.  Pinning the pathname keeps the SSRF allow-list.
+    localPatterns: [{ pathname: '/api/files/**' }],
   },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

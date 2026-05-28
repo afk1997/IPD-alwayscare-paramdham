@@ -304,6 +304,63 @@ export async function getMediaForRead(actor: Actor, assetId: string): Promise<Me
   };
 }
 
+/**
+ * Look up a media asset for the SIGNED read path (`/api/files/[id]?sig=…`).
+ *
+ * There is no actor here — a valid HMAC signature is the capability, so the
+ * id-guessing IDOR that getMediaForRead's rule (2) defends against isn't
+ * reachable.  But soft-delete must still revoke access (parity with the API-1
+ * fix): once an asset's clinical record is trashed, its signed URL must stop
+ * resolving.  We can't simply require a live link, because a just-finalized
+ * asset is briefly unlinked while the client builds the activity/document
+ * form — MediaUploader renders the signed URL as an upload preview before the
+ * row exists.  So: serve when the asset has NO links yet (fresh upload) OR has
+ * at least one link to a non-deleted parent; revoke (return null → 410) only
+ * when every parent has been soft-deleted.  This only runs on a CDN cache
+ * miss, so the extra link lookups don't touch the warm hot path.
+ */
+export async function getSignedMediaForRead(assetId: string): Promise<MediaForRead | null> {
+  const asset = await prisma.mediaAsset.findUnique({
+    where: { id: assetId },
+    select: { id: true, status: true, storageKey: true, mimeType: true, size: true },
+  });
+  if (!asset || asset.status !== 'READY' || !asset.storageKey) return null;
+
+  const [liveAnimal, liveActivity, liveDocument] = await Promise.all([
+    prisma.animalMedia.findFirst({
+      where: { assetId, animal: { deletedAt: null } },
+      select: { id: true },
+    }),
+    prisma.activityMedia.findFirst({
+      where: { assetId, activity: { deletedAt: null, animal: { deletedAt: null } } },
+      select: { id: true },
+    }),
+    prisma.document.findFirst({
+      where: { fileId: assetId, deletedAt: null, animal: { deletedAt: null } },
+      select: { id: true },
+    }),
+  ]);
+  const hasLiveLink = Boolean(liveAnimal || liveActivity || liveDocument);
+  if (!hasLiveLink) {
+    // No live link: distinguish a not-yet-linked fresh upload (serve) from an
+    // asset whose every parent has been soft-deleted (revoke).
+    const [anyAnimal, anyActivity, anyDocument] = await Promise.all([
+      prisma.animalMedia.findFirst({ where: { assetId }, select: { id: true } }),
+      prisma.activityMedia.findFirst({ where: { assetId }, select: { id: true } }),
+      prisma.document.findFirst({ where: { fileId: assetId }, select: { id: true } }),
+    ]);
+    if (anyAnimal || anyActivity || anyDocument) return null; // all parents trashed → revoke
+  }
+
+  return {
+    id: asset.id,
+    status: asset.status,
+    storageKey: asset.storageKey,
+    mimeType: asset.mimeType,
+    size: asset.size,
+  };
+}
+
 export interface ClassifiedMedia {
   kind: MediaKind;
 }
