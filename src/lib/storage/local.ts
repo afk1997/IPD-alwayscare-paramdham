@@ -44,6 +44,13 @@ export class LocalDiskStorage implements FileStorage {
     return { stream: createReadStream(abs), mime: 'application/octet-stream', size: stats.size };
   }
 
+  async getStreamOnly(key: string): Promise<{ stream: NodeJS.ReadableStream }> {
+    const abs = this.fromKey(key);
+    statSync(abs);
+    const stream = createReadStream(abs);
+    return { stream };
+  }
+
   async delete(key: string): Promise<void> {
     const abs = this.fromKey(key);
     await unlink(abs);
