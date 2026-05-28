@@ -22,6 +22,27 @@ import type { SerializedActivity } from '../serialized';
 import { summarizeActivity } from '../summary';
 import { ActivityEditFields, type EditDraft, toLocalDatetime } from './ActivityEditFields';
 
+function buildOptimisticUpdate(
+  activity: ActivitySummary,
+  draft: EditDraft,
+  media: SerializedActivity['media'],
+): SerializedActivity {
+  const occurredAtISO = draft.occurredAtLocal
+    ? new Date(draft.occurredAtLocal).toISOString()
+    : activity.occurredAt.toISOString();
+  return {
+    id: activity.id,
+    animalId: activity.animalId,
+    type: activity.type,
+    occurredAt: occurredAtISO,
+    byName: draft.byName.trim() || activity.byName,
+    remarks: draft.remarks || null,
+    editedAt: new Date().toISOString(),
+    data: draft.data,
+    media,
+  };
+}
+
 export interface ActivitySummary {
   id: string;
   animalId: string;
@@ -110,6 +131,24 @@ export function ActivitySheet({
   if (!open || !activity) return null;
 
   const save = () => {
+    // Snapshot for revert
+    const snapshot: SerializedActivity = {
+      id: activity.id,
+      animalId: activity.animalId,
+      type: activity.type,
+      occurredAt: activity.occurredAt.toISOString(),
+      byName: activity.byName,
+      remarks: activity.remarks,
+      editedAt: activity.editedAt ? activity.editedAt.toISOString() : null,
+      data: activity.data,
+      media: activity.media as SerializedActivity['media'],
+    };
+    const optimistic = buildOptimisticUpdate(activity, draft, activity.media as SerializedActivity['media']);
+    // Apply immediately — sheet closes, timeline shows new content
+    onSaved(optimistic);
+    setMode('view');
+    onClose();
+
     start(async () => {
       const occurredAtISO = draft.occurredAtLocal ? new Date(draft.occurredAtLocal).toISOString() : undefined;
       const result = await updateActivityAction(activity.id, {
@@ -120,11 +159,11 @@ export function ActivitySheet({
       });
       if (result.ok && result.activity) {
         showToast({ message: `${ACTIVITY_LABELS[activity.type]} updated` });
-        setMode('view');
+        // Overlay canonical row over the optimistic one
         onSaved(result.activity);
-        onClose();
       } else {
-        setError(result.error ?? 'Update failed');
+        onSaved(snapshot);
+        showToast({ message: result.error ?? 'Update failed — reverted' });
       }
     });
   };
@@ -132,11 +171,23 @@ export function ActivitySheet({
   const del = () => {
     const id = activity.id;
     const typeLabel = ACTIVITY_LABELS[activity.type];
+    const snapshot: SerializedActivity = {
+      id: activity.id,
+      animalId: activity.animalId,
+      type: activity.type,
+      occurredAt: activity.occurredAt.toISOString(),
+      byName: activity.byName,
+      remarks: activity.remarks,
+      editedAt: activity.editedAt ? activity.editedAt.toISOString() : null,
+      data: activity.data,
+      media: activity.media as SerializedActivity['media'],
+    };
+    onDeleted(id);
+    onClose();
+
     start(async () => {
       const result = await deleteActivityAction(id);
       if (result.ok) {
-        onDeleted(id);
-        onClose();
         showToast({
           message: `${typeLabel} deleted`,
           duration: 12000,
@@ -149,7 +200,8 @@ export function ActivitySheet({
           },
         });
       } else {
-        setError(result.error ?? 'Delete failed');
+        onRestored(snapshot);
+        showToast({ message: result.error ?? 'Delete failed — restored' });
       }
     });
   };
