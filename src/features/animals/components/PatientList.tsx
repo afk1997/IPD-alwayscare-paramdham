@@ -4,8 +4,8 @@ import type { AnimalStatus } from '@prisma/client';
 import { PawPrint } from 'lucide-react';
 import Link from 'next/link';
 import { listAnimals } from '../queries';
-import { PatientCard } from './PatientCard';
 import { PatientListFilters } from './PatientListFilters';
+import { PatientListVirtual } from './PatientListVirtual';
 
 interface Props {
   search?: string | undefined;
@@ -59,11 +59,7 @@ export async function PatientList({ search, status, species }: Props = {}) {
           />
         )
       ) : (
-        <div className="flex flex-col gap-2">
-          {animals.map((a) => (
-            <PatientCard key={a.id} animal={a} />
-          ))}
-        </div>
+        <PatientListVirtual animals={animals} />
       )}
     </div>
   );
