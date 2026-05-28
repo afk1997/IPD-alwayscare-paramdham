@@ -24,6 +24,8 @@ export interface FinalizeResponse {
   width: number | null;
   height: number | null;
   durationSec: number | null;
+  /** Pre-signed URL for the asset, ready to use in <img src>. */
+  url: string;
 }
 
 export interface ResumableUploadProgress {

@@ -9,6 +9,8 @@ export interface LightboxItem {
   filename: string;
   kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
   label?: string | null;
+  /** Pre-signed URL for the asset, ready to use in <img src>. */
+  url: string;
 }
 
 interface Props {
@@ -71,16 +73,11 @@ export function Lightbox({ items, index, onClose, onChange }: Props) {
         <div className="flex w-full min-h-0 flex-1 items-center justify-center overflow-hidden">
           {current.kind === 'VIDEO' ? (
             // biome-ignore lint/a11y/useMediaCaption: caption track not yet authored for IPD-captured clinical videos
-            <video
-              src={`/api/files/${current.id}`}
-              controls
-              autoPlay
-              className="max-h-full max-w-full rounded-lg"
-            />
+            <video src={current.url} controls autoPlay className="max-h-full max-w-full rounded-lg" />
           ) : current.kind === 'DOC' ? (
             <iframe
               title={current.filename}
-              src={`/api/files/${current.id}`}
+              src={current.url}
               className="h-full w-full rounded-lg bg-white"
             />
           ) : (
@@ -89,7 +86,7 @@ export function Lightbox({ items, index, onClose, onChange }: Props) {
             // /api/files proxy from Drive, not a CDN.
             <div className="relative h-full w-full">
               <Image
-                src={`/api/files/${current.id}`}
+                src={current.url}
                 alt={current.label || current.filename}
                 fill
                 sizes="100vw"

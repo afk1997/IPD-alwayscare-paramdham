@@ -100,18 +100,26 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
 }
 
 export async function getAnimal(id: string) {
-  return prisma.animal.findFirst({
+  const animal = await prisma.animal.findFirst({
     where: { id, deletedAt: null },
     include: {
       testsAdvised: true,
       media: {
         orderBy: { order: 'asc' },
+        // Only READY thumbnails — PENDING / FAILED would 425 / 410
+        // through /api/files/[id].
+        where: { asset: { status: 'READY' } },
         include: { asset: true },
       },
       createdBy: { select: { id: true, name: true } },
       cage: { select: { name: true } },
     },
   });
+  if (!animal) return null;
+  return {
+    ...animal,
+    media: animal.media.map((m) => ({ ...m, url: signMediaUrl(m.asset.id) })),
+  };
 }
 
 export interface ActiveAnimalLite {

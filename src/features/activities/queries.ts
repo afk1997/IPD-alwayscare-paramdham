@@ -1,3 +1,4 @@
+import { signMediaUrl } from '@/lib/media-sign';
 import { prisma } from '@/lib/prisma';
 
 // Hard cap on activity-feed depth per animal — far past a realistic IPD stay
@@ -6,15 +7,22 @@ import { prisma } from '@/lib/prisma';
 const ACTIVITY_FEED_CAP = 500;
 
 export async function listActivitiesForAnimal(animalId: string) {
-  return prisma.activity.findMany({
+  const rows = await prisma.activity.findMany({
     where: { animalId, deletedAt: null },
     orderBy: { occurredAt: 'desc' },
     take: ACTIVITY_FEED_CAP,
     include: {
-      media: { include: { asset: true } },
+      media: {
+        where: { asset: { status: 'READY' } },
+        include: { asset: true },
+      },
       byUser: { select: { id: true, name: true } },
     },
   });
+  return rows.map((r) => ({
+    ...r,
+    media: r.media.map((m) => ({ ...m, url: signMediaUrl(m.asset.id) })),
+  }));
 }
 
 export async function getLastActivityAt(animalId: string): Promise<Date | null> {

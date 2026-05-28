@@ -38,6 +38,7 @@ export async function AnimalDetail({ animalId }: Props) {
       kind: m.asset.kind as 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC',
       filename: m.asset.filename,
       label: m.label,
+      url: m.url,
     })),
     ...activities.flatMap((a) =>
       a.media.map((m) => ({
@@ -45,10 +46,11 @@ export async function AnimalDetail({ animalId }: Props) {
         kind: m.asset.kind as 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC',
         filename: m.asset.filename,
         label: m.label ?? `${a.type.toLowerCase()} · ${m.asset.filename}`,
+        url: m.url,
       })),
     ),
     ...documents
-      .filter((d) => d.file !== null)
+      .filter((d) => d.file !== null && d.fileUrl !== null)
       .map((d) => ({
         // biome-ignore lint/style/noNonNullAssertion: filtered above
         id: d.file!.id,
@@ -57,6 +59,8 @@ export async function AnimalDetail({ animalId }: Props) {
         // biome-ignore lint/style/noNonNullAssertion: filtered above
         filename: d.file!.filename,
         label: d.kind,
+        // biome-ignore lint/style/noNonNullAssertion: filtered above
+        url: d.fileUrl!,
       })),
   ];
 
@@ -74,6 +78,7 @@ export async function AnimalDetail({ animalId }: Props) {
       assetId: m.assetId,
       kind: m.asset.kind,
       label: m.label,
+      url: m.url,
     })),
   }));
 
@@ -107,6 +112,7 @@ export async function AnimalDetail({ animalId }: Props) {
           rescuer: animal.rescuer,
           rescuerPhone: animal.rescuerPhone,
           media: animal.media.map((m) => ({
+            url: m.url,
             asset: { id: m.asset.id, filename: m.asset.filename, kind: m.asset.kind },
           })),
         }}
@@ -162,6 +168,7 @@ export async function AnimalDetail({ animalId }: Props) {
                     kind: m.asset.kind as 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC',
                     filename: m.asset.filename,
                     label: m.label,
+                    url: m.url,
                   }))}
                   columns={4}
                 />

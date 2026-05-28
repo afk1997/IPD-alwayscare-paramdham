@@ -8,6 +8,8 @@ import { DOC_CATEGORIES, DOC_CATEGORY_LABELS, type DocCategory } from '../schema
 type DocWithFile = Document & {
   file: MediaAsset | null;
   uploadedBy: { name: string };
+  /** Pre-signed URL for the file asset, minted server-side. Null when file is null. */
+  fileUrl: string | null;
 };
 
 interface Props {
@@ -42,7 +44,7 @@ export function DocumentList({ documents }: Props) {
               {docs.map((d) => (
                 <li key={d.id}>
                   <Link
-                    href={d.file ? `/api/files/${d.file.id}` : '#'}
+                    href={d.fileUrl ?? '#'}
                     target="_blank"
                     rel="noopener"
                     className="flex items-center gap-3 rounded-lg border border-line bg-paper p-3 transition hover:bg-paper-2"

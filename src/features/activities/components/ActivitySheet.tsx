@@ -35,7 +35,13 @@ export interface ActivitySummary {
   // and <Photo> for PHOTO/XRAY/DOC.  Previously every media tile was
   // rendered as an <img>, which broke for mp4s — the browser showed
   // the placeholder palette colour where the video should play.
-  media: { id: string; assetId: string; kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC'; label: string | null }[];
+  media: {
+    id: string;
+    assetId: string;
+    kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
+    label: string | null;
+    url: string;
+  }[];
 }
 
 interface Props {
@@ -326,7 +332,7 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
   // full-screen (matches the "videos stay inline" UX choice).
   const photoItems = activity.media
     .filter((m) => m.kind !== 'VIDEO')
-    .map((m) => ({ id: m.assetId, filename: m.label ?? '', kind: m.kind, label: m.label }));
+    .map((m) => ({ id: m.assetId, filename: m.label ?? '', kind: m.kind, label: m.label, url: m.url }));
   const photoIndexByAssetId = new Map(photoItems.map((p, i) => [p.id, i]));
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -338,7 +344,7 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
             m.kind === 'VIDEO' ? (
               <video
                 key={m.id}
-                src={`/api/files/${m.assetId}`}
+                src={m.url}
                 controls
                 preload="metadata"
                 className="aspect-square w-full rounded-[12px] bg-black object-cover"
@@ -354,7 +360,7 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
                 className="cursor-zoom-in overflow-hidden rounded-[12px] outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
               >
                 <Photo
-                  src={`/api/files/${m.assetId}`}
+                  src={m.url}
                   seed={m.assetId}
                   kind={m.kind === 'XRAY' ? 'xray' : m.kind === 'DOC' ? 'doc' : 'photo'}
                   alt={m.label ?? ''}

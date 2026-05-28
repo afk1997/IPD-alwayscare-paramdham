@@ -33,7 +33,7 @@ export function MediaGrid({ items, emptyLabel, columns = 3 }: Props) {
           >
             {it.kind === 'PHOTO' || it.kind === 'XRAY' ? (
               <Image
-                src={`/api/files/${it.id}`}
+                src={it.url}
                 alt={it.label || it.filename}
                 fill
                 sizes="200px"
