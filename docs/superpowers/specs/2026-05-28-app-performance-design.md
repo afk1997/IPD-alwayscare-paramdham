@@ -31,7 +31,7 @@ The plan is informed by:
 
 Compounding problems, roughly in the order they hurt a mobile user clicking around.
 
-**D1 — Image delivery is the worst offender.** `src/app/api/files/[id]/route.ts` returns `cache-control: 'private, no-cache, must-revalidate'` and the `Photo` component (`src/components/media/Photo.tsx`) wraps `<Image>` with `unoptimized`. Every fetch runs: middleware (NextAuth JWT decode) → `getCurrentUser()` (DB query) → `getMediaForRead()` (DB query) → Google Drive `files.get` metadata (RTT 1) → Google Drive `files.get` stream (RTT 2) → proxy stream. On a list with 20 thumbnails that's 20 full chains. Re-navigation pays the chain again — no edge cache, no browser cache, no resize. Vercel dashboard shows this as **6.81 / 10 GB Fast Origin Transfer in 27 days** with **48K Edge Requests vs 63K Function Invocations** — the inversion confirms the function is doing edge-cache's job.
+**D1 — Image delivery is the worst offender.** `src/app/api/files/[id]/route.ts` returns `cache-control: 'private, no-cache, must-revalidate'` and the `Photo` component (`src/components/media/Photo.tsx`) wraps `<Image>` with `unoptimized`. Every fetch runs: middleware (NextAuth JWT decode) → `getCurrentUser()` (1 DB query) → `getMediaForRead()` (1 DB query + up to 3 parallel link-check queries for non-owner reads) → Google Drive `files.get` metadata (RTT 1) → Google Drive `files.get` stream (RTT 2) → proxy stream. Worst case **5 DB queries + 2 Drive RTTs per image fetch**. On a list with 20 thumbnails, 20 full chains. Re-navigation pays the chain again — no edge cache, no browser cache, no resize. Vercel dashboard shows this as **6.81 / 10 GB Fast Origin Transfer in 27 days** with **48K Edge Requests vs 63K Function Invocations** — the inversion confirms the function is doing edge-cache's job.
 
 **D2 — `router.refresh()` storm on every mutation.** 11 call sites currently call `router.refresh()` after server actions resolve: `ActivityTimeline` (edit/delete/duplicate), `QuickAddModal` (finish), `ActivityQuickAdd`, `AnimalEditForm`, `DocumentUploadDialog`, `AddCageForm`, `CageList` (×2), `TodayTimelineList`, plus `LoginForm` (acceptable). Each refresh re-runs the entire server tree for the current route. On a patient detail page that's `getAnimal + listActivitiesForAnimal(500-cap) + listDocumentsForAnimal + listAssignableCages` plus every thumbnail re-pays the D1 chain. The UI also blocks on this round-trip — no optimistic updates anywhere.
 
@@ -100,42 +100,44 @@ Each phase is its own design follow-up, plan, and PR set. Ship in order, measure
 
 **Purpose:** Make image bytes hit the Vercel edge cache after the first fetch and stop running auth + DB + Drive on every image fetch. Re-enable Next image optimization for resize / format conversion (Hobby quota has plenty of headroom — 45 / 5K transforms used in the last 27 days).
 
-### Signed-URL scheme
+### Signed-URL scheme — stable signatures, no rotation
 
 ```
-/api/files/[id]?v=orig&exp=<bucket-unix-ts>&sig=<hmac>
+/api/files/[id]?v=orig&sig=<hmac>
 ```
 
 - `id`: `MediaAsset.id` (CUID, path param).
-- `v`: variant. Phase 1 ships only `orig`. (Future: `thumb`, `med` if measurements warrant pre-resize. Likely unnecessary with Next image optimization re-enabled.)
-- `exp`: unix epoch seconds, expiry. **Bucketed to 5-minute boundaries** at sign time: `bucket = Math.ceil((Date.now()/1000 + 600) / 300) * 300`. Bucketing makes consecutive renders within the same 5-min window emit the same URL, so multiple users + multiple page renders share the same edge-cache entry. TTL is up to 10 minutes from sign time.
-- `sig`: HMAC-SHA256 of `${id}|${v}|${exp}` using `AUTH_SECRET` (reused — no new secret to manage). Base64url-encoded. Truncated to 22 chars (≈ 128 bits of strength), no padding.
+- `v`: variant. Phase 1 ships only `orig`.
+- `sig`: HMAC-SHA256 of `${id}|${v}` using `AUTH_SECRET` (reused — no new secret to manage). Base64url-encoded. Truncated to 22 chars (≈ 128 bits of strength), no padding.
 
-### Security posture trade
+**Why no `exp` / no rotation:** the deep-review audit (2026-05-28) caught that bucketed expiry rotates the URL every 5 min, which rotates the `(source URL, width, quality)` cache key Next image optimization uses. Worst-case math: 100 assets × 3 widths × 2 formats × 12 buckets/hour × 24 × 30 ≈ 8.6 million transformations/month, against a Hobby cap of 5 K. Unworkable.
 
-- A signed URL is a bearer token for that image for up to ~10 min. Anyone with the URL can fetch the bytes during the TTL. The user's threat model (small clinical staff, no public surface) accepts this trade.
-- ACL changes (e.g., role demotion, soft-delete) take effect within ≤10 min for outstanding URLs. New URLs minted after the change are correct immediately because the RSC that mints them runs `getCurrentUser` and authorization first.
-- **No kill-switch / epoch bump.** Decided explicitly during brainstorming. If a privacy fire happens, we purge from Vercel's cache dashboard manually.
+Stable signatures collapse that to **one transformation per `(assetId, width, format)` per cache lifetime** — i.e., a few thousand transformations total over the project's life, well under the 5 K monthly cap.
+
+### Security posture trade — recalibrated
+
+- A signed URL is a **permanent capability token** for that asset, valid until `AUTH_SECRET` rotates.
+- ACL changes (role demotion, soft-delete, deactivation) do NOT revoke outstanding signed URLs. New URLs aren't minted for deactivated users (their RSC requests 401 at the layout), but URLs they already saw remain valid until secret rotation.
+- For the user's threat model (small clinical staff, no public surface, no adversarial insiders) this is acceptable: the URL is only ever rendered into the authenticated staff app; a deactivated user can't log in to acquire new ones, and the bytes themselves are no more sensitive than the screenshots staff could already take.
+- **Invalidation mechanism:** rotate `AUTH_SECRET`. All outstanding URLs across all assets become invalid simultaneously. This is the same primitive that rotates session JWTs, so the operation is already in the runbook.
+- **No kill-switch / epoch bump.** Decided explicitly during brainstorming. If a privacy fire happens, we either purge from Vercel's cache dashboard manually OR rotate `AUTH_SECRET`.
 
 ### `src/lib/media-sign.ts` (new)
 
 ```ts
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-const BUCKET_SEC = 300;        // 5-minute buckets
-const TTL_SEC = 600;           // 10-minute max age
 const SIG_LEN = 22;            // base64url chars (≈128 bits)
 
 export function signMediaUrl(assetId: string, opts: { variant?: 'orig' } = {}): string {
   const variant = opts.variant ?? 'orig';
   const secret = process.env.AUTH_SECRET;
   if (!secret) throw new Error('AUTH_SECRET required for signing media URLs');
-  const exp = Math.ceil((Date.now() / 1000 + TTL_SEC) / BUCKET_SEC) * BUCKET_SEC;
   const sig = createHmac('sha256', secret)
-    .update(`${assetId}|${variant}|${exp}`)
+    .update(`${assetId}|${variant}`)
     .digest('base64url')
     .slice(0, SIG_LEN);
-  return `/api/files/${assetId}?v=${variant}&exp=${exp}&sig=${sig}`;
+  return `/api/files/${assetId}?v=${variant}&sig=${sig}`;
 }
 
 export function verifyMediaUrl(
@@ -143,15 +145,13 @@ export function verifyMediaUrl(
   search: URLSearchParams,
 ): { ok: true; variant: string } | { ok: false; reason: string } {
   const v = search.get('v') ?? '';
-  const exp = Number(search.get('exp') ?? '0');
   const sig = search.get('sig') ?? '';
   if (v !== 'orig') return { ok: false, reason: 'unknown variant' };
-  if (!Number.isFinite(exp) || exp < Date.now() / 1000) return { ok: false, reason: 'expired' };
   if (sig.length !== SIG_LEN) return { ok: false, reason: 'bad sig length' };
   const secret = process.env.AUTH_SECRET;
   if (!secret) return { ok: false, reason: 'no secret' };
   const want = createHmac('sha256', secret)
-    .update(`${assetId}|${v}|${exp}`)
+    .update(`${assetId}|${v}`)
     .digest('base64url')
     .slice(0, SIG_LEN);
   // Constant-time comparison on equal-length buffers
@@ -160,6 +160,24 @@ export function verifyMediaUrl(
   if (a.length !== b.length) return { ok: false, reason: 'sig mismatch' };
   if (!timingSafeEqual(a, b)) return { ok: false, reason: 'sig mismatch' };
   return { ok: true, variant: v };
+}
+```
+
+### `next.config.ts` updates
+
+Add an `images` block so Next image optimization holds optimized variants long enough that we hit the per-asset transformation count only once over the lifetime of the cache entry:
+
+```ts
+images: {
+  // Hold optimized variants for up to one year before re-running the
+  // transform.  Combined with stable signed URLs (unchanged cache key)
+  // this keeps total transformations to ~(assets × widths × formats)
+  // for the entire project, not per month.
+  minimumCacheTTL: 60 * 60 * 24 * 365,
+  formats: ['image/avif', 'image/webp'],
+  // Cap variant explosion.  Each entry is one transformation per asset.
+  deviceSizes: [320, 640, 1080],
+  imageSizes: [64, 200, 400],
 }
 ```
 
@@ -223,29 +241,45 @@ export async function GET(req: Request, { params }) {
 - `LocalDiskStorage.getStreamOnly` just opens the file.
 - `GoogleDriveStorage.getStreamOnly` does only the `alt: 'media'` call, skipping the metadata RTT.
 
-### Server-side URL minting
+### Server-side URL minting — complete touchpoint inventory
 
-All queries that produce asset IDs for client consumption mint signed URLs. Concrete touchpoints:
+All queries that produce asset IDs for client consumption mint signed URLs. Exhaustive list, audited 2026-05-28 against every `/api/files/` string in `src/`:
 
-| File | Field added | Replaces |
-|---|---|---|
-| `src/features/animals/queries.ts` (`listAnimals`) | `thumbnailUrl: string \| null` | `thumbnailAssetId` (kept for one PR, then dropped) |
-| `src/features/animals/queries.ts` (`getAnimal`) | `media: [{ url, … }]` | per-asset URL construction in client |
-| `src/features/activities/queries.ts` (`listActivitiesForAnimal`) | `media[i].url` | client-side `\`/api/files/${assetId}\`` |
-| `src/features/reports/queries.ts` (`listTodayActivities`) | `media[i].url`, `animalThumbnailUrl` | same |
-| `src/features/documents/queries.ts` | `documents[i].file.url` | same |
+| Server file → adds | Client file → drops the `\`/api/files/${...}\`` |
+|---|---|
+| `src/features/animals/queries.ts` (`listAnimals`) → `thumbnailUrl` | `src/features/animals/components/PatientCard.tsx:15` |
+| `src/features/animals/queries.ts` (`getAnimal`) → `media[i].url` | `src/features/animals/components/AnimalHero.tsx:37` |
+| `src/features/activities/queries.ts` (`listActivitiesForAnimal`) → `media[i].url` | `src/features/activities/components/ActivityTimeline.tsx:142`, `ActivitySheet.tsx:341` (video) and `:357` (Photo) |
+| `src/features/reports/queries.ts` (`listTodayActivities`) → `media[i].url`, `animalThumbnailUrl` | `src/features/reports/components/TodayTimelineList.tsx:101`, `:107` |
+| `src/features/documents/queries.ts` (`listDocumentsForAnimal`, `listAllDocuments`) → `documents[i].file.url` | `src/features/documents/components/DocumentList.tsx:45` (the `<Link href>` for downloads) |
+| (no server query — uses post-finalize asset) | `src/components/media/MediaUploader.tsx:139` — the `value` array of `UploadedAsset` needs a `url` field returned by the finalize response (see "Upload pipeline change" below) |
+| (no server query — used by `MediaGrid`, `Lightbox`) | `src/components/media/MediaGrid.tsx:36` and `Lightbox.tsx:75` (video), `:83` (doc iframe), `:92` (image) — both take an `items: { id, … }[]` prop; we'll widen to `{ id, url, … }[]` and let every parent that constructs the items pass server-minted URLs |
 
-The `signMediaUrl` import lives in queries only — client components stop building file URLs entirely.
+**Audit gate for PR 3:** A grep `grep -rn '\`/api/files/\${' src/` must return zero results before PR 3 merges. Lints into CI.
 
-### `<Photo>` component changes
+**Upload pipeline change for `MediaUploader`:** `src/app/api/files/finalize/route.ts` already returns a `FinalizeResponse` with `{ id, kind, filename, ... }`. Extend it to include `{ url: signMediaUrl(asset.id) }`. The client's `value: UploadedAsset[]` array carries the URL; no client-side concatenation. The `inFlight` preview (pre-finalize) doesn't render any `/api/files` URL — it's just a spinner + filename — so no change needed there.
+
+The `signMediaUrl` import lives in server files only — client components stop building file URLs entirely.
+
+### `<Photo>`, `<MediaGrid>`, `<Lightbox>`, `<MediaUploader>` component changes
 
 `src/components/media/Photo.tsx`:
-- Drop `seed`-based URL fallback inside `<Photo>`. Caller passes `src` (the signed URL) or `null` (use SVG placeholder).
+- Caller passes `src` (the signed URL) or `undefined` (use SVG placeholder). `seed` stays — it's the placeholder palette key.
 - Remove `unoptimized` from `<Image>` — Next runtime optimization re-enabled.
-- Replace hardcoded `sizes="200px"` with a `sizes` prop, defaulted intelligently per call site:
+- Replace hardcoded `sizes="200px"` with a `sizes` prop, defaulted per call site:
   - Thumbnail (`PatientCard`, `ActivityRow`): `sizes="64px"`.
-  - Medium (`AnimalHero`, `MediaGrid`, `VisualRecords`): `sizes="200px"`.
-  - Hero / lightbox: `sizes="(max-width: 768px) 100vw, 800px"`.
+  - Medium (`AnimalHero`, `MediaGrid` columns=3): `sizes="200px"`.
+  - Document grid (`MediaGrid` columns=4): `sizes="150px"`.
+
+`src/components/media/MediaGrid.tsx`:
+- Widen `LightboxItem` to `{ id, url, kind, ... }`. Drop `src={\`/api/files/${it.id}\`}`. Remove `unoptimized`.
+
+`src/components/media/Lightbox.tsx`:
+- Same `LightboxItem` widening flows through. Three `<video>` / `<iframe>` / `<Image>` sites swap to `current.url`. `unoptimized` removed from `<Image>`.
+- Note for ops: video range requests and PDF iframe fetches are both served from `/api/files/[id]?...&sig=...`. Vercel CDN supports HTTP range requests natively on cached `public` responses — videos still seek without round-trip to origin once the byte range is cached.
+
+`src/components/media/MediaUploader.tsx`:
+- `UploadedAsset` widens to include `url`. Already-finalized previews use `u.url`; pending uploads keep their spinner-only render.
 
 ### Rollout
 
@@ -261,10 +295,12 @@ Four PRs:
 
 ### Risk
 
-- **HMAC secret rotation.** Rotating `AUTH_SECRET` invalidates all outstanding signed URLs in flight (≤10 min). Acceptable — same window as the session-cookie rotation impact.
-- **Cache key explosion.** Mitigated by bucket-rounded `exp`. Worst case: 5-min bucket × 2 variants × N assets. For a 100-patient IPD, manageable.
-- **Cookie-auth fallback path still slow.** Acceptable — used only in transitional traffic during rollout and for direct-URL hits. After PR 4 lands, ~all production traffic is signed.
-- **Lightbox / direct download paths.** Lightbox renders the signed `src` directly (already `<img>` based). Documents that link to `/api/files/[id]` need their hrefs updated to signed URLs. Audit list: `DocumentList`, any export/share helper that includes a media URL in copyable text.
+- **Stable signatures = permanent capability tokens.** Documented and accepted in the security-posture section above. Invalidate by rotating `AUTH_SECRET`.
+- **Transformation quota.** Per the audit, stable signatures + capped `deviceSizes` / `imageSizes` keep total transformations at roughly `assets × (deviceSizes + imageSizes) × formats` over the cache lifetime — for a 100-patient IPD, well under the 5K Hobby cap. Set up a Vercel usage alert at 80% as a safety net.
+- **Cookie-auth fallback path still slow.** Acceptable — used only during transitional rollout and for direct-URL hits. After PR 4 lands, ~all production traffic is signed.
+- **Missed call site.** A direct `\`/api/files/${id}\`` string anywhere in client code after PR 4 would silently fall through to the cookie-auth path (correct behavior, just slow). PR 3 includes a CI grep gate to fail builds with any such residual string in `src/`.
+- **Range-request behavior on videos and PDFs.** Both go through `<video src>` and `<iframe src>`. Vercel CDN handles range requests on cached `public` responses; seek works without origin round-trip after first byte-range hit. Verified during PR 2 manual QA.
+- **Middleware bypass safety.** Adding `api/files` to the middleware exclusion means signed-URL requests skip NextAuth entirely. Unsigned `/api/files/*` requests still hit the route handler, which falls through to `getCurrentUser`. Security boundary preserved; this is identical to today's behavior for signed-route absence.
 
 ### Measurement gate
 
@@ -468,15 +504,14 @@ AppShell (server)
 
 ### Demote pure-presentation client components
 
-Audit these for unnecessary `'use client'`:
-- `src/components/ui/Chip.tsx`
-- `src/components/ui/Pill.tsx`
-- `src/components/ui/EmptyState.tsx`
-- `src/features/animals/components/StatusBadge.tsx`
-- `src/features/animals/components/FreshnessIndicator.tsx`
-- (others surfaced by grep)
+Audited 2026-05-28 — most UI primitives are **already** server components (`Button`, `Chip`, `EmptyState`, `Input`, `Pill`, `Select`, `Stepper`, `Textarea`, `StatusBadge`, `FreshnessIndicator`). So Phase 5's demotion list is much shorter than initially feared.
 
-Each one that has no `useState`, no event handler, no `useEffect`, no `useRef` → drop the directive.
+Actual demotion candidates (TBD after Phase 1–4 land — re-audit then):
+- `src/features/animals/components/AnimalHero.tsx` — currently `'use client'` purely for the lightbox `useState`. Could split: server-rendered hero card + a thin client wrapper around the photo button + lightbox.
+- `src/features/animals/components/AnimalDetailsTab.tsx` — `'use client'` for the `editing` toggle. Same split pattern as AnimalHero.
+- `src/features/animals/components/AnimalDetailActions.tsx` — likely fine to stay client (interactive menu).
+
+The bigger Phase 5 work is the `AppShell` server/client split documented above. The presentational demotions are a small follow-on, not a large refactor.
 
 ### Bundle audit
 
@@ -547,3 +582,29 @@ Total: ~6–8 working days end-to-end, but split across phase-gated PRs so the u
 ## Open questions
 
 None. All decisions resolved during brainstorming.
+
+## Appendix — Deep-review pass (2026-05-28)
+
+Recorded for traceability. After the first draft was written, a second pass reread the diagnosis against every relevant file in `src/`. Changes folded into the body of the spec:
+
+1. **Critical correction — signature scheme.** Original spec used bucketed `exp` rotating every 5 min. Audit caught that rotating sigs rotate the `_next/image` cache key → transformation quota explosion on Hobby tier. Switched to **stable signatures** (HMAC of `assetId|variant` only, no `exp`). Trade-off documented (URLs are permanent capabilities until secret rotation).
+
+2. **`next.config.ts` configuration added.** `images.minimumCacheTTL = 1 year`, `deviceSizes` and `imageSizes` capped. Prevents transformation-count drift.
+
+3. **Touchpoint inventory completed.** Original spec listed five queries to update. Audit found **eleven** `/api/files/` string-build sites in client code. Full table now in the "Server-side URL minting" section. `MediaUploader.tsx`, `MediaGrid.tsx`, `Lightbox.tsx` (three call sites), `DocumentList.tsx`, and `TodayTimelineList.tsx` were all missing.
+
+4. **CI grep gate added.** PR 3 fails if `\`/api/files/${` appears anywhere in `src/` after the migration. Catches missed call sites.
+
+5. **`MediaAsset` schema confirmation.** Width, height, durationSec already stored on the asset row. `mimeType` and `size` likewise — confirming we can drop the Drive `files.get` metadata RTT.
+
+6. **`getMediaForRead` deeper than originally described.** Up to 5 DB queries on the cookie-auth path. Updated D1 in the diagnosis. The signed-URL path collapses this to one query (asset lookup for `storageKey`).
+
+7. **Phase 5 over-claim corrected.** `Button`, `Chip`, `EmptyState`, `Input`, `Pill`, `Select`, `Stepper`, `Textarea`, `StatusBadge`, `FreshnessIndicator` are **already** server components — original spec's claim that they needed demoting was wrong. Phase 5's actual demotion list is narrower (AnimalHero, AnimalDetailsTab) and lower-priority than the AppShell server/client split.
+
+8. **`AnimalEditForm` embedded use-case** (also caught in the first self-review): used both standalone and embedded in `AnimalDetailsTab`. Both paths get explicit treatment in Phase 2.
+
+9. **DocumentList download semantics.** The `<Link href="/api/files/...">` is a navigation, not an `<img>`. Signed URL works identically; browser follows the link, route serves the bytes with `content-disposition` (today implicit by mime).
+
+10. **Range-request / iframe behavior verified.** Vercel CDN supports range requests on cached `public` responses. Video seeking and PDF iframe rendering both work post-Phase-1.
+
+No further open items found in the deep audit.
