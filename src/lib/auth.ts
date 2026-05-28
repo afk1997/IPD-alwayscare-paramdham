@@ -5,6 +5,7 @@ import NextAuth from 'next-auth';
 import type { Adapter } from 'next-auth/adapters';
 import Credentials from 'next-auth/providers/credentials';
 import { redirect } from 'next/navigation';
+import { cache } from 'react';
 import { writeAuditLog } from './audit';
 import { authConfig } from './auth.config';
 import { prisma } from './prisma';
@@ -60,7 +61,15 @@ export interface CurrentUser {
   role: 'STAFF' | 'DOCTOR' | 'ADMIN' | 'SUPER_ADMIN' | 'VIEWER';
 }
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+/**
+ * Per-request memoized.  React's `cache()` returns a function that
+ * deduplicates calls within a single render pass — so a page that
+ * calls getCurrentUser() three times (layout, page, action) only
+ * runs the DB lookup once.  No behavior change, no security trade:
+ * the same Active+role re-check still happens on every request,
+ * just collapsed to one DB round-trip per request graph.
+ */
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const session = await auth();
   if (!session?.user?.id) return null;
   const dbUser = await prisma.user.findUnique({
@@ -74,7 +83,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name: dbUser.name,
     role: dbUser.role,
   };
-}
+});
 
 // Server-side guard: redirect VIEWER away from write-only routes.
 // Mount at the top of any patient new / edit / discharge / death page so
