@@ -121,7 +121,7 @@ export async function AnimalDetail({ animalId }: Props) {
       <AnimalDetailTabs
         activeCount={serializedActivities.length}
         docCount={documents.length}
-        feed={<ActivityTimeline activities={serializedActivities} />}
+        feed={<ActivityTimeline activities={serializedActivities} animalId={animal.id} />}
         info={
           <div className="flex flex-col gap-4">
             <AnimalDetailsTab

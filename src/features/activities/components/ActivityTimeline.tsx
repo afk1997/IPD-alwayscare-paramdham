@@ -25,6 +25,7 @@ export type { SerializedActivity } from '../serialized';
 
 interface Props {
   activities: SerializedActivity[];
+  animalId: string;
 }
 
 interface TypeMeta {
@@ -57,7 +58,7 @@ function flattenByDay(activities: SerializedActivity[]): FlatRow[] {
   return out;
 }
 
-export function ActivityTimeline({ activities: initial }: Props) {
+export function ActivityTimeline({ activities: initial, animalId }: Props) {
   const [activities, setActivities] = useState<SerializedActivity[]>(initial);
   useEffect(() => {
     setActivities(initial);
@@ -70,8 +71,7 @@ export function ActivityTimeline({ activities: initial }: Props) {
     if (!lastEvent || lastEvent === lastSeenEventRef.current) return;
     lastSeenEventRef.current = lastEvent;
     if (lastEvent.kind === 'created') {
-      const ownAnimalId = activities[0]?.animalId ?? initial[0]?.animalId;
-      if (lastEvent.activity.animalId === ownAnimalId) {
+      if (lastEvent.activity.animalId === animalId) {
         setActivities((prev) =>
           prev.some((a) => a.id === lastEvent.activity.id) ? prev : [lastEvent.activity, ...prev],
         );
@@ -79,7 +79,7 @@ export function ActivityTimeline({ activities: initial }: Props) {
     } else if (lastEvent.kind === 'removed') {
       setActivities((prev) => prev.filter((a) => a.id !== lastEvent.id));
     }
-  }, [lastEvent, activities, initial]);
+  }, [lastEvent, animalId]);
 
   const onSaved = (next: SerializedActivity) => {
     setActivities((prev) => prev.map((a) => (a.id === next.id ? next : a)));
