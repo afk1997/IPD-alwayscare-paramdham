@@ -3,7 +3,7 @@ import { Photo } from '@/components/media/Photo';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   Activity as ActivityIcon,
   Bath,
@@ -100,12 +100,12 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
 
   const rows = flattenByDay(activities);
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
+  const listRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useWindowVirtualizer({
     count: rows.length,
-    getScrollElement: () => parentRef.current,
     estimateSize: (i) => (rows[i]?.kind === 'header' ? 36 : 92),
     overscan: 5,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
   });
 
   if (activities.length === 0) {
@@ -134,38 +134,36 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
 
   return (
     <>
-      <div ref={parentRef} className="max-h-[78vh] overflow-y-auto md:max-h-[80vh]">
-        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
-          {virtualizer.getVirtualItems().map((vi) => {
-            const row = rows[vi.index];
-            if (!row) return null;
-            return (
-              <div
-                key={row.key}
-                data-index={vi.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${vi.start}px)`,
-                }}
-              >
-                {row.kind === 'header' ? (
-                  <div className="mb-2 flex items-baseline gap-2 px-1 pt-2">
-                    <h3 className="font-display text-[13px] font-bold">{formatDayHeader(row.day)}</h3>
-                    <span className="text-[11px] text-muted">{row.count} entries</span>
-                  </div>
-                ) : (
-                  <div className="pb-2">
-                    <ActivityRow activity={row.activity} onClick={() => onClickRow(row.activity)} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      <div ref={listRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        {virtualizer.getVirtualItems().map((vi) => {
+          const row = rows[vi.index];
+          if (!row) return null;
+          return (
+            <div
+              key={row.key}
+              data-index={vi.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
+              }}
+            >
+              {row.kind === 'header' ? (
+                <div className="mb-2 flex items-baseline gap-2 px-1 pt-2">
+                  <h3 className="font-display text-[13px] font-bold">{formatDayHeader(row.day)}</h3>
+                  <span className="text-[11px] text-muted">{row.count} entries</span>
+                </div>
+              ) : (
+                <div className="pb-2">
+                  <ActivityRow activity={row.activity} onClick={() => onClickRow(row.activity)} />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       <ActivitySheet
         activity={selected}

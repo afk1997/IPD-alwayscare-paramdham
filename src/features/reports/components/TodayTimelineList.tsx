@@ -6,7 +6,7 @@ import type { SerializedActivity } from '@/features/activities/serialized';
 import { summarizeActivity } from '@/features/activities/summary';
 import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useWindowVirtualizer } from '@tanstack/react-virtual';
 import {
   Bath,
   Footprints,
@@ -221,41 +221,39 @@ export function TodayTimelineList({ items: initial }: Props) {
     });
   };
 
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
+  const listRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useWindowVirtualizer({
     count: items.length,
-    getScrollElement: () => parentRef.current,
     estimateSize: () => 92,
     overscan: 5,
+    scrollMargin: listRef.current?.offsetTop ?? 0,
   });
 
   return (
     <>
-      <div ref={parentRef} className="max-h-[70vh] overflow-y-auto md:max-h-[75vh]">
-        <div style={{ height: `${virtualizer.getTotalSize()}px`, width: '100%', position: 'relative' }}>
-          {virtualizer.getVirtualItems().map((vi) => {
-            const it = items[vi.index];
-            if (!it) return null;
-            return (
-              <div
-                key={it.id}
-                data-index={vi.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${vi.start}px)`,
-                }}
-              >
-                <div className="pb-2">
-                  <TodayTimelineRowItem item={it} isFirst={vi.index === 0} onClick={() => openSheet(it)} />
-                </div>
+      <div ref={listRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+        {virtualizer.getVirtualItems().map((vi) => {
+          const it = items[vi.index];
+          if (!it) return null;
+          return (
+            <div
+              key={it.id}
+              data-index={vi.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
+              }}
+            >
+              <div className="pb-2">
+                <TodayTimelineRowItem item={it} isFirst={vi.index === 0} onClick={() => openSheet(it)} />
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
       <ActivitySheet
         activity={selected}
