@@ -6,6 +6,8 @@ interface AssetRef {
   kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
   filename: string;
   label?: string | null;
+  /** Pre-signed URL for the asset, ready to use in <img src>. */
+  url: string;
 }
 
 interface Props {

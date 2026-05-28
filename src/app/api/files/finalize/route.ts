@@ -1,6 +1,7 @@
 import { finalizeUpload } from '@/features/media/service';
 import { getCurrentUser } from '@/lib/auth';
 import { NotFoundError, RbacError, ValidationError } from '@/lib/errors';
+import { signMediaUrl } from '@/lib/media-sign';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
         width: asset.width,
         height: asset.height,
         durationSec: asset.durationSec,
+        url: signMediaUrl(asset.id),
       },
       { headers: { 'cache-control': 'no-store' } },
     );

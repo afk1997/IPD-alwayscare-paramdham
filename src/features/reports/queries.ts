@@ -1,4 +1,5 @@
 import { activityDetailLines, summarizeActivity } from '@/features/activities/summary';
+import { signMediaUrl } from '@/lib/media-sign';
 import { prisma } from '@/lib/prisma';
 import type { ActivityType } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
@@ -17,7 +18,8 @@ export interface TodayTimelineItem {
   animalId: string;
   animalName: string;
   animalSpecies: string;
-  animalThumbnailAssetId: string | null;
+  /** Pre-signed URL for the animal's intake thumbnail, ready to use in <img src>. */
+  animalThumbnailUrl: string | null;
   type: ActivityType;
   occurredAt: Date;
   byName: string;
@@ -33,6 +35,8 @@ export interface TodayTimelineItem {
     assetId: string;
     kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
     label: string | null;
+    /** Pre-signed URL for this media asset, ready to use in <img src>. */
+    url: string;
   }>;
   summary: string;
 }
@@ -106,7 +110,7 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
     animalId: r.animalId,
     animalName: r.animal.name,
     animalSpecies: r.animal.species,
-    animalThumbnailAssetId: r.animal.media[0]?.asset.id ?? null,
+    animalThumbnailUrl: r.animal.media[0]?.asset.id ? signMediaUrl(r.animal.media[0].asset.id) : null,
     type: r.type,
     occurredAt: r.occurredAt.toISOString(),
     byName: r.byName,
@@ -118,6 +122,7 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
       assetId: m.assetId,
       kind: m.asset.kind,
       label: m.label,
+      url: signMediaUrl(m.assetId),
     })),
     summary: summarizeActivity({ type: r.type, data: r.data, remarks: r.remarks }),
   }));

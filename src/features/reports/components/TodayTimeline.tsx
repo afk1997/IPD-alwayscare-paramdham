@@ -24,7 +24,7 @@ export async function TodayTimeline() {
     animalId: it.animalId,
     animalName: it.animalName,
     animalSpecies: it.animalSpecies,
-    animalThumbnailAssetId: it.animalThumbnailAssetId,
+    animalThumbnailUrl: it.animalThumbnailUrl,
     type: it.type,
     occurredAt: it.occurredAt.toISOString(),
     byName: it.byName,

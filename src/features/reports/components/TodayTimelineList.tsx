@@ -39,7 +39,8 @@ export interface TodayTimelineRow {
   animalId: string;
   animalName: string;
   animalSpecies: string;
-  animalThumbnailAssetId: string | null;
+  /** Pre-signed URL for the animal's intake thumbnail, ready to use in <img src>. */
+  animalThumbnailUrl: string | null;
   type: ActivityType;
   occurredAt: string;
   byName: string;
@@ -52,6 +53,8 @@ export interface TodayTimelineRow {
     assetId: string;
     kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
     label: string | null;
+    /** Pre-signed URL for this media asset, ready to use in <img src>. */
+    url: string;
   }>;
   summary: string;
 }
@@ -98,13 +101,13 @@ export function TodayTimelineList({ items }: Props) {
           let thumbSrc: string | undefined;
           let thumbKind: 'photo' | 'video' | 'xray' | 'doc' = 'photo';
           if (firstStill) {
-            thumbSrc = `/api/files/${firstStill.assetId}`;
+            thumbSrc = firstStill.url;
             thumbKind = firstStill.kind === 'XRAY' ? 'xray' : 'photo';
           } else if (firstNonStill) {
             thumbSrc = undefined;
             thumbKind = firstNonStill.kind === 'VIDEO' ? 'video' : 'doc';
-          } else if (it.animalThumbnailAssetId) {
-            thumbSrc = `/api/files/${it.animalThumbnailAssetId}`;
+          } else if (it.animalThumbnailUrl) {
+            thumbSrc = it.animalThumbnailUrl;
             thumbKind = 'photo';
           }
           return (

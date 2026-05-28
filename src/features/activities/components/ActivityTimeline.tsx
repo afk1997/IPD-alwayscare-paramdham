@@ -29,7 +29,13 @@ export interface SerializedActivity {
   editedAt: string | null;
   // biome-ignore lint/suspicious/noExplicitAny: server-erased data shape
   data: any;
-  media: { id: string; assetId: string; kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC'; label: string | null }[];
+  media: {
+    id: string;
+    assetId: string;
+    kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC';
+    label: string | null;
+    url: string;
+  }[];
 }
 
 interface Props {
@@ -139,7 +145,7 @@ function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; o
             <>
               <Photo
                 seed={firstPhoto.assetId}
-                src={firstPhoto.usePlaceholder ? undefined : `/api/files/${firstPhoto.assetId}`}
+                src={firstPhoto.usePlaceholder ? undefined : firstPhoto.url}
                 kind={
                   firstPhoto.kind === 'VIDEO'
                     ? 'video'

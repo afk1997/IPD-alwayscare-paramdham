@@ -8,6 +8,8 @@ export interface UploadedAsset {
   id: string;
   kind: FinalizeResponse['kind'];
   filename: string;
+  /** Pre-signed URL for the asset, ready to use in <img src>. */
+  url: string;
 }
 
 interface InFlight {
@@ -61,7 +63,10 @@ export function MediaUploader({
             setInFlight((cur) => cur.map((u) => (u.id === tempId ? { ...u, fraction: p.fraction } : u)));
           },
         });
-        running = [...running, { id: result.id, kind: result.kind, filename: result.filename }];
+        running = [
+          ...running,
+          { id: result.id, kind: result.kind, filename: result.filename, url: result.url },
+        ];
         onChange(running);
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Upload failed');
@@ -135,14 +140,7 @@ export function MediaUploader({
               className="group relative aspect-square overflow-hidden rounded-lg border border-line"
             >
               {u.kind === 'PHOTO' || u.kind === 'XRAY' ? (
-                <Image
-                  src={`/api/files/${u.id}`}
-                  alt={u.filename}
-                  fill
-                  className="object-cover"
-                  sizes="200px"
-                  unoptimized
-                />
+                <Image src={u.url} alt={u.filename} fill className="object-cover" sizes="200px" unoptimized />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-paper-2 px-2 text-center text-[10px] text-muted">
                   {u.kind === 'VIDEO' ? <Video size={18} /> : <FileText size={18} />}
