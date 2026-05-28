@@ -33,7 +33,11 @@ export function AddCageForm() {
           placeholder="New cage name (e.g. Cage 1, ICU-2)"
           aria-label="New cage name"
         />
-        <Button type="submit" disabled={pending || name.trim().length === 0}>
+        <Button
+          type="submit"
+          className="shrink-0 whitespace-nowrap"
+          disabled={pending || name.trim().length === 0}
+        >
           {pending ? 'Adding…' : 'Add cage'}
         </Button>
       </div>
