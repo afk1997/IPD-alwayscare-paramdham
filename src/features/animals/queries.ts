@@ -1,5 +1,6 @@
 import { signMediaUrl } from '@/lib/media-sign';
 import { prisma } from '@/lib/prisma';
+import { startOfISTDay } from '@/lib/time';
 import type { AnimalStatus, Prisma } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
 
@@ -176,8 +177,7 @@ export async function searchActiveAnimals(
 
 export const getCachedTodayCounts = unstable_cache(
   async () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = startOfISTDay();
     const [admissionsToday, dischargesToday, deathsToday, surgeriesToday, critical] = await Promise.all([
       prisma.animal.count({ where: { admittedAt: { gte: today }, deletedAt: null } }),
       prisma.animal.count({ where: { dischargedAt: { gte: today }, deletedAt: null } }),

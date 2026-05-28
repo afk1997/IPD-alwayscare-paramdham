@@ -27,11 +27,12 @@ export async function TodayDashboard() {
     { label: 'Deaths', value: counts.deathsToday, icon: Skull, color: '#5B6B7A', tint: '#E2E8EE' },
   ];
 
-  const today = new Date();
-  const dateLabel = today.toLocaleDateString(undefined, {
+  // Pin to IST (the process timezone is UTC on Vercel).
+  const dateLabel = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
     day: '2-digit',
     month: 'long',
+    timeZone: 'Asia/Kolkata',
   });
 
   return (
