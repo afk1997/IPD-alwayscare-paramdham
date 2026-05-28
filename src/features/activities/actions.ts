@@ -54,7 +54,8 @@ export async function createActivityAction(input: CreateActivityInput): Promise<
       const z = e as { issues?: Array<{ message?: string }> };
       return { ok: false, error: z.issues?.[0]?.message ?? 'Invalid input' };
     }
-    throw e;
+    console.error('[activities/actions] createActivity', e instanceof Error ? e.message : 'unknown');
+    return { ok: false, error: 'Could not create activity' };
   }
 }
 
@@ -163,7 +164,8 @@ export async function updateActivityAction(
       const z = e as { issues?: Array<{ message?: string }> };
       return { ok: false, error: z.issues?.[0]?.message ?? 'Invalid input' };
     }
-    throw e;
+    console.error('[activities/actions] updateActivity', e instanceof Error ? e.message : 'unknown');
+    return { ok: false, error: 'Could not update activity' };
   }
 }
 
