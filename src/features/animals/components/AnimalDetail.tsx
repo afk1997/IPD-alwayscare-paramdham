@@ -91,7 +91,10 @@ export async function AnimalDetail({ animalId }: Props) {
           breed: animal.breed,
           gender: animal.gender,
           ageText: animal.ageText,
-          weightKg: animal.weightKg,
+          // Prisma Decimal isn't serializable across the RSC boundary
+          // (AnimalHero is a client component for the lightbox state) —
+          // stringify here, same as AnimalDetailsTab does just below.
+          weightKg: animal.weightKg ? String(animal.weightKg) : null,
           color: animal.color,
           ward: animal.ward,
           cage: animal.cage,
@@ -104,7 +107,7 @@ export async function AnimalDetail({ animalId }: Props) {
           rescuer: animal.rescuer,
           rescuerPhone: animal.rescuerPhone,
           media: animal.media.map((m) => ({
-            asset: { id: m.asset.id, filename: m.asset.filename },
+            asset: { id: m.asset.id, filename: m.asset.filename, kind: m.asset.kind },
           })),
         }}
         lastActivityAt={lastActivityAt}

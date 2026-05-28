@@ -1,7 +1,10 @@
+'use client';
+import { Lightbox } from '@/components/media/Lightbox';
 import { Photo } from '@/components/media/Photo';
 import { Chip } from '@/components/ui/Chip';
 import { Pill } from '@/components/ui/Pill';
 import { relativeTime } from '@/lib/time';
+import { useState } from 'react';
 import { StatusBadge } from './StatusBadge';
 
 interface Props {
@@ -12,7 +15,7 @@ interface Props {
     breed: string | null;
     gender: string | null;
     ageText: string | null;
-    weightKg: unknown;
+    weightKg: string | null;
     color: string | null;
     ward: string | null;
     cage: { name: string } | null;
@@ -24,7 +27,7 @@ interface Props {
     complaint: string | null;
     rescuer: string | null;
     rescuerPhone: string | null;
-    media: { asset: { id: string; filename: string } }[];
+    media: { asset: { id: string; filename: string; kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC' } }[];
   };
   lastActivityAt: Date | null;
 }
@@ -33,17 +36,43 @@ interface Props {
 export function AnimalHero({ animal, lastActivityAt }: Props) {
   const photoSrc = animal.media[0]?.asset.id ? `/api/files/${animal.media[0].asset.id}` : undefined;
   const stale = !lastActivityAt || Date.now() - new Date(lastActivityAt).getTime() > 6 * 60 * 60 * 1000;
+  // Tap-to-expand the hero photo into the same Lightbox that the
+  // "Admission media" grid below already uses — items are the full
+  // admission media set so the user can swipe through all of them.
+  const lightboxItems = animal.media.map((m) => ({
+    id: m.asset.id,
+    filename: m.asset.filename,
+    kind: m.asset.kind,
+  }));
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   return (
     <section className="rounded-2xl border border-line bg-paper p-5 md:p-6">
       <div className="flex items-start gap-4">
-        <Photo
-          seed={animal.id}
-          src={photoSrc}
-          alt={animal.name}
-          rounded={16}
-          className="h-[68px] w-[68px] shrink-0 md:h-[78px] md:w-[78px]"
-        />
+        {photoSrc ? (
+          <button
+            type="button"
+            onClick={() => setLightboxIndex(0)}
+            aria-label={`Open ${animal.name}'s photo`}
+            className="shrink-0 cursor-zoom-in rounded-2xl outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            <Photo
+              seed={animal.id}
+              src={photoSrc}
+              alt={animal.name}
+              rounded={16}
+              className="h-[68px] w-[68px] md:h-[78px] md:w-[78px]"
+            />
+          </button>
+        ) : (
+          <Photo
+            seed={animal.id}
+            src={undefined}
+            alt={animal.name}
+            rounded={16}
+            className="h-[68px] w-[68px] shrink-0 md:h-[78px] md:w-[78px]"
+          />
+        )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="font-display text-2xl font-extrabold tracking-tight md:text-[26px]">
@@ -89,6 +118,12 @@ export function AnimalHero({ animal, lastActivityAt }: Props) {
         {animal.rescuer && <Stat label="Rescuer" value={animal.rescuer} />}
         {animal.rescuerPhone && <Stat label="Contact" value={animal.rescuerPhone} />}
       </div>
+      <Lightbox
+        items={lightboxItems}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onChange={setLightboxIndex}
+      />
     </section>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import { Lightbox } from '@/components/media/Lightbox';
 import { Photo } from '@/components/media/Photo';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
@@ -319,6 +320,16 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
     remarks?: string;
   }>;
 
+  // Tap-to-expand for photos. Videos keep their inline player and are
+  // intentionally NOT part of the lightbox carousel — that way swiping
+  // inside the lightbox can't unexpectedly land on a video and play
+  // full-screen (matches the "videos stay inline" UX choice).
+  const photoItems = activity.media
+    .filter((m) => m.kind !== 'VIDEO')
+    .map((m) => ({ id: m.assetId, filename: m.label ?? '', kind: m.kind, label: m.label }));
+  const photoIndexByAssetId = new Map(photoItems.map((p, i) => [p.id, i]));
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   return (
     <div className="flex flex-col gap-4 p-4">
       {activity.media.length > 0 && (
@@ -335,15 +346,22 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
                 <track kind="captions" />
               </video>
             ) : (
-              <Photo
+              <button
                 key={m.id}
-                src={`/api/files/${m.assetId}`}
-                seed={m.assetId}
-                kind={m.kind === 'XRAY' ? 'xray' : m.kind === 'DOC' ? 'doc' : 'photo'}
-                alt={m.label ?? ''}
-                rounded={12}
-                className="aspect-square w-full"
-              />
+                type="button"
+                onClick={() => setLightboxIndex(photoIndexByAssetId.get(m.assetId) ?? 0)}
+                aria-label="Open photo"
+                className="cursor-zoom-in overflow-hidden rounded-[12px] outline-offset-2 focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <Photo
+                  src={`/api/files/${m.assetId}`}
+                  seed={m.assetId}
+                  kind={m.kind === 'XRAY' ? 'xray' : m.kind === 'DOC' ? 'doc' : 'photo'}
+                  alt={m.label ?? ''}
+                  rounded={12}
+                  className="aspect-square w-full"
+                />
+              </button>
             ),
           )}
         </div>
@@ -408,6 +426,12 @@ function ActivityView({ activity }: { activity: ActivitySummary }) {
           {activity.editedAt && <KV k="Last edited" v={relativeTime(activity.editedAt)} />}
         </div>
       </Section>
+      <Lightbox
+        items={photoItems}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onChange={setLightboxIndex}
+      />
     </div>
   );
 }
