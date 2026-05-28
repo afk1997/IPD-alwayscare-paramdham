@@ -22,7 +22,7 @@ test('saving an activity does not trigger a full page reload', async ({ page }) 
     (window as unknown as { __phase2Sentinel: number }).__phase2Sentinel = Date.now();
   });
 
-  const firstRow = page.locator('ol li button').first();
+  const firstRow = page.getByTestId('activity-row').first();
   const visible = await firstRow.isVisible().catch(() => false);
   if (!visible) {
     test.skip(true, 'no activity rows on this patient');

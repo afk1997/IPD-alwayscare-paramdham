@@ -18,7 +18,7 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface TypeMeta {
   icon: LucideIcon;
@@ -191,16 +191,33 @@ export function TodayTimelineList({ items: initial }: Props) {
   }, [initial]);
 
   const { lastEvent } = useActivityFeed();
-  const lastSeenEventRef = useRef<ActivityFeedEvent | null>(null);
+  // Seed with the event present at mount so this cross-animal feed doesn't
+  // replay a stale event on mount (it has no animalId filter, so the id-dedupe
+  // below is its only other guard).
+  const lastSeenEventRef = useRef<ActivityFeedEvent | null>(lastEvent);
 
   useEffect(() => {
     if (!lastEvent || lastEvent === lastSeenEventRef.current) return;
     lastSeenEventRef.current = lastEvent;
     if (lastEvent.kind === 'created') {
+      const created = lastEvent.activity;
+      // Match the server's today window ([start of local day, now]); a
+      // back-dated or future-dated QuickAdd doesn't belong in "today" and would
+      // disappear on the next revalidate, so don't inject it here either.
+      const occurred = new Date(created.occurredAt).getTime();
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      if (occurred < startOfToday.getTime() || occurred > Date.now()) return;
       setItems((prev) =>
-        prev.some((it) => it.id === lastEvent.activity.id)
+        prev.some((it) => it.id === created.id)
           ? prev
-          : [activityToFeedItem(lastEvent.activity), ...prev],
+          : [
+              activityToFeedItem(
+                created,
+                prev.find((it) => it.animalId === created.animalId),
+              ),
+              ...prev,
+            ],
       );
     } else if (lastEvent.kind === 'removed') {
       setItems((prev) => prev.filter((it) => it.id !== lastEvent.id));
@@ -221,17 +238,24 @@ export function TodayTimelineList({ items: initial }: Props) {
     });
   };
 
-  const listRef = useRef<HTMLDivElement>(null);
+  // Measure distance from the document top on mount so rows position correctly
+  // on first paint (reading offsetTop during render is 0 until the ref attaches
+  // — the list sits below the dashboard cards). Callback ref → commit-time
+  // setState → synchronous re-render before paint.
+  const [scrollMargin, setScrollMargin] = useState(0);
+  const setListRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) setScrollMargin(node.offsetTop);
+  }, []);
   const virtualizer = useWindowVirtualizer({
     count: items.length,
     estimateSize: () => 92,
     overscan: 5,
-    scrollMargin: listRef.current?.offsetTop ?? 0,
+    scrollMargin,
   });
 
   return (
     <>
-      <div ref={listRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+      <div ref={setListRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
         {virtualizer.getVirtualItems().map((vi) => {
           const it = items[vi.index];
           if (!it) return null;
@@ -266,10 +290,24 @@ export function TodayTimelineList({ items: initial }: Props) {
           setItems((prev) => prev.filter((it) => it.id !== id));
         }}
         onDuplicated={(next) => {
-          setItems((prev) => [activityToFeedItem(next), ...prev]);
+          // The duplicate is for the same animal as the source row — carry its
+          // name / species / thumbnail so the new row isn't blank-identity.
+          setItems((prev) => [
+            activityToFeedItem(
+              next,
+              prev.find((it) => it.animalId === next.animalId),
+            ),
+            ...prev,
+          ]);
         }}
         onRestored={(next) => {
-          setItems((prev) => [activityToFeedItem(next), ...prev]);
+          setItems((prev) => [
+            activityToFeedItem(
+              next,
+              prev.find((it) => it.animalId === next.animalId),
+            ),
+            ...prev,
+          ]);
         }}
       />
     </>

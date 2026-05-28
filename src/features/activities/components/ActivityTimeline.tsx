@@ -16,7 +16,7 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import type { SerializedActivity } from '../serialized';
 import { ActivitySheet, type ActivitySummary } from './ActivitySheet';
@@ -65,7 +65,10 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
   }, [initial]);
 
   const { lastEvent } = useActivityFeed();
-  const lastSeenEventRef = useRef<ActivityFeedEvent | null>(null);
+  // Seed with the event present at mount so a subscriber that mounts (or
+  // remounts after a tab switch) AFTER an event was dispatched doesn't replay
+  // that stale event — only events fired while mounted are applied.
+  const lastSeenEventRef = useRef<ActivityFeedEvent | null>(lastEvent);
 
   useEffect(() => {
     if (!lastEvent || lastEvent === lastSeenEventRef.current) return;
@@ -100,12 +103,20 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
 
   const rows = flattenByDay(activities);
-  const listRef = useRef<HTMLDivElement>(null);
+  // Measure the list's distance from the document top on mount so the window
+  // virtualizer positions rows correctly on first paint. Reading
+  // `ref.current?.offsetTop` during render yields 0 until the ref attaches,
+  // which offsets every row by the full hero/tabs height. A callback ref sets
+  // state during commit → a synchronous re-render before the browser paints.
+  const [scrollMargin, setScrollMargin] = useState(0);
+  const setListRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) setScrollMargin(node.offsetTop);
+  }, []);
   const virtualizer = useWindowVirtualizer({
     count: rows.length,
     estimateSize: (i) => (rows[i]?.kind === 'header' ? 36 : 92),
     overscan: 5,
-    scrollMargin: listRef.current?.offsetTop ?? 0,
+    scrollMargin,
   });
 
   if (activities.length === 0) {
@@ -134,7 +145,7 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
 
   return (
     <>
-      <div ref={listRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
+      <div ref={setListRef} className="relative" style={{ height: `${virtualizer.getTotalSize()}px` }}>
         {virtualizer.getVirtualItems().map((vi) => {
           const row = rows[vi.index];
           if (!row) return null;
@@ -197,10 +208,13 @@ function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; o
     : null;
 
   return (
-    <li>
+    // Plain <div>, not <li>: the window virtualizer wraps each row in an
+    // absolutely-positioned <div>, so there is no <ol>/<ul> parent for an <li>.
+    <div>
       <button
         type="button"
         onClick={onClick}
+        data-testid="activity-row"
         className="flex w-full items-start gap-3 rounded-xl border border-line bg-paper p-3 text-left transition hover:border-accent/40 hover:bg-paper-2"
       >
         <div className="relative shrink-0">
@@ -260,7 +274,7 @@ function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; o
           </div>
         </div>
       </button>
-    </li>
+    </div>
   );
 }
 
