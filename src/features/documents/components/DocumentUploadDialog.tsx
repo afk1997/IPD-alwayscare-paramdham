@@ -3,17 +3,17 @@ import { Button } from '@/components/ui/Button';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { useFocusTrap } from '@/lib/hooks/useFocusTrap';
 import { Plus, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import type { DocumentRow } from '../actions';
 import { DocumentUpload } from './DocumentUpload';
 
 interface Props {
   animalId: string;
+  onCreated: (doc: DocumentRow) => void;
 }
 
-export function DocumentUploadDialog({ animalId }: Props) {
+export function DocumentUploadDialog({ animalId, onCreated }: Props) {
   const { currentUserRole } = useActiveUsers();
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, open);
@@ -34,9 +34,9 @@ export function DocumentUploadDialog({ animalId }: Props) {
   // stays constant across renders (Rules of Hooks).
   if (currentUserRole === 'VIEWER') return null;
 
-  const handleSaved = () => {
+  const handleSaved = (doc: DocumentRow) => {
+    onCreated(doc);
     setOpen(false);
-    router.refresh();
   };
   return (
     <>
@@ -71,7 +71,7 @@ export function DocumentUploadDialog({ animalId }: Props) {
                 <X size={16} />
               </button>
             </div>
-            <DocumentUpload animalId={animalId} onDone={handleSaved} />
+            <DocumentUpload animalId={animalId} onDone={handleSaved} onCancel={() => setOpen(false)} />
           </div>
         </div>
       )}

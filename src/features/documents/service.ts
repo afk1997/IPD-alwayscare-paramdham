@@ -28,6 +28,7 @@ export async function createDocument(actor: Actor, input: CreateDocumentInput) {
         fileId: parsed.fileId,
         uploadedById: actor.id,
       },
+      include: { file: true, uploadedBy: { select: { name: true } } },
     });
     await writeAuditLog(tx, {
       actorId: actor.id,

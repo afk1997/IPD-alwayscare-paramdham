@@ -3,8 +3,7 @@ import { ActivityTimeline } from '@/features/activities/components/ActivityTimel
 import { listActivitiesForAnimal } from '@/features/activities/queries';
 import type { ActivityType } from '@/features/activities/schema';
 import { listAssignableCages } from '@/features/cages/queries';
-import { DocumentList } from '@/features/documents/components/DocumentList';
-import { DocumentUploadDialog } from '@/features/documents/components/DocumentUploadDialog';
+import { DocumentsPanel } from '@/features/documents/components/DocumentsPanel';
 import { listDocumentsForAnimal } from '@/features/documents/queries';
 import { FileText, type Info } from 'lucide-react';
 import { notFound } from 'next/navigation';
@@ -180,14 +179,20 @@ export async function AnimalDetail({ animalId }: Props) {
           <div className="flex flex-col gap-4">
             <VisualRecords items={visualItems} />
             <section className="rounded-lg border border-line bg-paper p-5">
-              <header className="mb-4 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <FileText size={16} className="text-muted" />
-                  <h2 className="font-display font-bold text-base">Documents ({documents.length})</h2>
-                </div>
-                <DocumentUploadDialog animalId={animal.id} />
-              </header>
-              <DocumentList documents={documents} />
+              <DocumentsPanel
+                animalId={animal.id}
+                initial={documents.map((d) => ({
+                  id: d.id,
+                  category: d.category,
+                  kind: d.kind,
+                  name: d.name,
+                  createdAt: d.createdAt.toISOString(),
+                  uploadedBy: { name: d.uploadedBy.name },
+                  fileUrl: d.fileUrl,
+                  file: d.file ? { id: d.file.id, kind: d.file.kind, filename: d.file.filename } : null,
+                }))}
+                canWrite={true}
+              />
             </section>
           </div>
         }

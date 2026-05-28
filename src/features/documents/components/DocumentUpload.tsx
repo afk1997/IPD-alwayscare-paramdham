@@ -7,15 +7,16 @@ import { useToast } from '@/components/ui/Toast';
 import { resumableUpload } from '@/lib/upload/resumable';
 import { Upload } from 'lucide-react';
 import { useState, useTransition } from 'react';
-import { createDocumentAction } from '../actions';
+import { type DocumentRow, createDocumentAction } from '../actions';
 import { DOC_CATEGORIES, DOC_CATEGORY_LABELS, DOC_KIND_SUGGESTIONS, type DocCategory } from '../schema';
 
 interface Props {
   animalId: string;
-  onDone: () => void;
+  onDone: (doc: DocumentRow) => void;
+  onCancel?: () => void;
 }
 
-export function DocumentUpload({ animalId, onDone }: Props) {
+export function DocumentUpload({ animalId, onDone, onCancel }: Props) {
   const { showToast } = useToast();
   const [category, setCategory] = useState<DocCategory>('MEDICAL');
   const [kind, setKind] = useState('');
@@ -46,11 +47,11 @@ export function DocumentUpload({ animalId, onDone }: Props) {
           name: file.name,
           fileId: asset.id,
         });
-        if (!result.ok) {
+        if (!result.ok || !result.document) {
           setError(result.error ?? 'Save failed');
         } else {
           showToast({ message: 'Document uploaded' });
-          onDone();
+          onDone(result.document);
         }
       } catch (e2) {
         setError(e2 instanceof Error ? e2.message : 'Upload failed');
@@ -120,7 +121,7 @@ export function DocumentUpload({ animalId, onDone }: Props) {
         </div>
       )}
       <div className="flex items-center justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={onDone} disabled={pending}>
+        <Button type="button" variant="ghost" onClick={onCancel} disabled={pending}>
           Cancel
         </Button>
         <Button type="submit" disabled={pending}>
