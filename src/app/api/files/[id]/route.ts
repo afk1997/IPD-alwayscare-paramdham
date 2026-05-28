@@ -1,9 +1,8 @@
 import { Readable } from 'node:stream';
-import { getMediaForRead } from '@/features/media/service';
+import { getMediaForRead, getSignedMediaForRead } from '@/features/media/service';
 import { getCurrentUser } from '@/lib/auth';
 import { NotFoundError, RbacError } from '@/lib/errors';
 import { verifyMediaUrl } from '@/lib/media-sign';
-import { prisma } from '@/lib/prisma';
 import { createTimings } from '@/lib/server-timing';
 import { getStorage } from '@/lib/storage';
 import { NextResponse } from 'next/server';
@@ -30,12 +29,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         { status: 401, headers: { 'server-timing': t.header() } },
       );
     }
-    const asset = await prisma.mediaAsset.findUnique({
-      where: { id },
-      select: { id: true, status: true, storageKey: true, mimeType: true, size: true },
-    });
+    // Verifies READY status AND that the asset still resolves under the
+    // soft-delete ACL (a trashed clinical record revokes its signed URLs).
+    const asset = await getSignedMediaForRead(id);
     t.mark('db');
-    if (!asset || asset.status !== 'READY' || !asset.storageKey) {
+    if (!asset) {
       return NextResponse.json(
         { error: 'unavailable' },
         { status: 410, headers: { 'server-timing': t.header() } },
