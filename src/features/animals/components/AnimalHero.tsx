@@ -27,14 +27,17 @@ interface Props {
     complaint: string | null;
     rescuer: string | null;
     rescuerPhone: string | null;
-    media: { asset: { id: string; filename: string; kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC' } }[];
+    media: {
+      url: string;
+      asset: { id: string; filename: string; kind: 'PHOTO' | 'VIDEO' | 'XRAY' | 'DOC' };
+    }[];
   };
   lastActivityAt: Date | null;
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: presentational hero with many conditional rows
 export function AnimalHero({ animal, lastActivityAt }: Props) {
-  const photoSrc = animal.media[0]?.asset.id ? `/api/files/${animal.media[0].asset.id}` : undefined;
+  const photoSrc = animal.media[0]?.url ?? undefined;
   const stale = !lastActivityAt || Date.now() - new Date(lastActivityAt).getTime() > 6 * 60 * 60 * 1000;
   // Tap-to-expand the hero photo into the same Lightbox that the
   // "Admission media" grid below already uses — items are the full
@@ -43,6 +46,7 @@ export function AnimalHero({ animal, lastActivityAt }: Props) {
     id: m.asset.id,
     filename: m.asset.filename,
     kind: m.asset.kind,
+    url: m.url,
   }));
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 

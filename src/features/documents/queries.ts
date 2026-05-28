@@ -1,3 +1,4 @@
+import { signMediaUrl } from '@/lib/media-sign';
 import { prisma } from '@/lib/prisma';
 import { type Actor, assertCan } from '@/lib/rbac';
 import type { DocCategory } from './schema';
@@ -7,7 +8,7 @@ import type { DocCategory } from './schema';
 const DOC_PER_ANIMAL_CAP = 500;
 
 export async function listDocumentsForAnimal(animalId: string) {
-  return prisma.document.findMany({
+  const rows = await prisma.document.findMany({
     where: { animalId, deletedAt: null, animal: { deletedAt: null } },
     orderBy: [{ category: 'asc' }, { createdAt: 'desc' }],
     take: DOC_PER_ANIMAL_CAP,
@@ -16,6 +17,10 @@ export async function listDocumentsForAnimal(animalId: string) {
       uploadedBy: { select: { name: true } },
     },
   });
+  return rows.map((r) => ({
+    ...r,
+    fileUrl: r.file ? signMediaUrl(r.file.id) : null,
+  }));
 }
 
 export interface ListAllDocumentsParams {
@@ -29,7 +34,7 @@ export async function listAllDocuments(actor: Actor, params: ListAllDocumentsPar
   // consent forms, identity documents). ADMIN-only — RBAC-5 / SD-4.
   assertCan(actor, 'document.read.all');
   const { limit = 100, search, category } = params;
-  return prisma.document.findMany({
+  const rows = await prisma.document.findMany({
     where: {
       deletedAt: null,
       animal: { deletedAt: null },
@@ -52,4 +57,8 @@ export async function listAllDocuments(actor: Actor, params: ListAllDocumentsPar
       uploadedBy: { select: { name: true } },
     },
   });
+  return rows.map((r) => ({
+    ...r,
+    fileUrl: r.file ? signMediaUrl(r.file.id) : null,
+  }));
 }
