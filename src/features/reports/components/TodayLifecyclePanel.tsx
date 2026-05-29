@@ -1,6 +1,6 @@
+import { PatientCard } from '@/features/animals/components/PatientCard';
+import { listAnimalCardsByIds } from '@/features/animals/queries';
 import { listTodayAdmissions, listTodayDeaths, listTodayDischarges } from '@/features/outcomes/queries';
-import { formatDateTime } from '@/lib/time';
-import Link from 'next/link';
 
 const LOADERS = {
   admissions: listTodayAdmissions,
@@ -23,21 +23,20 @@ export async function TodayLifecyclePanel({ kind }: { kind: keyof typeof LOADERS
       </p>
     );
   }
+  const cards = await listAnimalCardsByIds(rows.map((r) => r.id));
+  const byId = new Map(cards.map((c) => [c.id, c]));
   return (
-    <ul className="flex flex-col gap-2">
-      {rows.map((r) => (
-        <li key={r.id} className="rounded-lg border border-line bg-paper p-3">
-          <Link href={`/patients/${r.id}`} className="block hover:opacity-80">
-            <div className="flex flex-wrap items-baseline gap-2">
-              <span className="font-medium">{r.name}</span>
-              <span className="text-muted text-xs">{r.species}</span>
-              <span className="ml-auto text-muted text-xs">{formatDateTime(r.at)}</span>
-            </div>
-            {r.detail && <p className="mt-1 text-[13px] text-text">{r.detail}</p>}
-            {r.byName && <p className="mt-0.5 text-[11px] text-soft">by {r.byName}</p>}
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <div className="flex flex-col gap-2">
+      {rows.map((r) => {
+        const card = byId.get(r.id);
+        if (!card) return null;
+        return (
+          <div key={r.id}>
+            <PatientCard animal={card} />
+            {r.detail && <p className="mt-1 px-3 text-[12.5px] text-muted">{r.detail}</p>}
+          </div>
+        );
+      })}
+    </div>
   );
 }
