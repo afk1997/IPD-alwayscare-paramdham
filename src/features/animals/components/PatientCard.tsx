@@ -1,5 +1,4 @@
 import { Photo } from '@/components/media/Photo';
-import { relativeTime } from '@/lib/time';
 import { ChevronRight, Clock } from 'lucide-react';
 import Link from 'next/link';
 import type { AnimalListItem } from '../queries';
@@ -10,8 +9,6 @@ interface Props {
 }
 
 export function PatientCard({ animal }: Props) {
-  const stale =
-    !animal.lastActivityAt || Date.now() - new Date(animal.lastActivityAt).getTime() > 6 * 60 * 60 * 1000;
   const photoSrc = animal.thumbnailUrl ?? undefined;
 
   return (
@@ -39,10 +36,10 @@ export function PatientCard({ animal }: Props) {
           {animal.cage ? ` · 🏠 ${animal.cage}` : ''}
         </div>
         <div
-          className={`mt-1.5 flex items-center gap-1.5 text-[11.5px] ${stale ? 'text-observation' : 'text-soft'}`}
+          className={`mt-1.5 flex items-center gap-1.5 text-[11.5px] ${animal.stale ? 'text-observation' : 'text-soft'}`}
         >
           <Clock size={12} strokeWidth={2} />
-          <span>Last update {relativeTime(animal.lastActivityAt)}</span>
+          <span>Last update {animal.lastActivityLabel}</span>
           {animal.contagious && <span className="ml-1 font-semibold text-critical">· Contagious</span>}
           {animal.aggressive && <span className="ml-1 font-semibold text-observation">· Aggressive</span>}
         </div>
