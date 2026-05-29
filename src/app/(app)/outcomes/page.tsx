@@ -1,3 +1,4 @@
+import { listAnimalCardsByIds } from '@/features/animals/queries';
 import { OutcomesTabs } from '@/features/outcomes/components/OutcomesTabs';
 import { listDeaths, listDischarges } from '@/features/outcomes/queries';
 import { requireOutcomeReadRole } from '@/lib/auth';
@@ -5,6 +6,10 @@ import { requireOutcomeReadRole } from '@/lib/auth';
 export default async function OutcomesPage() {
   await requireOutcomeReadRole();
   const [deaths, discharges] = await Promise.all([listDeaths(), listDischarges()]);
+  const cards = await listAnimalCardsByIds([
+    ...deaths.map((d) => d.animalId),
+    ...discharges.map((d) => d.animalId),
+  ]);
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -28,6 +33,7 @@ export default async function OutcomesPage() {
           at: d.dischargedAt.toISOString(),
           byName: d.dischargedByName,
         }))}
+        cards={cards}
       />
     </div>
   );

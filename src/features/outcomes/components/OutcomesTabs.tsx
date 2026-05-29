@@ -1,7 +1,8 @@
 'use client';
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs';
+import { PatientCard } from '@/features/animals/components/PatientCard';
+import type { AnimalListItem } from '@/features/animals/queries';
 import { formatDateTime } from '@/lib/time';
-import Link from 'next/link';
 import { useState } from 'react';
 
 export interface OutcomeRow {
@@ -16,6 +17,7 @@ export interface OutcomeRow {
 interface Props {
   deaths: OutcomeRow[];
   discharges: OutcomeRow[];
+  cards: AnimalListItem[];
 }
 
 type Tab = 'deaths' | 'discharges';
@@ -28,30 +30,33 @@ function isToday(iso: string): boolean {
   );
 }
 
-function Group({ title, rows }: { title: string; rows: OutcomeRow[] }) {
+function Group({
+  title,
+  rows,
+  byId,
+}: { title: string; rows: OutcomeRow[]; byId: Map<string, AnimalListItem> }) {
   return (
     <div>
       <h3 className="mb-2 px-1 font-display text-[13px] font-bold">{title}</h3>
       <ul className="flex flex-col gap-2">
-        {rows.map((r) => (
-          <li key={r.animalId} className="rounded-lg border border-line bg-paper p-3">
-            <Link href={`/patients/${r.animalId}`} className="block hover:opacity-80">
-              <div className="flex flex-wrap items-baseline gap-2">
-                <span className="font-medium">{r.animalName}</span>
-                <span className="text-muted text-xs">{r.animalSpecies}</span>
-                <span className="ml-auto text-muted text-xs">{formatDateTime(new Date(r.at))}</span>
-              </div>
-              <p className="mt-1 text-[13px] text-text">{r.detail}</p>
-              <p className="mt-0.5 text-[11px] text-soft">by {r.byName}</p>
-            </Link>
-          </li>
-        ))}
+        {rows.map((r) => {
+          const card = byId.get(r.animalId);
+          if (!card) return null;
+          return (
+            <li key={r.animalId}>
+              <PatientCard animal={card} />
+              <p className="mt-1 px-3 text-[12.5px] text-muted">
+                {r.detail} · {formatDateTime(new Date(r.at))} · by {r.byName}
+              </p>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
 }
 
-function List({ rows, verb }: { rows: OutcomeRow[]; verb: string }) {
+function List({ rows, verb, byId }: { rows: OutcomeRow[]; verb: string; byId: Map<string, AnimalListItem> }) {
   if (rows.length === 0) {
     return (
       <p className="rounded-lg border border-line bg-paper p-6 text-center text-muted text-sm">
@@ -63,14 +68,15 @@ function List({ rows, verb }: { rows: OutcomeRow[]; verb: string }) {
   const earlier = rows.filter((r) => !isToday(r.at));
   return (
     <div className="flex flex-col gap-4">
-      {today.length > 0 && <Group title="Today" rows={today} />}
-      {earlier.length > 0 && <Group title="Earlier" rows={earlier} />}
+      {today.length > 0 && <Group title="Today" rows={today} byId={byId} />}
+      {earlier.length > 0 && <Group title="Earlier" rows={earlier} byId={byId} />}
     </div>
   );
 }
 
-export function OutcomesTabs({ deaths, discharges }: Props) {
+export function OutcomesTabs({ deaths, discharges, cards }: Props) {
   const [tab, setTab] = useState<Tab>('deaths');
+  const byId = new Map(cards.map((c) => [c.id, c]));
   return (
     <div className="flex flex-col gap-4">
       <SegmentedTabs
@@ -81,7 +87,11 @@ export function OutcomesTabs({ deaths, discharges }: Props) {
           { value: 'discharges', label: 'Discharges', count: discharges.length },
         ]}
       />
-      {tab === 'deaths' ? <List rows={deaths} verb="deaths" /> : <List rows={discharges} verb="discharges" />}
+      {tab === 'deaths' ? (
+        <List rows={deaths} verb="deaths" byId={byId} />
+      ) : (
+        <List rows={discharges} verb="discharges" byId={byId} />
+      )}
     </div>
   );
 }
