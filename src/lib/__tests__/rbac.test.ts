@@ -92,6 +92,7 @@ const MATRIX: Record<Action, [boolean, boolean, boolean, boolean, boolean]> = {
   'audit.read.all': [false, false, true, true, false],
   'trash.read': [false, false, true, true, false],
   'outcome.read': [false, true, true, true, true],
+  'lifecycle.invalidate': [false, false, false, true, false],
 };
 
 describe('rbac permission matrix — full 5x19 table', () => {
@@ -146,6 +147,15 @@ describe('outcome.read permission', () => {
   });
   it('denies STAFF', () => {
     expect(can({ id: 'u', role: 'STAFF' }, 'outcome.read')).toBe(false);
+  });
+});
+
+describe('lifecycle.invalidate permission', () => {
+  it('allows only SUPER_ADMIN', () => {
+    expect(can({ id: 'u', role: 'SUPER_ADMIN' }, 'lifecycle.invalidate')).toBe(true);
+    for (const role of ['STAFF', 'DOCTOR', 'ADMIN', 'VIEWER'] as const) {
+      expect(can({ id: 'u', role }, 'lifecycle.invalidate')).toBe(false);
+    }
   });
 });
 

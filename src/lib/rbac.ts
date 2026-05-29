@@ -28,7 +28,8 @@ export type Action =
   | 'user.manage'
   | 'audit.read.all'
   | 'trash.read'
-  | 'outcome.read';
+  | 'outcome.read'
+  | 'lifecycle.invalidate';
 
 const PERMISSIONS: Record<Action, Role[]> = {
   'animal.create': ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
@@ -52,6 +53,7 @@ const PERMISSIONS: Record<Action, Role[]> = {
   'audit.read.all': ['ADMIN', 'SUPER_ADMIN'],
   'trash.read': ['ADMIN', 'SUPER_ADMIN'],
   'outcome.read': ['VIEWER', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'lifecycle.invalidate': ['SUPER_ADMIN'],
 };
 
 export function can(actor: Actor, action: Action): boolean {
