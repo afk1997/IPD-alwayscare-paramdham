@@ -42,7 +42,9 @@ test('admit a new animal end-to-end', async ({ page }) => {
   // ownership check, which can push the redirect past 15s on cold CI).
   await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 30_000 });
   await expect(page.getByText('TestBruno').first()).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('Hit by vehicle')).toBeVisible();
+  // Complaint now appears twice on the detail page — the hero "chief complaint"
+  // and the synthetic "Admitted" timeline entry — so scope to the first match.
+  await expect(page.getByText('Hit by vehicle').first()).toBeVisible();
 
   // Switch to Details tab to verify diagnosis
   await page.getByRole('button', { name: /^Details$/ }).click();
