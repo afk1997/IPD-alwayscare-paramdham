@@ -1,3 +1,4 @@
+import { listAnimalCardsByIds } from '@/features/animals/queries';
 import { createAnimal, restoreAnimal, softDeleteAnimal, updateAnimal } from '@/features/animals/service';
 import {
   ADMIN_EMAIL,
@@ -199,3 +200,51 @@ describe('animals service — integration vs real DB', () => {
 });
 
 const QA_PREFIX = '__qa__';
+
+describe('listAnimalCardsByIds', () => {
+  beforeAll(purgeQa);
+  afterAll(purgeQa);
+
+  it('returns AnimalListItem cards for the given ids, including deceased, in input order', async () => {
+    const admin = await actorByEmail(ADMIN_EMAIL);
+    const a1 = await prisma.animal.create({
+      data: {
+        name: qaName('card1'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: admin.id,
+      },
+    });
+    const a2 = await prisma.animal.create({
+      data: {
+        name: qaName('card2'),
+        species: 'Cat',
+        status: 'OBSERVATION',
+        vaccination: 'NONE',
+        createdById: admin.id,
+      },
+    });
+    const cards = await listAnimalCardsByIds([a2.id, a1.id]);
+    expect(cards.map((c) => c.id)).toEqual([a2.id, a1.id]);
+    expect(cards[0]).toMatchObject({ species: 'Cat', status: 'OBSERVATION' });
+    expect(cards[1]?.status).toBe('DECEASED');
+  });
+
+  it('returns [] for no ids and skips soft-deleted', async () => {
+    expect(await listAnimalCardsByIds([])).toEqual([]);
+    const admin = await actorByEmail(ADMIN_EMAIL);
+    const del = await prisma.animal.create({
+      data: {
+        name: qaName('del'),
+        species: 'Dog',
+        status: 'OBSERVATION',
+        vaccination: 'NONE',
+        createdById: admin.id,
+        deletedAt: new Date(),
+      },
+    });
+    expect(await listAnimalCardsByIds([del.id])).toEqual([]);
+  });
+});

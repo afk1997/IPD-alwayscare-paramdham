@@ -1,11 +1,15 @@
+import { listTodayLifecycleEvents } from '@/features/outcomes/queries';
 import { Activity as ActivityIcon } from 'lucide-react';
 import { listTodayActivities } from '../queries';
 import { TodayTimelineList } from './TodayTimelineList';
 
-export async function TodayTimeline() {
-  const items = await listTodayActivities();
+export async function TodayTimeline({ type }: { type?: string } = {}) {
+  const [items, lifecycle] = await Promise.all([
+    listTodayActivities(type),
+    type ? Promise.resolve([]) : listTodayLifecycleEvents(),
+  ]);
 
-  if (items.length === 0) {
+  if (items.length === 0 && lifecycle.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl border border-line border-dashed bg-paper py-10 text-center">
         <ActivityIcon size={22} className="text-soft" />
@@ -35,5 +39,5 @@ export async function TodayTimeline() {
     summary: it.summary,
   }));
 
-  return <TodayTimelineList items={serialized} />;
+  return <TodayTimelineList items={serialized} lifecycleEvents={lifecycle} />;
 }

@@ -162,3 +162,117 @@ export async function recordDeath(actor: ActorWithName, input: DeathInput) {
     return updated;
   });
 }
+
+export async function invalidateLifecycle(actor: Actor, animalId: string) {
+  assertCan(actor, 'lifecycle.invalidate');
+  return prisma.$transaction(async (tx) => {
+    const animal = await tx.animal.findFirst({ where: { id: animalId, deletedAt: null } });
+    if (!animal) throw new NotFoundError('Animal', animalId);
+    if (animal.status !== 'DECEASED' && animal.status !== 'DISCHARGED') {
+      throw new ValidationError('This patient is not discharged or deceased');
+    }
+    const kind = animal.status === 'DECEASED' ? 'death' : 'discharge';
+    const now = new Date();
+    if (kind === 'death') {
+      await tx.deathRecord.update({
+        where: { animalId },
+        data: { invalidatedAt: now, invalidatedById: actor.id },
+      });
+    } else {
+      await tx.dischargeRecord.update({
+        where: { animalId },
+        data: { invalidatedAt: now, invalidatedById: actor.id },
+      });
+    }
+    // Return to active care. cageId is already null (released at close); do NOT
+    // restore the old cage — it may now hold another patient.
+    const updated = await tx.animal.update({
+      where: { id: animalId },
+      data: {
+        status: 'OBSERVATION',
+        deceasedAt: null,
+        dischargedAt: null,
+        editedAt: now,
+        editedById: actor.id,
+      },
+    });
+    await writeAuditLog(tx, {
+      actorId: actor.id,
+      action: 'update',
+      entityType: 'Animal',
+      entityId: animalId,
+      before: { status: animal.status },
+      after: { status: 'OBSERVATION' },
+      context: { lifecycle: 'invalidate', kind },
+    });
+    return updated;
+  });
+}
+
+export async function revalidateLifecycle(actor: Actor, animalId: string) {
+  assertCan(actor, 'lifecycle.invalidate');
+  return prisma.$transaction(async (tx) => {
+    const animal = await tx.animal.findFirst({
+      where: { id: animalId, deletedAt: null },
+      include: { deathRecord: true, dischargeRecord: true },
+    });
+    if (!animal) throw new NotFoundError('Animal', animalId);
+    if (animal.status === 'DECEASED' || animal.status === 'DISCHARGED') {
+      throw new ValidationError('This patient is already closed');
+    }
+    const now = new Date();
+    if (animal.deathRecord?.invalidatedAt) {
+      await tx.deathRecord.update({
+        where: { animalId },
+        data: { invalidatedAt: null, invalidatedById: null },
+      });
+      const updated = await tx.animal.update({
+        where: { id: animalId },
+        data: {
+          status: 'DECEASED',
+          deceasedAt: animal.deathRecord.diedAt,
+          cageId: null,
+          editedAt: now,
+          editedById: actor.id,
+        },
+      });
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'update',
+        entityType: 'Animal',
+        entityId: animalId,
+        before: { status: animal.status },
+        after: { status: 'DECEASED' },
+        context: { lifecycle: 'revalidate', kind: 'death' },
+      });
+      return updated;
+    }
+    if (animal.dischargeRecord?.invalidatedAt) {
+      await tx.dischargeRecord.update({
+        where: { animalId },
+        data: { invalidatedAt: null, invalidatedById: null },
+      });
+      const updated = await tx.animal.update({
+        where: { id: animalId },
+        data: {
+          status: 'DISCHARGED',
+          dischargedAt: animal.dischargeRecord.dischargedAt,
+          cageId: null,
+          editedAt: now,
+          editedById: actor.id,
+        },
+      });
+      await writeAuditLog(tx, {
+        actorId: actor.id,
+        action: 'update',
+        entityType: 'Animal',
+        entityId: animalId,
+        before: { status: animal.status },
+        after: { status: 'DISCHARGED' },
+        context: { lifecycle: 'revalidate', kind: 'discharge' },
+      });
+      return updated;
+    }
+    throw new ValidationError('No invalidated death or discharge to re-validate');
+  });
+}

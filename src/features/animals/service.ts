@@ -2,7 +2,7 @@ import { writeAuditLog } from '@/lib/audit';
 import { NotFoundError, ValidationError } from '@/lib/errors';
 import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
-import { type Actor, assertCan } from '@/lib/rbac';
+import { type Actor, assertCan, assertOpenCase } from '@/lib/rbac';
 import type { AnimalStatus, Gender, Prisma, TestKind, Vaccination } from '@prisma/client';
 import {
   type CreateAnimalInput,
@@ -151,6 +151,8 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
   // otherwise re-stamp editedAt and could re-occupy a cage while trashed.
   const before = await prisma.animal.findFirst({ where: { id: animalId, deletedAt: null } });
   if (!before) throw new NotFoundError('Animal', animalId);
+  // Closed-case lock: a deceased/discharged animal is frozen to SUPER_ADMIN.
+  assertOpenCase(actor, before.status);
 
   const data: Prisma.AnimalUncheckedUpdateInput = {
     editedAt: new Date(),
@@ -269,6 +271,7 @@ export async function softDeleteAnimal(actor: Actor, animalId: string) {
   assertCan(actor, 'animal.delete');
   const before = await prisma.animal.findUnique({ where: { id: animalId } });
   if (!before) throw new NotFoundError('Animal', animalId);
+  assertOpenCase(actor, before.status);
   if (before.deletedAt) return before;
 
   return prisma.$transaction(async (tx) => {

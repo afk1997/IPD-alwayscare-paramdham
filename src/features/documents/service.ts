@@ -1,7 +1,7 @@
 import { writeAuditLog } from '@/lib/audit';
 import { NotFoundError, RbacError, ValidationError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
-import { type Actor, assertCan, can } from '@/lib/rbac';
+import { type Actor, assertCan, assertOpenCase, can } from '@/lib/rbac';
 import type { DocCategory } from '@prisma/client';
 import { assertOwnedReadyAssets } from '../media/service';
 import { type CreateDocumentInput, CreateDocumentSchema } from './schema';
@@ -13,9 +13,10 @@ export async function createDocument(actor: Actor, input: CreateDocumentInput) {
   // animal.
   const animal = await prisma.animal.findFirst({
     where: { id: parsed.animalId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (!animal) throw new NotFoundError('Animal', parsed.animalId);
+  assertOpenCase(actor, animal.status);
   await assertOwnedReadyAssets(actor, [parsed.fileId]);
 
   return prisma.$transaction(async (tx) => {
@@ -49,9 +50,13 @@ export async function softDeleteDocument(actor: Actor, documentId: string) {
   if (!can(actor, 'document.delete')) throw new RbacError('document.delete');
   const doc = await prisma.document.findFirst({
     where: { id: documentId, deletedAt: null },
-    include: { file: { select: { id: true, storageKey: true, filename: true } } },
+    include: {
+      file: { select: { id: true, storageKey: true, filename: true } },
+      animal: { select: { status: true } },
+    },
   });
   if (!doc) throw new NotFoundError('Document', documentId);
+  assertOpenCase(actor, doc.animal.status);
   const updated = await prisma.$transaction(async (tx) => {
     const u = await tx.document.update({
       where: { id: documentId },
@@ -106,7 +111,7 @@ export async function restoreDocument(actor: Actor, documentId: string) {
     where: { id: documentId },
     include: {
       file: { select: { id: true, storageKey: true, filename: true } },
-      animal: { select: { deletedAt: true } },
+      animal: { select: { deletedAt: true, status: true } },
     },
   });
   if (!doc) throw new NotFoundError('Document', documentId);
@@ -117,6 +122,7 @@ export async function restoreDocument(actor: Actor, documentId: string) {
   if (doc.animal.deletedAt) {
     throw new ValidationError('Restore the patient first — this document belongs to a deleted patient');
   }
+  assertOpenCase(actor, doc.animal.status);
   const updated = await prisma.$transaction(async (tx) => {
     const u = await tx.document.update({
       where: { id: documentId },

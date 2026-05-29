@@ -27,7 +27,9 @@ export type Action =
   | 'document.read.all'
   | 'user.manage'
   | 'audit.read.all'
-  | 'trash.read';
+  | 'trash.read'
+  | 'outcome.read'
+  | 'lifecycle.invalidate';
 
 const PERMISSIONS: Record<Action, Role[]> = {
   'animal.create': ['STAFF', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
@@ -50,6 +52,8 @@ const PERMISSIONS: Record<Action, Role[]> = {
   'user.manage': ['ADMIN', 'SUPER_ADMIN'],
   'audit.read.all': ['ADMIN', 'SUPER_ADMIN'],
   'trash.read': ['ADMIN', 'SUPER_ADMIN'],
+  'outcome.read': ['VIEWER', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'],
+  'lifecycle.invalidate': ['SUPER_ADMIN'],
 };
 
 export function can(actor: Actor, action: Action): boolean {
@@ -62,4 +66,13 @@ export function can(actor: Actor, action: Action): boolean {
 
 export function assertCan(actor: Actor, action: Action): void {
   if (!can(actor, action)) throw new RbacError(action);
+}
+
+// Closed-case finality: once an animal is DECEASED or DISCHARGED, only a
+// SUPER_ADMIN may mutate it or anything attached to it. Reused by every
+// mutation service that touches an animal.
+export function assertOpenCase(actor: Actor, status: string): void {
+  if ((status === 'DECEASED' || status === 'DISCHARGED') && actor.role !== 'SUPER_ADMIN') {
+    throw new RbacError('closed-case.locked');
+  }
 }

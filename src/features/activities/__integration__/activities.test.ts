@@ -270,3 +270,52 @@ describe('activities service — integration vs real DB', () => {
     expect(dup.type).toBe('TREATMENT');
   });
 });
+
+describe('closed-case lock — activity mutations', () => {
+  it('DOCTOR cannot add an activity to a DISCHARGED animal', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL); // { id, role, name }
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('closed-act'),
+        species: 'Cat',
+        status: 'DISCHARGED',
+        dischargedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+      },
+    });
+    await expect(
+      createActivity(doctor, {
+        animalId: animal.id,
+        type: 'FOOD',
+        byName: doctor.name,
+        data: { foodType: 'kibble', intake: 'Fully', vomiting: false },
+        mediaAssetIds: [],
+      }),
+    ).rejects.toBeInstanceOf(RbacError);
+  });
+
+  it('DOCTOR cannot restore an activity on a DECEASED animal', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('closed-restore'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+      },
+    });
+    const activity = await prisma.activity.create({
+      data: {
+        animalId: animal.id,
+        type: 'FOOD',
+        byName: doctor.name,
+        data: { foodType: 'kibble', intake: 'Fully', vomiting: false },
+        deletedAt: new Date(),
+      },
+    });
+    await expect(restoreActivity(doctor, activity.id)).rejects.toBeInstanceOf(RbacError);
+  });
+});

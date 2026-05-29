@@ -3,6 +3,7 @@ import { useQuickAdd } from '@/features/quick-add/QuickAddProvider';
 import type { Role } from '@/features/users/schema';
 import {
   CalendarRange,
+  ClipboardList,
   FileText,
   History,
   Home,
@@ -111,6 +112,13 @@ export function SideNav({ isAdmin, userRole, user, forceVisible = false }: Props
 
         {(userRole === 'DOCTOR' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') && (
           <NavLink item={{ href: '/cages', label: 'Cages', icon: LayoutGrid }} active={isActive('/cages')} />
+        )}
+
+        {userRole !== 'STAFF' && (
+          <NavLink
+            item={{ href: '/outcomes', label: 'Outcomes', icon: ClipboardList }}
+            active={isActive('/outcomes')}
+          />
         )}
 
         {isAdmin && (

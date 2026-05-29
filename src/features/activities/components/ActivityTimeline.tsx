@@ -1,10 +1,16 @@
 'use client';
 import { Photo } from '@/components/media/Photo';
 import { EmptyState } from '@/components/ui/EmptyState';
+import {
+  type LifecycleDocLite,
+  LifecycleRecordSheet,
+} from '@/features/animals/lifecycle/components/LifecycleRecordSheet';
+import type { LifecycleEvent } from '@/features/animals/lifecycle/events';
 import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
 import {
   Activity as ActivityIcon,
+  ArrowRight,
   Bath,
   Footprints,
   type LucideIcon,
@@ -12,6 +18,7 @@ import {
   Pill as PillIcon,
   Salad,
   Scissors,
+  Skull,
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
@@ -25,6 +32,10 @@ export type { SerializedActivity } from '../serialized';
 interface Props {
   activities: SerializedActivity[];
   animalId: string;
+  caseLocked?: boolean;
+  lifecycleEvents?: LifecycleEvent[];
+  lifecycleDocs?: { death: LifecycleDocLite[]; discharge: LifecycleDocLite[] };
+  currentUserRole?: string | undefined;
 }
 
 interface TypeMeta {
@@ -43,21 +54,56 @@ const TYPE_META: Record<ActivityType, TypeMeta> = {
   WALK: { icon: Footprints, color: '#A16207' },
 };
 
-type FlatRow =
-  | { kind: 'header'; day: string; count: number; key: string }
-  | { kind: 'activity'; activity: SerializedActivity; key: string };
+type TimelineItem =
+  | { kind: 'activity'; at: string; activity: SerializedActivity; key: string }
+  | { kind: 'lifecycle'; at: string; event: LifecycleEvent; key: string };
 
-function flattenByDay(activities: SerializedActivity[]): FlatRow[] {
-  const groups = groupByDay(activities);
+type FlatRow = { kind: 'header'; day: string; count: number; key: string } | TimelineItem;
+
+const LIFECYCLE_META = {
+  admission: { icon: UserPlus, color: '#0E7C7B', label: 'Admitted' },
+  discharge: { icon: ArrowRight, color: '#15803D', label: 'Discharged' },
+  death: { icon: Skull, color: '#5B6B7A', label: 'Deceased' },
+} as const;
+
+function flattenItemsByDay(activities: SerializedActivity[], lifecycleEvents: LifecycleEvent[]): FlatRow[] {
+  // Merge activities + synthetic lifecycle events into one time-sorted stream
+  // (newest first), then bucket by calendar day with header rows. Activities
+  // keep their existing key (`a.id`); lifecycle keys are derived from kind+time.
+  const items: TimelineItem[] = [
+    ...activities.map((a): TimelineItem => ({ kind: 'activity', at: a.occurredAt, activity: a, key: a.id })),
+    ...lifecycleEvents.map(
+      (e): TimelineItem => ({ kind: 'lifecycle', at: e.at, event: e, key: `lc-${e.kind}-${e.at}` }),
+    ),
+  ];
+  items.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+
+  const groups = new Map<string, TimelineItem[]>();
+  for (const item of items) {
+    const d = new Date(item.at);
+    d.setHours(0, 0, 0, 0);
+    const k = d.toISOString();
+    const list = groups.get(k) ?? [];
+    list.push(item);
+    groups.set(k, list);
+  }
+
   const out: FlatRow[] = [];
-  for (const [day, items] of groups) {
-    out.push({ kind: 'header', day, count: items.length, key: `h-${day}` });
-    for (const a of items) out.push({ kind: 'activity', activity: a, key: a.id });
+  for (const [day, dayItems] of Array.from(groups.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1))) {
+    out.push({ kind: 'header', day, count: dayItems.length, key: `h-${day}` });
+    for (const item of dayItems) out.push(item);
   }
   return out;
 }
 
-export function ActivityTimeline({ activities: initial, animalId }: Props) {
+export function ActivityTimeline({
+  activities: initial,
+  animalId,
+  caseLocked,
+  lifecycleEvents = [],
+  lifecycleDocs = { death: [], discharge: [] },
+  currentUserRole,
+}: Props) {
   const [activities, setActivities] = useState<SerializedActivity[]>(initial);
   useEffect(() => {
     setActivities(initial);
@@ -100,10 +146,11 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
     );
   };
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
+  const [recordEvent, setRecordEvent] = useState<LifecycleEvent | null>(null);
 
-  const rows = flattenByDay(activities);
+  const rows = flattenItemsByDay(activities, lifecycleEvents);
 
-  if (activities.length === 0) {
+  if (activities.length === 0 && lifecycleEvents.length === 0) {
     return (
       <EmptyState
         icon={ActivityIcon}
@@ -130,18 +177,31 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
   return (
     <>
       <div className="relative">
-        {rows.map((row) =>
-          row.kind === 'header' ? (
-            <div key={row.key} className="mb-2 flex items-baseline gap-2 px-1 pt-2">
-              <h3 className="font-display text-[13px] font-bold">{formatDayHeader(row.day)}</h3>
-              <span className="text-[11px] text-muted">{row.count} entries</span>
-            </div>
-          ) : (
+        {rows.map((row) => {
+          if (row.kind === 'header') {
+            return (
+              <div key={row.key} className="mb-2 flex items-baseline gap-2 px-1 pt-2">
+                <h3 className="font-display text-[13px] font-bold">{formatDayHeader(row.day)}</h3>
+                <span className="text-[11px] text-muted">{row.count} entries</span>
+              </div>
+            );
+          }
+          if (row.kind === 'lifecycle') {
+            return (
+              <div key={row.key} className="pb-2">
+                <LifecycleRow
+                  event={row.event}
+                  {...(row.event.kind === 'admission' ? {} : { onClick: () => setRecordEvent(row.event) })}
+                />
+              </div>
+            );
+          }
+          return (
             <div key={row.key} className="pb-2">
               <ActivityRow activity={row.activity} onClick={() => onClickRow(row.activity)} />
             </div>
-          ),
-        )}
+          );
+        })}
       </div>
       <ActivitySheet
         activity={selected}
@@ -151,6 +211,20 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
         onDeleted={onDeleted}
         onDuplicated={onDuplicated}
         onRestored={onRestored}
+        {...(caseLocked !== undefined ? { caseLocked } : {})}
+      />
+      <LifecycleRecordSheet
+        event={recordEvent}
+        animalId={animalId}
+        {...(currentUserRole !== undefined ? { currentUserRole } : {})}
+        docs={
+          recordEvent?.kind === 'death'
+            ? lifecycleDocs.death
+            : recordEvent?.kind === 'discharge'
+              ? lifecycleDocs.discharge
+              : []
+        }
+        onClose={() => setRecordEvent(null)}
       />
     </>
   );
@@ -243,17 +317,49 @@ function ActivityRow({ activity: a, onClick }: { activity: SerializedActivity; o
   );
 }
 
-function groupByDay(activities: SerializedActivity[]): Array<[string, SerializedActivity[]]> {
-  const map = new Map<string, SerializedActivity[]>();
-  for (const a of activities) {
-    const d = new Date(a.occurredAt);
-    d.setHours(0, 0, 0, 0);
-    const k = d.toISOString();
-    const list = map.get(k) ?? [];
-    list.push(a);
-    map.set(k, list);
-  }
-  return Array.from(map.entries()).sort((a, b) => (a[0] < b[0] ? 1 : -1));
+function LifecycleRow({ event, onClick }: { event: LifecycleEvent; onClick?: () => void }) {
+  const meta = LIFECYCLE_META[event.kind];
+  const Icon = meta.icon;
+  const inner = (
+    <div className="flex w-full items-start gap-3 rounded-xl border border-line bg-paper p-3 text-left">
+      <div
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+        style={{ background: `${meta.color}1A`, color: meta.color }}
+      >
+        <Icon size={20} strokeWidth={2} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <span
+            className={`font-display text-[14px] font-bold ${event.invalidated ? 'text-soft line-through' : ''}`}
+          >
+            {meta.label}
+          </span>
+          <span className="text-[11.5px] text-muted">{formatTime(event.at)}</span>
+        </div>
+        {event.detail && (
+          <p className={`mt-1 text-[13px] ${event.invalidated ? 'text-soft line-through' : 'text-text'}`}>
+            {event.detail}
+          </p>
+        )}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-soft">
+          {event.byName && <span>by {event.byName}</span>}
+          {event.invalidated && (
+            <span className="font-semibold text-observation">
+              · Invalidated{event.invalidatedByName ? ` by ${event.invalidatedByName}` : ''}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+  return onClick ? (
+    <button type="button" onClick={onClick} className="w-full transition hover:opacity-90">
+      {inner}
+    </button>
+  ) : (
+    <div>{inner}</div>
+  );
 }
 
 function formatDayHeader(iso: string): string {

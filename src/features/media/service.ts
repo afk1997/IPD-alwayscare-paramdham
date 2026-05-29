@@ -2,7 +2,7 @@ import { writeAuditLog } from '@/lib/audit';
 import { NotFoundError, RbacError, ValidationError } from '@/lib/errors';
 import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
-import { type Actor, assertCan, can } from '@/lib/rbac';
+import { type Actor, assertCan, assertOpenCase, can } from '@/lib/rbac';
 import { getStorage } from '@/lib/storage';
 import { isGoogleDriveStorage } from '@/lib/storage/gdrive';
 import type { MediaKind } from '@prisma/client';
@@ -70,9 +70,10 @@ export async function initiateUpload(actor: Actor, input: InitiateInput): Promis
   } else {
     const animal = await prisma.animal.findUnique({
       where: { id: input.context.animalId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, status: true },
     });
     if (!animal) throw new NotFoundError('Animal', input.context.animalId);
+    assertOpenCase(actor, animal.status);
     if (input.context.kind === 'activity') {
       parentId = await folders.activityFolder(
         animal,

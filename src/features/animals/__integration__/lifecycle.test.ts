@@ -1,5 +1,10 @@
-import { dischargeAnimal, recordDeath } from '@/features/animals/lifecycle/service';
-import { createAnimal } from '@/features/animals/service';
+import {
+  dischargeAnimal,
+  invalidateLifecycle,
+  recordDeath,
+  revalidateLifecycle,
+} from '@/features/animals/lifecycle/service';
+import { createAnimal, updateAnimal } from '@/features/animals/service';
 import { DOCTOR_EMAIL, STAFF_EMAIL, actorByEmail, purgeQa, qaName } from '@/lib/__integration__/helpers';
 import { RbacError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
@@ -142,5 +147,119 @@ describe('animal lifecycle — integration vs real DB', () => {
         documentFileIds: ['clxxxnotexist00000000001'],
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe('closed-case lock — animal mutations', () => {
+  it('DOCTOR cannot edit a DECEASED animal', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('locked'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+      },
+    });
+    await expect(updateAnimal(doctor, animal.id, { name: qaName('hacked') })).rejects.toBeInstanceOf(
+      RbacError,
+    );
+  });
+});
+
+describe('invalidate / re-validate', () => {
+  async function makeSuperAdmin() {
+    return prisma.user.create({
+      data: {
+        email: `${qaName('sa')}@qa-roles.local`,
+        name: qaName('SA'),
+        role: 'SUPER_ADMIN',
+        passwordHash: 'x',
+        active: true,
+      },
+    });
+  }
+  async function cleanupSuper(id: string) {
+    await prisma.auditLog.deleteMany({ where: { actorId: id } });
+    await prisma.user.deleteMany({ where: { id } });
+  }
+
+  it('SUPER_ADMIN invalidates a death: animal returns to OBSERVATION, record kept + flagged, cage null', async () => {
+    const sa = await makeSuperAdmin();
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('inv'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+        deathRecord: { create: { causeOfDeath: qaName('c'), diedAt: new Date(), recordedById: doctor.id } },
+      },
+    });
+    await invalidateLifecycle({ id: sa.id, role: 'SUPER_ADMIN' }, animal.id);
+    const after = await prisma.animal.findUniqueOrThrow({ where: { id: animal.id } });
+    expect(after.status).toBe('OBSERVATION');
+    expect(after.deceasedAt).toBeNull();
+    expect(after.cageId).toBeNull();
+    const rec = await prisma.deathRecord.findUniqueOrThrow({ where: { animalId: animal.id } });
+    expect(rec.invalidatedAt).not.toBeNull();
+    expect(rec.invalidatedById).toBe(sa.id);
+    await cleanupSuper(sa.id);
+  });
+
+  it('DOCTOR cannot invalidate', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('inv2'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+        deathRecord: { create: { causeOfDeath: qaName('c'), diedAt: new Date(), recordedById: doctor.id } },
+      },
+    });
+    await expect(invalidateLifecycle(doctor, animal.id)).rejects.toBeInstanceOf(RbacError);
+  });
+
+  it('re-validate re-declares deceased, restores original diedAt, releases held cage', async () => {
+    const sa = await makeSuperAdmin();
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const diedAt = new Date('2026-05-20T10:00:00.000Z');
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('reval'),
+        species: 'Dog',
+        status: 'OBSERVATION',
+        vaccination: 'NONE',
+        createdById: doctor.id,
+        deathRecord: {
+          create: {
+            causeOfDeath: qaName('c'),
+            diedAt,
+            recordedById: doctor.id,
+            invalidatedAt: new Date(),
+            invalidatedById: sa.id,
+          },
+        },
+      },
+    });
+    const cage = await prisma.cage.create({ data: { name: qaName('cage') } });
+    await prisma.animal.update({ where: { id: animal.id }, data: { cageId: cage.id } });
+    await revalidateLifecycle({ id: sa.id, role: 'SUPER_ADMIN' }, animal.id);
+    const after = await prisma.animal.findUniqueOrThrow({ where: { id: animal.id } });
+    expect(after.status).toBe('DECEASED');
+    expect(after.deceasedAt?.toISOString()).toBe(diedAt.toISOString());
+    expect(after.cageId).toBeNull();
+    const rec = await prisma.deathRecord.findUniqueOrThrow({ where: { animalId: animal.id } });
+    expect(rec.invalidatedAt).toBeNull();
+    await prisma.animal.update({ where: { id: animal.id }, data: { cageId: null } });
+    await prisma.cage.delete({ where: { id: cage.id } });
+    await cleanupSuper(sa.id);
   });
 });

@@ -4,9 +4,11 @@ import { ActivitySheet, type ActivitySummary } from '@/features/activities/compo
 import { ACTIVITY_LABELS, type ActivityType } from '@/features/activities/schema';
 import type { SerializedActivity } from '@/features/activities/serialized';
 import { summarizeActivity } from '@/features/activities/summary';
+import type { TodayLifecycleEvent } from '@/features/outcomes/queries';
 import { type ActivityFeedEvent, useActivityFeed } from '@/lib/hooks/useActivityFeed';
 import { relativeTime } from '@/lib/time';
 import {
+  ArrowRight,
   Bath,
   Footprints,
   type LucideIcon,
@@ -14,9 +16,11 @@ import {
   Pill as PillIcon,
   Salad,
   Scissors,
+  Skull,
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
 interface TypeMeta {
@@ -35,6 +39,12 @@ const TYPE_META: Record<ActivityType, TypeMeta> = {
   BATH: { icon: Bath, color: '#0EA5E9', tint: '#D8EFFB' },
   WALK: { icon: Footprints, color: '#A16207', tint: '#FCEEC4' },
 };
+
+const TODAY_LC_META = {
+  admission: { icon: UserPlus, color: '#0E7C7B', label: 'Admitted' },
+  discharge: { icon: ArrowRight, color: '#15803D', label: 'Discharged' },
+  death: { icon: Skull, color: '#5B6B7A', label: 'Deceased' },
+} as const;
 
 export interface TodayTimelineRow {
   id: string;
@@ -63,6 +73,7 @@ export interface TodayTimelineRow {
 
 interface Props {
   items: TodayTimelineRow[];
+  lifecycleEvents?: TodayLifecycleEvent[];
 }
 
 /**
@@ -181,7 +192,7 @@ function TodayTimelineRowItem({
   );
 }
 
-export function TodayTimelineList({ items: initial }: Props) {
+export function TodayTimelineList({ items: initial, lifecycleEvents = [] }: Props) {
   const [items, setItems] = useState(initial);
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
 
@@ -237,12 +248,62 @@ export function TodayTimelineList({ items: initial }: Props) {
     });
   };
 
+  // Build a merged, time-sorted (descending) display list of activities and lifecycle events.
+  type DisplayEntry =
+    | { kind: 'activity'; at: string; item: TodayTimelineRow }
+    | { kind: 'lifecycle'; at: string; event: TodayLifecycleEvent };
+
+  const merged: DisplayEntry[] = [
+    ...items.map((item): DisplayEntry => ({ kind: 'activity', at: item.occurredAt, item })),
+    ...lifecycleEvents.map((event): DisplayEntry => ({ kind: 'lifecycle', at: event.at, event })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
+
   return (
     <>
       <div className="relative">
-        {items.map((it, index) => (
-          <TodayTimelineRowItem key={it.id} item={it} isFirst={index === 0} onClick={() => openSheet(it)} />
-        ))}
+        {merged.map((entry, index) => {
+          if (entry.kind === 'activity') {
+            return (
+              <TodayTimelineRowItem
+                key={entry.item.id}
+                item={entry.item}
+                isFirst={index === 0}
+                onClick={() => openSheet(entry.item)}
+              />
+            );
+          }
+          const e = entry.event;
+          const meta = TODAY_LC_META[e.kind];
+          const Icon = meta.icon;
+          return (
+            <Link
+              key={`lc-${e.kind}-${e.animalId}`}
+              href={`/patients/${e.animalId}`}
+              className={`flex w-full items-start gap-3 py-3 text-left transition hover:bg-paper-2 ${
+                index === 0 ? '' : 'border-line border-t'
+              }`}
+            >
+              <div
+                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl"
+                style={{ background: `${meta.color}1A`, color: meta.color }}
+              >
+                <Icon size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="font-display font-semibold text-[14px]">{e.animalName}</span>
+                  <span
+                    className="inline-flex items-center rounded-full px-1.5 py-0.5 font-semibold text-[10.5px]"
+                    style={{ backgroundColor: `${meta.color}1A`, color: meta.color }}
+                  >
+                    {meta.label}
+                  </span>
+                </div>
+                {e.detail && <p className="mt-0.5 line-clamp-2 text-[12.5px] text-muted">{e.detail}</p>}
+              </div>
+            </Link>
+          );
+        })}
       </div>
       <ActivitySheet
         activity={selected}

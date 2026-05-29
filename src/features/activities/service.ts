@@ -2,7 +2,7 @@ import { writeAuditLog } from '@/lib/audit';
 import { NotFoundError, RbacError, ValidationError } from '@/lib/errors';
 import { folderResolver } from '@/lib/folders';
 import { prisma } from '@/lib/prisma';
-import { type Actor, assertCan, can } from '@/lib/rbac';
+import { type Actor, assertCan, assertOpenCase, can } from '@/lib/rbac';
 import type { Prisma, ActivityType as PrismaActivityType } from '@prisma/client';
 import {
   ACTIVITY_DATA_SCHEMAS,
@@ -30,9 +30,10 @@ export async function createActivity(actor: ActivityActor, input: CreateActivity
   // to deleted patients (whose queries filter on Animal.deletedAt).
   const animal = await prisma.animal.findFirst({
     where: { id: parsed.animalId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, status: true },
   });
   if (!animal) throw new NotFoundError('Animal', parsed.animalId);
+  assertOpenCase(actor, animal.status);
   const { assertOwnedReadyAssets } = await import('../media/service');
   await assertOwnedReadyAssets(actor, parsed.mediaAssetIds);
 
@@ -82,8 +83,10 @@ export async function updateActivity(actor: ActivityActor, activityId: string, p
 
   const before = await prisma.activity.findFirst({
     where: { id: activityId, deletedAt: null, animal: { deletedAt: null } },
+    include: { animal: { select: { status: true } } },
   });
   if (!before) throw new NotFoundError('Activity', activityId);
+  assertOpenCase(actor, before.animal.status);
 
   const owns = before.byUserId === actor.id;
   const withinWindow = Date.now() - new Date(before.createdAt).getTime() < 24 * 60 * 60 * 1000;
@@ -149,9 +152,11 @@ export async function duplicateActivity(actor: ActivityActor, activityId: string
   // deleted clinical content and bypass the delete audit trail).
   const original = await prisma.activity.findFirst({
     where: { id: activityId, deletedAt: null, animal: { deletedAt: null } },
+    include: { animal: { select: { status: true } } },
   });
   if (!original) throw new NotFoundError('Activity', activityId);
   assertCan(actor, requiredAction(original.type) as 'activity.create' | 'activity.create.clinical');
+  assertOpenCase(actor, original.animal.status);
 
   return prisma.$transaction(async (tx) => {
     const created = await tx.activity.create({
@@ -180,10 +185,11 @@ export async function duplicateActivity(actor: ActivityActor, activityId: string
 export async function softDeleteActivity(actor: Actor, activityId: string) {
   const activity = await prisma.activity.findUnique({
     where: { id: activityId },
-    include: { media: { include: { asset: true } } },
+    include: { media: { include: { asset: true } }, animal: { select: { status: true } } },
   });
   if (!activity) throw new NotFoundError('Activity', activityId);
   if (activity.deletedAt) return activity;
+  assertOpenCase(actor, activity.animal.status);
 
   // RBAC-7: STAFF can only delete their own activity inside a 24h window.
   // Past that, only DOCTOR/ADMIN (activity.delete) can remove clinical
@@ -196,9 +202,8 @@ export async function softDeleteActivity(actor: Actor, activityId: string) {
   // ACT-8: race-safe — do the existence check inside the update by
   // matching deletedAt: null, and treat P2025 (no rows updated) as
   // "already deleted" rather than a hard error.
-  let updated: typeof activity;
   try {
-    updated = await prisma.$transaction(async (tx) => {
+    const updated = await prisma.$transaction(async (tx) => {
       const u = await tx.activity.update({
         where: { id: activityId, deletedAt: null },
         data: { deletedAt: new Date(), editedById: actor.id, editedAt: new Date() },
@@ -218,6 +223,8 @@ export async function softDeleteActivity(actor: Actor, activityId: string) {
       });
       return u;
     });
+    await renameDriveFiles(actor.id, activity.media, 'delete');
+    return updated;
   } catch (e) {
     // Prisma P2025 is the "record to update not found" error — race with
     // a concurrent delete; treat as a no-op rather than surfacing.
@@ -226,9 +233,6 @@ export async function softDeleteActivity(actor: Actor, activityId: string) {
     }
     throw e;
   }
-
-  await renameDriveFiles(actor.id, activity.media, 'delete');
-  return updated;
 }
 
 export async function restoreActivity(actor: Actor, activityId: string) {
@@ -242,10 +246,13 @@ export async function restoreActivity(actor: Actor, activityId: string) {
   }
   const activity = await prisma.activity.findUnique({
     where: { id: activityId },
-    include: { media: { include: { asset: true } }, animal: { select: { deletedAt: true } } },
+    include: { media: { include: { asset: true } }, animal: { select: { deletedAt: true, status: true } } },
   });
   if (!activity) throw new NotFoundError('Activity', activityId);
   if (!activity.deletedAt) return activity;
+  // Closed-case lock: restoring an entry onto a deceased/discharged animal is
+  // a mutation of a closed case — super-admin only (mirrors the other paths).
+  assertOpenCase(actor, activity.animal.status);
   // Don't resurrect an entry onto a still-trashed patient: every read joins
   // `animal.deletedAt: null`, so the restored row would be live but invisible
   // everywhere (and absent from Trash too). Require restoring the patient first.

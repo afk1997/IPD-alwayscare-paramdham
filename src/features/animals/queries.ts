@@ -29,6 +29,62 @@ export interface AnimalListItem {
   thumbnailUrl: string | null;
 }
 
+const ANIMAL_CARD_SELECT = {
+  id: true,
+  name: true,
+  species: true,
+  breed: true,
+  ward: true,
+  cage: { select: { name: true } },
+  status: true,
+  contagious: true,
+  aggressive: true,
+  admittedAt: true,
+  media: {
+    take: 1,
+    orderBy: { order: 'asc' as const },
+    // Only READY thumbnails — PENDING / FAILED would 425 / 410
+    // through /api/files/[id].
+    where: { asset: { status: 'READY' as const } },
+    select: { asset: { select: { id: true } } },
+  },
+  activities: {
+    take: 1,
+    orderBy: { occurredAt: 'desc' as const },
+    where: { deletedAt: null },
+    select: { occurredAt: true },
+  },
+} satisfies Prisma.AnimalSelect;
+
+type AnimalCardRow = Prisma.AnimalGetPayload<{ select: typeof ANIMAL_CARD_SELECT }>;
+
+function toAnimalListItem(r: AnimalCardRow): AnimalListItem {
+  return {
+    id: r.id,
+    name: r.name,
+    species: r.species,
+    breed: r.breed,
+    ward: r.ward,
+    cage: r.cage?.name ?? null,
+    status: r.status,
+    contagious: r.contagious,
+    aggressive: r.aggressive,
+    admittedAt: r.admittedAt,
+    lastActivityAt: r.activities[0]?.occurredAt ?? null,
+    thumbnailUrl: r.media[0]?.asset.id ? signMediaUrl(r.media[0].asset.id) : null,
+  };
+}
+
+export async function listAnimalCardsByIds(ids: string[]): Promise<AnimalListItem[]> {
+  if (ids.length === 0) return [];
+  const rows = await prisma.animal.findMany({
+    where: { id: { in: ids }, deletedAt: null },
+    select: ANIMAL_CARD_SELECT,
+  });
+  const byId = new Map(rows.map((r) => [r.id, toAnimalListItem(r)]));
+  return ids.map((id) => byId.get(id)).filter((x): x is AnimalListItem => x !== undefined);
+}
+
 export async function listAnimals(params: ListAnimalsParams = {}): Promise<AnimalListItem[]> {
   const { status, species, search, take = 30, cursor } = params;
   const where: Prisma.AnimalWhereInput = {
@@ -55,48 +111,10 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
     orderBy: { admittedAt: 'desc' },
     take,
     ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    select: {
-      id: true,
-      name: true,
-      species: true,
-      breed: true,
-      ward: true,
-      cage: { select: { name: true } },
-      status: true,
-      contagious: true,
-      aggressive: true,
-      admittedAt: true,
-      media: {
-        take: 1,
-        orderBy: { order: 'asc' },
-        // Only READY thumbnails — PENDING / FAILED would 425 / 410
-        // through /api/files/[id].
-        where: { asset: { status: 'READY' } },
-        select: { asset: { select: { id: true } } },
-      },
-      activities: {
-        take: 1,
-        orderBy: { occurredAt: 'desc' },
-        where: { deletedAt: null },
-        select: { occurredAt: true },
-      },
-    },
+    select: ANIMAL_CARD_SELECT,
   });
 
-  return rows.map((r) => ({
-    id: r.id,
-    name: r.name,
-    species: r.species,
-    breed: r.breed,
-    ward: r.ward,
-    cage: r.cage?.name ?? null,
-    status: r.status,
-    contagious: r.contagious,
-    aggressive: r.aggressive,
-    admittedAt: r.admittedAt,
-    lastActivityAt: r.activities[0]?.occurredAt ?? null,
-    thumbnailUrl: r.media[0]?.asset.id ? signMediaUrl(r.media[0].asset.id) : null,
-  }));
+  return rows.map(toAnimalListItem);
 }
 
 export async function getAnimal(id: string) {
@@ -113,6 +131,24 @@ export async function getAnimal(id: string) {
       },
       createdBy: { select: { id: true, name: true } },
       cage: { select: { name: true } },
+      deathRecord: {
+        select: {
+          causeOfDeath: true,
+          diedAt: true,
+          invalidatedAt: true,
+          recordedBy: { select: { name: true } },
+          invalidatedBy: { select: { name: true } },
+        },
+      },
+      dischargeRecord: {
+        select: {
+          summary: true,
+          dischargedAt: true,
+          invalidatedAt: true,
+          dischargedBy: { select: { name: true } },
+          invalidatedBy: { select: { name: true } },
+        },
+      },
     },
   });
   if (!animal) return null;
