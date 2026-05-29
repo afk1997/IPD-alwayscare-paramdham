@@ -146,3 +146,52 @@ export async function listTodayAdmissions(): Promise<TodayLifecycleRow[]> {
     byName: null,
   }));
 }
+
+export interface TodayLifecycleEvent {
+  animalId: string;
+  animalName: string;
+  kind: 'admission' | 'discharge' | 'death';
+  at: string;
+  detail: string | null;
+}
+
+export async function listTodayLifecycleEvents(): Promise<TodayLifecycleEvent[]> {
+  const { start, upper } = todayBounds();
+  const [admitted, discharged, deceased] = await Promise.all([
+    prisma.animal.findMany({
+      where: { admittedAt: { gte: start, lte: upper }, deletedAt: null },
+      select: { id: true, name: true, admittedAt: true, complaint: true },
+    }),
+    prisma.dischargeRecord.findMany({
+      where: { invalidatedAt: null, dischargedAt: { gte: start, lte: upper }, animal: { deletedAt: null } },
+      select: { animalId: true, summary: true, dischargedAt: true, animal: { select: { name: true } } },
+    }),
+    prisma.deathRecord.findMany({
+      where: { invalidatedAt: null, diedAt: { gte: start, lte: upper }, animal: { deletedAt: null } },
+      select: { animalId: true, causeOfDeath: true, diedAt: true, animal: { select: { name: true } } },
+    }),
+  ]);
+  return [
+    ...admitted.map((a) => ({
+      animalId: a.id,
+      animalName: a.name,
+      kind: 'admission' as const,
+      at: a.admittedAt.toISOString(),
+      detail: a.complaint,
+    })),
+    ...discharged.map((d) => ({
+      animalId: d.animalId,
+      animalName: d.animal.name,
+      kind: 'discharge' as const,
+      at: d.dischargedAt.toISOString(),
+      detail: d.summary,
+    })),
+    ...deceased.map((d) => ({
+      animalId: d.animalId,
+      animalName: d.animal.name,
+      kind: 'death' as const,
+      at: d.diedAt.toISOString(),
+      detail: d.causeOfDeath,
+    })),
+  ];
+}
