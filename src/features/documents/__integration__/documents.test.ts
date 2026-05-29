@@ -1,6 +1,6 @@
 import { createAnimal } from '@/features/animals/service';
 import { listAllDocuments } from '@/features/documents/queries';
-import { restoreDocument, softDeleteDocument } from '@/features/documents/service';
+import { createDocument, restoreDocument, softDeleteDocument } from '@/features/documents/service';
 import {
   ADMIN_EMAIL,
   DOCTOR_EMAIL,
@@ -126,5 +126,41 @@ describe('documents service — integration vs real DB', () => {
     await prisma.animal.update({ where: { id: animal.id }, data: { deletedAt: new Date() } });
     const rows = await listAllDocuments(admin, { limit: 200 });
     expect(rows.find((r) => r.id === doc.id)).toBeUndefined();
+  });
+});
+
+describe('closed-case lock — documents', () => {
+  it('DOCTOR cannot add a document to a DECEASED animal', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('closed-doc'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+      },
+    });
+    const asset = await prisma.mediaAsset.create({
+      data: {
+        kind: 'DOC',
+        filename: `${qaName('f')}.pdf`,
+        mimeType: 'application/pdf',
+        size: 10,
+        storageKey: `local:${qaName('k')}.pdf`,
+        status: 'READY',
+        uploadedById: doctor.id,
+      },
+    });
+    await expect(
+      createDocument(doctor, {
+        animalId: animal.id,
+        category: 'MEDICAL',
+        kind: 'Report',
+        name: qaName('doc'),
+        fileId: asset.id,
+      }),
+    ).rejects.toBeInstanceOf(RbacError);
   });
 });
