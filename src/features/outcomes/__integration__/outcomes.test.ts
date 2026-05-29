@@ -45,4 +45,28 @@ describe('outcomes queries', () => {
     expect(rows.some((r) => r.animalId === animalId)).toBe(false);
     await prisma.animal.update({ where: { id: animalId }, data: { deletedAt: null } });
   });
+
+  it('listDeaths excludes an invalidated death', async () => {
+    const admin = await actorByEmail(ADMIN_EMAIL);
+    const a = await prisma.animal.create({
+      data: {
+        name: qaName('invdead'),
+        species: 'Dog',
+        status: 'OBSERVATION',
+        vaccination: 'NONE',
+        createdById: admin.id,
+        deathRecord: {
+          create: {
+            causeOfDeath: qaName('c'),
+            diedAt: new Date(),
+            recordedById: admin.id,
+            invalidatedAt: new Date(),
+            invalidatedById: admin.id,
+          },
+        },
+      },
+    });
+    const rows = await listDeaths();
+    expect(rows.some((r) => r.animalId === a.id)).toBe(false);
+  });
 });

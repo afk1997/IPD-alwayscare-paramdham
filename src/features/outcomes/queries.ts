@@ -31,7 +31,7 @@ export interface DischargeRow {
 
 export async function listDeaths(): Promise<DeathRow[]> {
   const rows = await prisma.deathRecord.findMany({
-    where: { animal: { deletedAt: null } },
+    where: { invalidatedAt: null, animal: { deletedAt: null } },
     orderBy: { diedAt: 'desc' },
     take: REGISTER_CAP,
     select: {
@@ -54,7 +54,7 @@ export async function listDeaths(): Promise<DeathRow[]> {
 
 export async function listDischarges(): Promise<DischargeRow[]> {
   const rows = await prisma.dischargeRecord.findMany({
-    where: { animal: { deletedAt: null } },
+    where: { invalidatedAt: null, animal: { deletedAt: null } },
     orderBy: { dischargedAt: 'desc' },
     take: REGISTER_CAP,
     select: {
