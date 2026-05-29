@@ -1,5 +1,6 @@
 import { signMediaUrl } from '@/lib/media-sign';
 import { prisma } from '@/lib/prisma';
+import { relativeTime } from '@/lib/time';
 import type { AnimalStatus, Prisma } from '@prisma/client';
 import { unstable_cache } from 'next/cache';
 
@@ -23,6 +24,11 @@ export interface AnimalListItem {
   aggressive: boolean;
   admittedAt: Date;
   lastActivityAt: Date | null;
+  // Server-computed at request time so PatientCard renders deterministically —
+  // no client-side Date.now()/relativeTime, hence no hydration mismatch
+  // (React #418). "Frozen" per request, which is fine for a list's update line.
+  lastActivityLabel: string;
+  stale: boolean;
   // Pre-signed URL for the first photo, ready to use directly in <img src>.
   // The URL is HMAC-signed with AUTH_SECRET so it can be served from the
   // edge cache without a cookie check.
@@ -58,7 +64,11 @@ const ANIMAL_CARD_SELECT = {
 
 type AnimalCardRow = Prisma.AnimalGetPayload<{ select: typeof ANIMAL_CARD_SELECT }>;
 
+const STALE_MS = 6 * 60 * 60 * 1000;
+
 function toAnimalListItem(r: AnimalCardRow): AnimalListItem {
+  const lastActivityAt = r.activities[0]?.occurredAt ?? null;
+  const stale = !lastActivityAt || Date.now() - lastActivityAt.getTime() > STALE_MS;
   return {
     id: r.id,
     name: r.name,
@@ -70,7 +80,9 @@ function toAnimalListItem(r: AnimalCardRow): AnimalListItem {
     contagious: r.contagious,
     aggressive: r.aggressive,
     admittedAt: r.admittedAt,
-    lastActivityAt: r.activities[0]?.occurredAt ?? null,
+    lastActivityAt,
+    lastActivityLabel: relativeTime(lastActivityAt),
+    stale,
     thumbnailUrl: r.media[0]?.asset.id ? signMediaUrl(r.media[0].asset.id) : null,
   };
 }
