@@ -75,6 +75,7 @@ interface Props {
   onDeleted: (id: string) => void;
   onDuplicated: (next: SerializedActivity) => void;
   onRestored: (next: SerializedActivity) => void;
+  caseLocked?: boolean;
 }
 
 type Mode = 'view' | 'edit' | 'confirmDelete';
@@ -98,10 +99,11 @@ export function ActivitySheet({
   onDeleted,
   onDuplicated,
   onRestored,
+  caseLocked,
 }: Props) {
   const { showToast } = useToast();
   const { currentUserRole } = useActiveUsers();
-  const canWrite = currentUserRole !== 'VIEWER';
+  const canWrite = currentUserRole !== 'VIEWER' && !caseLocked;
   const [mode, setMode] = useState<Mode>('view');
   const [draft, setDraft] = useState<EditDraft>({
     remarks: '',

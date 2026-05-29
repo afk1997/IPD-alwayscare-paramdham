@@ -31,6 +31,10 @@ export async function AnimalDetail({ animalId }: Props) {
   // M5: VIEWER must not see the upload affordance (the createDocument action
   // already denies them server-side; this keeps the UI honest).
   const canWriteDocs = !!currentUser && currentUser.role !== 'VIEWER';
+  const caseClosed = animal.status === 'DECEASED' || animal.status === 'DISCHARGED';
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
+  // On a closed case, only SUPER_ADMIN may mutate (mirrors the server lock).
+  const caseLocked = caseClosed && !isSuperAdmin;
   const lastActivityAt = activities[0]?.occurredAt ?? null;
 
   // Aggregate every photo / x-ray / video the patient has — admission media,
@@ -126,7 +130,9 @@ export async function AnimalDetail({ animalId }: Props) {
       <AnimalDetailTabs
         activeCount={serializedActivities.length}
         docCount={documents.length}
-        feed={<ActivityTimeline activities={serializedActivities} animalId={animal.id} />}
+        feed={
+          <ActivityTimeline activities={serializedActivities} animalId={animal.id} caseLocked={caseLocked} />
+        }
         info={
           <div className="flex flex-col gap-4">
             <AnimalDetailsTab
@@ -196,7 +202,7 @@ export async function AnimalDetail({ animalId }: Props) {
                   fileUrl: d.fileUrl,
                   file: d.file ? { id: d.file.id, kind: d.file.kind, filename: d.file.filename } : null,
                 }))}
-                canWrite={canWriteDocs}
+                canWrite={canWriteDocs && !caseLocked}
               />
             </section>
           </div>

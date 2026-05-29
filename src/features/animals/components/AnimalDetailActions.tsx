@@ -20,6 +20,8 @@ export function AnimalDetailActions({ animalId, status }: Props) {
   const isClosed = status === 'DISCHARGED' || status === 'DECEASED';
   const { currentUserRole } = useActiveUsers();
   const canWrite = currentUserRole !== 'VIEWER';
+  const isSuperAdmin = currentUserRole === 'SUPER_ADMIN';
+  const caseLocked = isClosed && !isSuperAdmin;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -46,7 +48,7 @@ export function AnimalDetailActions({ animalId, status }: Props) {
         </Button>
       )}
       <PatientShareButton animalId={animalId} />
-      {canWrite && (
+      {canWrite && !caseLocked && (
         <>
           <button
             type="button"

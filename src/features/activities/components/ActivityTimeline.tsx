@@ -25,6 +25,7 @@ export type { SerializedActivity } from '../serialized';
 interface Props {
   activities: SerializedActivity[];
   animalId: string;
+  caseLocked?: boolean;
 }
 
 interface TypeMeta {
@@ -57,7 +58,7 @@ function flattenByDay(activities: SerializedActivity[]): FlatRow[] {
   return out;
 }
 
-export function ActivityTimeline({ activities: initial, animalId }: Props) {
+export function ActivityTimeline({ activities: initial, animalId, caseLocked }: Props) {
   const [activities, setActivities] = useState<SerializedActivity[]>(initial);
   useEffect(() => {
     setActivities(initial);
@@ -151,6 +152,7 @@ export function ActivityTimeline({ activities: initial, animalId }: Props) {
         onDeleted={onDeleted}
         onDuplicated={onDuplicated}
         onRestored={onRestored}
+        {...(caseLocked !== undefined ? { caseLocked } : {})}
       />
     </>
   );
