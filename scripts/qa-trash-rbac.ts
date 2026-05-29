@@ -28,7 +28,7 @@ async function probeOne(u: UserCreds) {
   await page.getByLabel('Email').fill(u.email);
   await page.getByLabel('Password').fill(u.password);
   await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL('/', { timeout: 30_000 });
+  await page.waitForURL('/', { timeout: 60_000 });
 
   for (const path of ['/admin/trash', '/admin/audit-log', '/documents']) {
     await page.goto(path);

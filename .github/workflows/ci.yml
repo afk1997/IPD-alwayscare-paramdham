@@ -66,12 +66,14 @@ jobs:
       # production .next/ from the earlier `pnpm run build`. Rebuild
       # before `next start`.
       - run: pnpm run build
-      # Run each qa probe against a FRESH `next start` server. Sharing
-      # one server across all probes caused progressive slow-down (each
-      # probe creates activities and the in-memory dev caches grow);
-      # the last-in-chain probes hit waitForURL timeouts. Restarting
-      # gives every probe a cold-start baseline.
-      - name: Run qa probes (isolated servers)
+      # Run all qa probes against ONE warmed `next start` server. We used to
+      # restart the server before every probe (to dodge a shared-server
+      # slow-down), but that handed each probe a COLD first hit to a dynamic
+      # /patients/[id] page, which intermittently blew the waitForURL budget
+      # and failed a random probe each run. Instead: start once, warm it, run
+      # all probes against it. The probes now use a 60s nav budget (see
+      # scripts/qa-*.ts) so the single cold route-compile is absorbed.
+      - name: Run qa probes (shared warm server)
         run: |
           set -e
           stop_server() {
@@ -81,32 +83,28 @@ jobs:
               rm -f /tmp/next.pid
             fi
           }
-          start_server() {
-            pnpm exec dotenv -e .env.local -- pnpm exec next start --port 3000 \
-              > /tmp/next.log 2>&1 &
-            echo $! > /tmp/next.pid
-            for i in $(seq 1 60); do
-              if curl -fsS http://localhost:3000/login > /dev/null; then
-                echo "server up (pid=$(cat /tmp/next.pid))"
-                # Warm up the routes the probes hit before they start the
-                # browser — dynamic /patients/[id] pages aren't pre-rendered
-                # by next build, so the first hit is slow enough to trip
-                # waitForURL even with 30s budgets.
-                curl -fsS -o /dev/null http://localhost:3000/patients 2>/dev/null || true
-                return 0
-              fi
-              sleep 1
-            done
+          trap stop_server EXIT
+          pnpm exec dotenv -e .env.local -- pnpm exec next start --port 3000 \
+            > /tmp/next.log 2>&1 &
+          echo $! > /tmp/next.pid
+          up=0
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/login > /dev/null; then
+              echo "server up (pid=$(cat /tmp/next.pid))"
+              curl -fsS -o /dev/null http://localhost:3000/patients 2>/dev/null || true
+              up=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$up" != "1" ]; then
             echo "server did not come up in 60s. last log:"
             tail -50 /tmp/next.log || true
-            return 1
-          }
-          trap stop_server EXIT
+            exit 1
+          fi
           for probe in qa-trash-page qa-trash-rbac qa-activity-share \
                        qa-by-animal-list qa-daily-report-share \
                        qa-logged-by-dropdown qa-patient-share; do
-            stop_server
-            start_server
             echo "::group::Running $probe"
             pnpm exec dotenv -e .env.local -- tsx "scripts/$probe.ts"
             echo "::endgroup::"

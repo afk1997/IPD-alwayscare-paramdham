@@ -14,7 +14,7 @@ async function main() {
   await page.getByLabel('Email').fill('admin@arham.care');
   await page.getByLabel('Password').fill('admin1234');
   await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL('/', { timeout: 30_000 });
+  await page.waitForURL('/', { timeout: 60_000 });
 
   await page.goto('/patients');
   const firstPatient = page.locator('a[href^="/patients/"]:not([href="/patients/new"])').first();
@@ -28,7 +28,7 @@ async function main() {
   // Use domcontentloaded — default 'load' state can stall on slow image
   // / font loads in CI and time out before the URL pattern is checked.
   await page.waitForURL(/\/patients\/c[a-z0-9]{20,}$/, {
-    timeout: 30_000,
+    timeout: 60_000,
     waitUntil: 'domcontentloaded',
   });
   await page.waitForTimeout(500);

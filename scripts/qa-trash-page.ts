@@ -22,7 +22,7 @@ async function main() {
   await page.getByLabel('Email').fill('admin@arham.care');
   await page.getByLabel('Password').fill('admin1234');
   await page.getByRole('button', { name: /sign in/i }).click();
-  await page.waitForURL('/', { timeout: 30_000 });
+  await page.waitForURL('/', { timeout: 60_000 });
 
   await page.goto('/admin/trash');
   await page.getByRole('heading', { name: /^Trash$/ }).waitFor({ timeout: 10_000 });
