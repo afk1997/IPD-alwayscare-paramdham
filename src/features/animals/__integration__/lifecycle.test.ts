@@ -1,5 +1,5 @@
 import { dischargeAnimal, recordDeath } from '@/features/animals/lifecycle/service';
-import { createAnimal } from '@/features/animals/service';
+import { createAnimal, updateAnimal } from '@/features/animals/service';
 import { DOCTOR_EMAIL, STAFF_EMAIL, actorByEmail, purgeQa, qaName } from '@/lib/__integration__/helpers';
 import { RbacError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
@@ -142,5 +142,24 @@ describe('animal lifecycle — integration vs real DB', () => {
         documentFileIds: ['clxxxnotexist00000000001'],
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe('closed-case lock — animal mutations', () => {
+  it('DOCTOR cannot edit a DECEASED animal', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('locked'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+      },
+    });
+    await expect(updateAnimal(doctor, animal.id, { name: qaName('hacked') })).rejects.toBeInstanceOf(
+      RbacError,
+    );
   });
 });
