@@ -294,4 +294,28 @@ describe('closed-case lock — activity mutations', () => {
       }),
     ).rejects.toBeInstanceOf(RbacError);
   });
+
+  it('DOCTOR cannot restore an activity on a DECEASED animal', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL);
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('closed-restore'),
+        species: 'Dog',
+        status: 'DECEASED',
+        deceasedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+      },
+    });
+    const activity = await prisma.activity.create({
+      data: {
+        animalId: animal.id,
+        type: 'FOOD',
+        byName: doctor.name,
+        data: { foodType: 'kibble', intake: 'Fully', vomiting: false },
+        deletedAt: new Date(),
+      },
+    });
+    await expect(restoreActivity(doctor, activity.id)).rejects.toBeInstanceOf(RbacError);
+  });
 });

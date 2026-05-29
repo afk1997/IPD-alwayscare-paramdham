@@ -41,7 +41,7 @@ export function AnimalDetailActions({ animalId, status }: Props) {
 
   return (
     <div className="relative flex items-center gap-2" ref={menuRef}>
-      {canWrite && !isClosed && (
+      {canWrite && !caseLocked && (
         <Button size="sm" onClick={() => setQuickOpen(true)}>
           <Plus size={14} />
           Log activity
@@ -97,7 +97,7 @@ export function AnimalDetailActions({ animalId, status }: Props) {
           )}
         </>
       )}
-      {canWrite && !isClosed && (
+      {canWrite && !caseLocked && (
         <ActivityQuickAdd animalId={animalId} open={quickOpen} onClose={() => setQuickOpen(false)} />
       )}
     </div>

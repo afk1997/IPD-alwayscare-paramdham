@@ -246,10 +246,13 @@ export async function restoreActivity(actor: Actor, activityId: string) {
   }
   const activity = await prisma.activity.findUnique({
     where: { id: activityId },
-    include: { media: { include: { asset: true } }, animal: { select: { deletedAt: true } } },
+    include: { media: { include: { asset: true } }, animal: { select: { deletedAt: true, status: true } } },
   });
   if (!activity) throw new NotFoundError('Activity', activityId);
   if (!activity.deletedAt) return activity;
+  // Closed-case lock: restoring an entry onto a deceased/discharged animal is
+  // a mutation of a closed case — super-admin only (mirrors the other paths).
+  assertOpenCase(actor, activity.animal.status);
   // Don't resurrect an entry onto a still-trashed patient: every read joins
   // `animal.deletedAt: null`, so the restored row would be live but invisible
   // everywhere (and absent from Trash too). Require restoring the patient first.
