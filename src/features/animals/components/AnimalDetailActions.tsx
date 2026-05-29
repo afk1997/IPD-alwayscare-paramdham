@@ -1,19 +1,24 @@
 'use client';
 import { Button } from '@/components/ui/Button';
+import { useToast } from '@/components/ui/Toast';
 import { ActivityQuickAdd } from '@/features/activities/components/ActivityQuickAdd';
+import { invalidateLifecycleAction, revalidateLifecycleAction } from '@/features/animals/lifecycle/actions';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { LogOut, MoreHorizontal, Pencil, Plus, Skull } from 'lucide-react';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { PatientShareButton } from './PatientShareButton';
 
 interface Props {
   animalId: string;
   // UI-14: hide lifecycle actions for animals that are no longer admitted.
   status?: 'CRITICAL' | 'STABLE' | 'OBSERVATION' | 'DISCHARGED' | 'DECEASED';
+  canReopen?: boolean;
+  canRevalidate?: boolean;
 }
 
-export function AnimalDetailActions({ animalId, status }: Props) {
+export function AnimalDetailActions({ animalId, status, canReopen, canRevalidate }: Props) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -22,6 +27,21 @@ export function AnimalDetailActions({ animalId, status }: Props) {
   const canWrite = currentUserRole !== 'VIEWER';
   const isSuperAdmin = currentUserRole === 'SUPER_ADMIN';
   const caseLocked = isClosed && !isSuperAdmin;
+  const [lifecyclePending, startLifecycle] = useTransition();
+  const router = useRouter();
+  const { showToast } = useToast();
+  const runLifecycle = (fn: (id: string) => Promise<{ ok: boolean; error?: string }>, confirmMsg: string) => {
+    if (!window.confirm(confirmMsg)) return;
+    startLifecycle(async () => {
+      const r = await fn(animalId);
+      if (r.ok) {
+        showToast({ message: 'Done' });
+        router.refresh();
+      } else {
+        showToast({ message: r.error ?? 'Failed' });
+      }
+    });
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -45,6 +65,36 @@ export function AnimalDetailActions({ animalId, status }: Props) {
         <Button size="sm" onClick={() => setQuickOpen(true)}>
           <Plus size={14} />
           Log activity
+        </Button>
+      )}
+      {canReopen && (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={lifecyclePending}
+          onClick={() =>
+            runLifecycle(
+              invalidateLifecycleAction,
+              'Reopen this case? It returns the patient to Observation; the death/discharge record is kept but marked invalidated.',
+            )
+          }
+        >
+          Reopen case
+        </Button>
+      )}
+      {canRevalidate && (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={lifecyclePending}
+          onClick={() =>
+            runLifecycle(
+              revalidateLifecycleAction,
+              'Re-validate? This re-declares the patient as deceased/discharged.',
+            )
+          }
+        >
+          Re-validate
         </Button>
       )}
       <PatientShareButton animalId={animalId} />

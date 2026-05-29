@@ -35,6 +35,7 @@ export async function AnimalDetail({ animalId }: Props) {
   const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN';
   // On a closed case, only SUPER_ADMIN may mutate (mirrors the server lock).
   const caseLocked = caseClosed && !isSuperAdmin;
+  const hasInvalidatedRecord = !!animal.deathRecord?.invalidatedAt || !!animal.dischargeRecord?.invalidatedAt;
   const lastActivityAt = activities[0]?.occurredAt ?? null;
 
   // Aggregate every photo / x-ray / video the patient has — admission media,
@@ -93,7 +94,12 @@ export async function AnimalDetail({ animalId }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end">
-        <AnimalDetailActions animalId={animal.id} status={animal.status} />
+        <AnimalDetailActions
+          animalId={animal.id}
+          status={animal.status}
+          canReopen={isSuperAdmin && caseClosed}
+          canRevalidate={isSuperAdmin && !caseClosed && hasInvalidatedRecord}
+        />
       </div>
 
       <AnimalHero

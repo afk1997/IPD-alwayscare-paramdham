@@ -113,6 +113,8 @@ export async function getAnimal(id: string) {
       },
       createdBy: { select: { id: true, name: true } },
       cage: { select: { name: true } },
+      deathRecord: { select: { invalidatedAt: true } },
+      dischargeRecord: { select: { invalidatedAt: true } },
     },
   });
   if (!animal) return null;
