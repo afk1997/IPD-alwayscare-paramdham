@@ -2,6 +2,7 @@ import { MediaGrid } from '@/components/media/MediaGrid';
 import { ActivityTimeline } from '@/features/activities/components/ActivityTimeline';
 import { listActivitiesForAnimal } from '@/features/activities/queries';
 import type { ActivityType } from '@/features/activities/schema';
+import { buildLifecycleEvents } from '@/features/animals/lifecycle/events';
 import { listAssignableCages } from '@/features/cages/queries';
 import { DocumentsPanel } from '@/features/documents/components/DocumentsPanel';
 import { listDocumentsForAnimal } from '@/features/documents/queries';
@@ -91,6 +92,50 @@ export async function AnimalDetail({ animalId }: Props) {
     })),
   }));
 
+  const lifecycleEvents = buildLifecycleEvents({
+    admittedAt: animal.admittedAt,
+    complaint: animal.complaint,
+    createdBy: { name: animal.createdBy.name },
+    deathRecord: animal.deathRecord
+      ? {
+          causeOfDeath: animal.deathRecord.causeOfDeath,
+          diedAt: animal.deathRecord.diedAt,
+          recordedBy: { name: animal.deathRecord.recordedBy.name },
+          invalidatedAt: animal.deathRecord.invalidatedAt,
+          invalidatedBy: animal.deathRecord.invalidatedBy,
+        }
+      : null,
+    dischargeRecord: animal.dischargeRecord
+      ? {
+          summary: animal.dischargeRecord.summary,
+          dischargedAt: animal.dischargeRecord.dischargedAt,
+          dischargedBy: { name: animal.dischargeRecord.dischargedBy.name },
+          invalidatedAt: animal.dischargeRecord.invalidatedAt,
+          invalidatedBy: animal.dischargeRecord.invalidatedBy,
+        }
+      : null,
+  });
+  const lifecycleDocs = {
+    death: documents
+      .filter((d) => d.category === 'DEATH')
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        kind: d.kind,
+        url: d.fileUrl,
+        mediaKind: d.file?.kind ?? null,
+      })),
+    discharge: documents
+      .filter((d) => d.category === 'CONSENT')
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        kind: d.kind,
+        url: d.fileUrl,
+        mediaKind: d.file?.kind ?? null,
+      })),
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end">
@@ -137,7 +182,14 @@ export async function AnimalDetail({ animalId }: Props) {
         activeCount={serializedActivities.length}
         docCount={documents.length}
         feed={
-          <ActivityTimeline activities={serializedActivities} animalId={animal.id} caseLocked={caseLocked} />
+          <ActivityTimeline
+            activities={serializedActivities}
+            animalId={animal.id}
+            caseLocked={caseLocked}
+            lifecycleEvents={lifecycleEvents}
+            lifecycleDocs={lifecycleDocs}
+            currentUserRole={currentUser?.role}
+          />
         }
         info={
           <div className="flex flex-col gap-4">
