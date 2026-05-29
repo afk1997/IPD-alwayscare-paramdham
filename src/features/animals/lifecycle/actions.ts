@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { RbacError, ValidationError } from '@/lib/errors';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { type DeathInput, DeathSchema, type DischargeInput, DischargeSchema } from './schema';
-import { dischargeAnimal, recordDeath } from './service';
+import { dischargeAnimal, invalidateLifecycle, recordDeath, revalidateLifecycle } from './service';
 
 async function requireActor() {
   const user = await getCurrentUser();
@@ -54,5 +54,35 @@ export async function deathAction(input: DeathInput): Promise<LifecycleResult> {
     return { ok: true };
   } catch (e) {
     return genericError('record death', e);
+  }
+}
+
+export async function invalidateLifecycleAction(animalId: string): Promise<LifecycleResult> {
+  try {
+    const actor = await requireActor();
+    await invalidateLifecycle(actor, animalId);
+    revalidateTag('animals');
+    revalidateTag('today-counts');
+    revalidateTag('today-timeline');
+    revalidatePath(`/patients/${animalId}`);
+    revalidatePath('/outcomes');
+    return { ok: true };
+  } catch (e) {
+    return genericError('reopen case', e);
+  }
+}
+
+export async function revalidateLifecycleAction(animalId: string): Promise<LifecycleResult> {
+  try {
+    const actor = await requireActor();
+    await revalidateLifecycle(actor, animalId);
+    revalidateTag('animals');
+    revalidateTag('today-counts');
+    revalidateTag('today-timeline');
+    revalidatePath(`/patients/${animalId}`);
+    revalidatePath('/outcomes');
+    return { ok: true };
+  } catch (e) {
+    return genericError('re-validate', e);
   }
 }
