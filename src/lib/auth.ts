@@ -115,3 +115,12 @@ export async function requireCageManageRole(): Promise<CurrentUser> {
   if (user.role !== 'DOCTOR' && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') redirect('/');
   return user;
 }
+
+// Server-side guard for /outcomes (deaths & discharges register). Everyone
+// except STAFF may view it (VIEWER is the read-only "sees everything" role).
+export async function requireOutcomeReadRole(): Promise<CurrentUser> {
+  const user = await getCurrentUser();
+  if (!user) redirect('/login');
+  if (user.role === 'STAFF') redirect('/');
+  return user;
+}
