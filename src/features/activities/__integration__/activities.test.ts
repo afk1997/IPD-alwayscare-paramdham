@@ -270,3 +270,28 @@ describe('activities service — integration vs real DB', () => {
     expect(dup.type).toBe('TREATMENT');
   });
 });
+
+describe('closed-case lock — activity mutations', () => {
+  it('DOCTOR cannot add an activity to a DISCHARGED animal', async () => {
+    const doctor = await actorByEmail(DOCTOR_EMAIL); // { id, role, name }
+    const animal = await prisma.animal.create({
+      data: {
+        name: qaName('closed-act'),
+        species: 'Cat',
+        status: 'DISCHARGED',
+        dischargedAt: new Date(),
+        vaccination: 'NONE',
+        createdById: doctor.id,
+      },
+    });
+    await expect(
+      createActivity(doctor, {
+        animalId: animal.id,
+        type: 'FOOD',
+        byName: doctor.name,
+        data: { foodType: 'kibble', intake: 'Fully', vomiting: false },
+        mediaAssetIds: [],
+      }),
+    ).rejects.toBeInstanceOf(RbacError);
+  });
+});
