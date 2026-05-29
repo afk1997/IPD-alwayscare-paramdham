@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RbacError } from '../errors';
-import { type Action, type Actor, type Role, assertCan, can } from '../rbac';
+import { type Action, type Actor, type Role, assertCan, assertOpenCase, can } from '../rbac';
 
 describe('rbac matrix — negative paths', () => {
   it('STAFF cannot delete a document', () => {
@@ -91,6 +91,7 @@ const MATRIX: Record<Action, [boolean, boolean, boolean, boolean, boolean]> = {
   'user.manage': [false, false, true, true, false],
   'audit.read.all': [false, false, true, true, false],
   'trash.read': [false, false, true, true, false],
+  'outcome.read': [false, true, true, true, true],
 };
 
 describe('rbac permission matrix — full 5x19 table', () => {
@@ -136,5 +137,30 @@ describe('rbac permission matrix — full 5x19 table', () => {
         expect(can({ id: 's', role: 'SUPER_ADMIN' }, a)).toBe(true);
       }
     }
+  });
+});
+
+describe('outcome.read permission', () => {
+  it.each(['VIEWER', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN'] as const)('allows %s', (role) => {
+    expect(can({ id: 'u', role }, 'outcome.read')).toBe(true);
+  });
+  it('denies STAFF', () => {
+    expect(can({ id: 'u', role: 'STAFF' }, 'outcome.read')).toBe(false);
+  });
+});
+
+describe('assertOpenCase (closed-case lock)', () => {
+  it('throws for a non-super actor on a DECEASED animal', () => {
+    expect(() => assertOpenCase({ id: 'u', role: 'DOCTOR' }, 'DECEASED')).toThrow(RbacError);
+  });
+  it('throws for a non-super actor on a DISCHARGED animal', () => {
+    expect(() => assertOpenCase({ id: 'u', role: 'ADMIN' }, 'DISCHARGED')).toThrow(RbacError);
+  });
+  it('allows SUPER_ADMIN on a DECEASED animal', () => {
+    expect(() => assertOpenCase({ id: 'u', role: 'SUPER_ADMIN' }, 'DECEASED')).not.toThrow();
+  });
+  it('allows any role on an open (non-terminal) animal', () => {
+    expect(() => assertOpenCase({ id: 'u', role: 'STAFF' }, 'OBSERVATION')).not.toThrow();
+    expect(() => assertOpenCase({ id: 'u', role: 'DOCTOR' }, 'CRITICAL')).not.toThrow();
   });
 });
