@@ -46,7 +46,7 @@ interface TodayTimelineItemCached extends Omit<TodayTimelineItem, 'occurredAt' |
   editedAt: string | null;
 }
 
-async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
+async function _listTodayActivitiesRaw(type?: string): Promise<TodayTimelineItemCached[]> {
   const now = new Date();
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -59,7 +59,12 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
   const upper = now < end ? now : end;
 
   const rows = await prisma.activity.findMany({
-    where: { occurredAt: { gte: start, lte: upper }, deletedAt: null, animal: { deletedAt: null } },
+    where: {
+      occurredAt: { gte: start, lte: upper },
+      deletedAt: null,
+      animal: { deletedAt: null },
+      ...(type ? { type: type as never } : {}),
+    },
     // Order by `createdAt` desc, not occurredAt — the timeline is a
     // "latest entries logged today" feed.  Sorting by occurredAt pushed
     // future-occurring entries to the top and buried the rows the user
@@ -132,13 +137,15 @@ async function _listTodayActivitiesRaw(): Promise<TodayTimelineItemCached[]> {
 // so non-surgery activity creates don't also bust the dashboard counts
 // cache (which still listens on `today-counts`).  `animals` stays so a
 // patient rename / avatar change refreshes the timeline rows.
+// Cached.  unstable_cache uses (keys, args) as the cache key, so the
+// optional `type` arg automatically separates per-type entries.
 const _listTodayActivitiesCached = unstable_cache(_listTodayActivitiesRaw, ['today-timeline'], {
   revalidate: 30,
   tags: ['today-timeline', 'animals'],
 });
 
-export async function listTodayActivities(): Promise<TodayTimelineItem[]> {
-  const items = await _listTodayActivitiesCached();
+export async function listTodayActivities(type?: string): Promise<TodayTimelineItem[]> {
+  const items = await _listTodayActivitiesCached(type);
   return items.map((i) => ({
     ...i,
     occurredAt: new Date(i.occurredAt),

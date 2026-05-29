@@ -2,8 +2,8 @@ import { Activity as ActivityIcon } from 'lucide-react';
 import { listTodayActivities } from '../queries';
 import { TodayTimelineList } from './TodayTimelineList';
 
-export async function TodayTimeline() {
-  const items = await listTodayActivities();
+export async function TodayTimeline({ type }: { type?: string } = {}) {
+  const items = await listTodayActivities(type);
 
   if (items.length === 0) {
     return (
