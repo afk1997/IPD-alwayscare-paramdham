@@ -105,6 +105,8 @@ model User {
   documentUploads Document[]        @relation("DocumentUploadedBy")
   deathRecords    DeathRecord[]     @relation("DeathRecordedBy")
   discharges      DischargeRecord[] @relation("DischargedBy")
+  invalidatedDeaths     DeathRecord[]     @relation("DeathInvalidatedBy")
+  invalidatedDischarges DischargeRecord[] @relation("DischargeInvalidatedBy")
 
   @@index([role, active])
 }
@@ -332,6 +334,9 @@ model DeathRecord {
   bodyHandedOverAt DateTime?
   recordedById     String
   recordedBy       User      @relation("DeathRecordedBy", fields: [recordedById], references: [id])
+  invalidatedAt    DateTime?
+  invalidatedById  String?
+  invalidatedBy    User?     @relation("DeathInvalidatedBy", fields: [invalidatedById], references: [id])
   createdAt        DateTime  @default(now())
 }
 
@@ -343,6 +348,9 @@ model DischargeRecord {
   dischargedAt   DateTime
   dischargedById String
   dischargedBy   User     @relation("DischargedBy", fields: [dischargedById], references: [id])
+  invalidatedAt   DateTime?
+  invalidatedById String?
+  invalidatedBy   User?    @relation("DischargeInvalidatedBy", fields: [invalidatedById], references: [id])
   createdAt      DateTime @default(now())
 }
 
