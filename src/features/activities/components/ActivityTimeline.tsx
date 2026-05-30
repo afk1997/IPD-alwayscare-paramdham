@@ -22,9 +22,11 @@ import {
   Stethoscope,
   UserPlus,
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ActivityFilter, filterActivities, rangeLabel, toDateInputValue } from '../filter';
 import { ACTIVITY_LABELS, type ActivityType } from '../schema';
 import type { SerializedActivity } from '../serialized';
+import { ActivityDateFilter } from './ActivityDateFilter';
 import { ActivitySheet, type ActivitySummary } from './ActivitySheet';
 
 export type { SerializedActivity } from '../serialized';
@@ -32,6 +34,7 @@ export type { SerializedActivity } from '../serialized';
 interface Props {
   activities: SerializedActivity[];
   animalId: string;
+  admittedAt: string;
   caseLocked?: boolean;
   lifecycleEvents?: LifecycleEvent[];
   lifecycleDocs?: { death: LifecycleDocLite[]; discharge: LifecycleDocLite[] };
@@ -99,6 +102,7 @@ function flattenItemsByDay(activities: SerializedActivity[], lifecycleEvents: Li
 export function ActivityTimeline({
   activities: initial,
   animalId,
+  admittedAt,
   caseLocked,
   lifecycleEvents = [],
   lifecycleDocs = { death: [], discharge: [] },
@@ -147,8 +151,17 @@ export function ActivityTimeline({
   };
   const [selected, setSelected] = useState<ActivitySummary | null>(null);
   const [recordEvent, setRecordEvent] = useState<LifecycleEvent | null>(null);
+  const [filter, setFilter] = useState<ActivityFilter>({ kind: 'all' });
 
-  const rows = flattenItemsByDay(activities, lifecycleEvents);
+  const visible = useMemo(() => filterActivities(activities, filter, new Date()), [activities, filter]);
+  const rows = flattenItemsByDay(visible, lifecycleEvents);
+
+  // Lower bound for the custom range = the oldest thing in the feed (admission,
+  // or an even-older back-dated activity). Never block a day that has an entry.
+  const minDate = toDateInputValue(
+    new Date(activities.reduce((m, a) => Math.min(m, Date.parse(a.occurredAt)), Date.parse(admittedAt))),
+  );
+  const maxDate = toDateInputValue(new Date());
 
   if (activities.length === 0 && lifecycleEvents.length === 0) {
     return (
@@ -176,6 +189,16 @@ export function ActivityTimeline({
 
   return (
     <>
+      {activities.length > 0 && (
+        <TimelineFilterBar
+          filter={filter}
+          onChange={setFilter}
+          minDate={minDate}
+          maxDate={maxDate}
+          visibleCount={visible.length}
+          totalCount={activities.length}
+        />
+      )}
       <div className="relative">
         {rows.map((row) => {
           if (row.kind === 'header') {
@@ -227,6 +250,44 @@ export function ActivityTimeline({
         onClose={() => setRecordEvent(null)}
       />
     </>
+  );
+}
+
+function TimelineFilterBar({
+  filter,
+  onChange,
+  minDate,
+  maxDate,
+  visibleCount,
+  totalCount,
+}: {
+  filter: ActivityFilter;
+  onChange: (f: ActivityFilter) => void;
+  minDate: string;
+  maxDate: string;
+  visibleCount: number;
+  totalCount: number;
+}) {
+  const label = rangeLabel(filter, new Date());
+  return (
+    <div className="mb-3 flex flex-col gap-2">
+      <ActivityDateFilter value={filter} onChange={onChange} minDate={minDate} maxDate={maxDate} />
+      {filter.kind !== 'all' && (
+        <p className="px-1 text-[11.5px] text-muted">
+          {visibleCount === 0
+            ? `No activity ${label}`
+            : `Showing ${visibleCount} of ${totalCount} entries · ${label}`}{' '}
+          ·{' '}
+          <button
+            type="button"
+            className="font-semibold text-accent"
+            onClick={() => onChange({ kind: 'all' })}
+          >
+            Show all
+          </button>
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -321,7 +382,10 @@ function LifecycleRow({ event, onClick }: { event: LifecycleEvent; onClick?: () 
   const meta = LIFECYCLE_META[event.kind];
   const Icon = meta.icon;
   const inner = (
-    <div className="flex w-full items-start gap-3 rounded-xl border border-line bg-paper p-3 text-left">
+    <div
+      data-testid="lifecycle-row"
+      className="flex w-full items-start gap-3 rounded-xl border border-line bg-paper p-3 text-left"
+    >
       <div
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
         style={{ background: `${meta.color}1A`, color: meta.color }}
