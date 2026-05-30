@@ -33,7 +33,7 @@ On a patient's **Activity** tab the feed is grouped by calendar day (Today / Yes
 | Lifecycle markers under a filter | **Always pinned** — shown regardless of the active range, at their real day position |
 | Default | **All**, not remembered |
 | Tab badge `Activity N` | Stays the **total** count; the filter is a view, not a redefinition |
-| Custom range bounds | `[admission day … today]`, inclusive, whole days only |
+| Custom range bounds | `[oldest entry … today]` (admission, or an older back-dated activity), inclusive, whole days only |
 
 ## Architecture
 
@@ -95,7 +95,7 @@ export function rangeLabel(filter: ActivityFilter, now: Date): string { /* … *
 interface Props {
   value: ActivityFilter;
   onChange: (f: ActivityFilter) => void;
-  minDate: string; // 'YYYY-MM-DD' = admission day
+  minDate: string; // 'YYYY-MM-DD' = oldest entry (admission, or an older activity)
   maxDate: string; // 'YYYY-MM-DD' = today
 }
 ```
@@ -109,7 +109,7 @@ interface Props {
 - Add prop `admittedAt: string`.
 - `const [filter, setFilter] = useState<ActivityFilter>({ kind: 'all' });`
 - `const visible = useMemo(() => filterActivities(activities, filter, new Date()), [activities, filter]);`
-- Render `<ActivityDateFilter>` above the feed **only when `activities.length > 0`** (`minDate = toDateInputValue(new Date(admittedAt))`, `maxDate = toDateInputValue(new Date())`).
+- Render `<ActivityDateFilter>` above the feed **only when `activities.length > 0`**. `maxDate = toDateInputValue(new Date())`; `minDate` = the oldest of `admittedAt` and every activity's `occurredAt` (so the calendar floor never hides a day that actually has an entry).
 - `const rows = flattenItemsByDay(visible, lifecycleEvents);` — **`lifecycleEvents` stays unfiltered** ⇒ markers remain pinned at their day.
 - Below the chips, when `filter.kind !== 'all'`: a summary line — `Showing {visible.length} of {activities.length} entries · {rangeLabel} · [Show all]` (Show all → `setFilter({kind:'all'})`).
 - When `filter.kind !== 'all' && visible.length === 0`: render an inline note `No activity from {from} to {to} · [Show all]` above the rows; pinned lifecycle rows still render beneath it.
