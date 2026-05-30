@@ -185,6 +185,7 @@ export async function AnimalDetail({ animalId }: Props) {
           <ActivityTimeline
             activities={serializedActivities}
             animalId={animal.id}
+            admittedAt={animal.admittedAt.toISOString()}
             caseLocked={caseLocked}
             lifecycleEvents={lifecycleEvents}
             lifecycleDocs={lifecycleDocs}
