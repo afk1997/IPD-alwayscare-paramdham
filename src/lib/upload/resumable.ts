@@ -88,29 +88,18 @@ async function pushToDrive(
 ): Promise<string> {
   const total = file.size;
 
-  // Small files: single PUT for speed.
-  if (total <= chunkSize) {
-    const res = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'content-type': file.type || 'application/octet-stream',
-      },
-      body: file,
-      signal: signal ?? null,
-    });
-    if (!res.ok) {
-      throw new Error(`drive PUT failed: ${res.status} ${await res.text().catch(() => '')}`);
-    }
-    onProgress?.({ uploaded: total, total, fraction: 1 });
-    const json = (await res.json()) as { id?: string };
-    if (!json.id) throw new Error('drive PUT returned no file id');
-    return json.id;
-  }
-
-  // Chunked upload. Drive requires chunk sizes that are multiples of 256 KiB
-  // (except the final one). chunkSize is already 8 MiB so the alignment is fine.
-  // We retry transient failures by querying Drive for how much it actually
-  // received and resuming from there.
+  // Every size goes through the resumable loop below — including a file that
+  // fits in one chunk (that's still just a single PUT, so no speed cost). The
+  // old "small files: single PUT" fast path had no retry/resume, so a transient
+  // network drop mid-upload (common on a clinic's mobile connection) failed hard
+  // as "Load failed". Photos almost always fit in one chunk so they hit that
+  // fragile path, while videos (>8 MiB) went chunked and silently recovered —
+  // which is why photos failed but videos didn't.
+  //
+  // Drive requires chunk sizes that are multiples of 256 KiB (except the final
+  // one). chunkSize is already 8 MiB so the alignment is fine. We retry
+  // transient failures by querying Drive for how much it actually received and
+  // resuming from there.
   let start = 0;
   let attemptsAtSamePosition = 0;
   const MAX_ATTEMPTS_PER_POSITION = 4;
