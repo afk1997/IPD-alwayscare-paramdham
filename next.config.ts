@@ -1,4 +1,12 @@
+import withSerwistInit from '@serwist/next';
 import type { NextConfig } from 'next';
+
+const withSerwist = withSerwistInit({
+  swSrc: 'src/app/sw.ts',
+  swDest: 'public/sw.js',
+  disable: process.env.NODE_ENV === 'development',
+  reloadOnOnline: true,
+});
 
 const securityHeaders = [
   // HSTS — only meaningful behind HTTPS, harmless behind localhost.
@@ -22,6 +30,8 @@ const securityHeaders = [
       "media-src 'self' blob:",
       "font-src 'self' data:",
       "connect-src 'self' https://*.googleapis.com",
+      "worker-src 'self'",
+      "manifest-src 'self'",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -69,4 +79,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);
