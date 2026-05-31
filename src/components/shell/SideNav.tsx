@@ -63,7 +63,7 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
 }
 
 export function SideNav({ isAdmin, userRole, user, forceVisible = false }: Props) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const { open } = useQuickAdd();
   const canWrite = userRole !== 'VIEWER';

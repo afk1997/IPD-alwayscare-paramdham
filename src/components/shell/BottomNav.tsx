@@ -40,7 +40,7 @@ function useKeyboardOpen(): boolean {
 }
 
 export function BottomNav() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
   const { open } = useQuickAdd();
   const keyboardOpen = useKeyboardOpen();

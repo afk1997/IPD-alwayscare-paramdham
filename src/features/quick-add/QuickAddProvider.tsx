@@ -63,9 +63,9 @@ export function QuickAddProvider({ children }: Props) {
 
   // Auto-open when arriving with ?quickAdd=1; then strip the param.
   useEffect(() => {
-    if (search.get('quickAdd') === '1') {
+    if (search?.get('quickAdd') === '1') {
       if (canWrite) setIsOpen(true);
-      const next = new URLSearchParams(search.toString());
+      const next = new URLSearchParams(search?.toString() ?? '');
       next.delete('quickAdd');
       const qs = next.toString();
       router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false });
