@@ -8,7 +8,7 @@ describe('web manifest', () => {
     expect(m.start_url).toBe('/');
     expect(m.scope).toBe('/');
     expect(m.theme_color).toBe('#0E7C7B');
-    expect(m.name).toMatch(/Arham/);
+    expect(m.name).toMatch(/IPD Always Care/);
     expect(m.short_name).toBeTruthy();
     const sizes = (m.icons ?? []).map((i) => i.sizes);
     expect(sizes).toContain('192x192');
