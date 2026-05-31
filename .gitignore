@@ -30,6 +30,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+# serwist (generated at build)
+public/sw.js
+public/sw.js.map
+public/swe-worker-*.js
+
 # project-specific
 .superpowers/
 uploads/
