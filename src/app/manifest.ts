@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Arham Always Care — IPD',
-    short_name: 'Arham IPD',
+    name: 'IPD Always Care',
+    short_name: 'IPD Always Care',
     description: 'Animal IPD management',
     start_url: '/',
     scope: '/',

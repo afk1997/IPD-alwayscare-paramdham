@@ -11,10 +11,10 @@ const jakarta = Plus_Jakarta_Sans({
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'Arham Always Care — IPD',
+  title: 'IPD Always Care',
   description: 'Animal IPD management',
-  applicationName: 'Arham IPD',
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Arham IPD' },
+  applicationName: 'IPD Always Care',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'IPD Always Care' },
   robots: {
     index: false,
     follow: false,

@@ -1,6 +1,6 @@
 import { BrandMark } from '@/components/shell/BrandMark';
 
-export const metadata = { title: 'Offline — Arham IPD' };
+export const metadata = { title: 'Offline — IPD Always Care' };
 
 export default function OfflinePage() {
   return (
