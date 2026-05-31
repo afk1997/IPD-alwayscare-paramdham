@@ -30,6 +30,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    '/api/patients/[id]/report': ['./src/features/reports/patient-pdf/fonts/*.ttf'],
+  },
   reactStrictMode: true,
   typedRoutes: false,
   poweredByHeader: false,
