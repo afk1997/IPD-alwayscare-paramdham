@@ -93,6 +93,7 @@ const MATRIX: Record<Action, [boolean, boolean, boolean, boolean, boolean]> = {
   'trash.read': [false, false, true, true, false],
   'outcome.read': [false, true, true, true, true],
   'lifecycle.invalidate': [false, false, false, true, false],
+  'report.generate': [false, true, true, true, false],
 };
 
 describe('rbac permission matrix — full 5x19 table', () => {
@@ -156,6 +157,16 @@ describe('lifecycle.invalidate permission', () => {
     for (const role of ['STAFF', 'DOCTOR', 'ADMIN', 'VIEWER'] as const) {
       expect(can({ id: 'u', role }, 'lifecycle.invalidate')).toBe(false);
     }
+  });
+});
+
+describe('report.generate permission', () => {
+  it('DOCTOR/ADMIN/SUPER_ADMIN can generate a report; STAFF/VIEWER cannot', () => {
+    expect(can({ id: 'u', role: 'DOCTOR' }, 'report.generate')).toBe(true);
+    expect(can({ id: 'u', role: 'ADMIN' }, 'report.generate')).toBe(true);
+    expect(can({ id: 'u', role: 'SUPER_ADMIN' }, 'report.generate')).toBe(true);
+    expect(can({ id: 'u', role: 'STAFF' }, 'report.generate')).toBe(false);
+    expect(can({ id: 'u', role: 'VIEWER' }, 'report.generate')).toBe(false);
   });
 });
 
