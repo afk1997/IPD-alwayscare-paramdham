@@ -31,6 +31,7 @@
     "@hookform/resolvers": "3.9.1",
     "@prisma/client": "5.22.0",
     "@react-pdf/renderer": "4.5.1",
+    "@serwist/next": "9.5.11",
     "@tanstack/react-virtual": "^3.13.26",
     "bcryptjs": "2.4.3",
     "googleapis": "144.0.0",
@@ -42,6 +43,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-hook-form": "7.53.2",
+    "serwist": "9.5.11",
     "sharp": "0.34.5",
     "zod": "3.23.8"
   },
