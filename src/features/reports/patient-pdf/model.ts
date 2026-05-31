@@ -1,4 +1,4 @@
-import type { ActivityType } from '@/features/activities/schema';
+import { ACTIVITY_LABELS, type ActivityType } from '@/features/activities/schema';
 import { activityDetailLines, summarizeActivity } from '@/features/activities/summary';
 
 const TZ = 'Asia/Kolkata';
@@ -119,16 +119,6 @@ export interface ReportModel {
   documents: RawDocument[];
 }
 
-const TYPE_LABEL: Record<ActivityType, string> = {
-  ADMISSION: 'Admission',
-  TREATMENT: 'Treatment',
-  ROUND: 'Round',
-  DIAGNOSTIC: 'Diagnostic',
-  SURGERY: 'Surgery',
-  FOOD: 'Food & water',
-  BATH: 'Bath',
-  WALK: 'Walk',
-};
 const isStill = (k: MediaKindLite) => k === 'PHOTO' || k === 'XRAY';
 
 type MedEntry = { doses: Set<string>; routes: Set<string>; days: Set<string>; times: number };
@@ -246,7 +236,7 @@ export function buildReportModel(raw: RawReportData): ReportModel {
       days,
       perType: Array.from(perTypeMap.entries()).map(([type, count]) => ({
         type,
-        label: TYPE_LABEL[type],
+        label: ACTIVITY_LABELS[type],
         count,
       })),
       photos,
