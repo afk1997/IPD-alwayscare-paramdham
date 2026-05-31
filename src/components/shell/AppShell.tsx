@@ -1,4 +1,5 @@
 'use client';
+import { PwaController } from '@/components/pwa/PwaController';
 import { ToastProvider } from '@/components/ui/Toast';
 import { QuickAddProvider } from '@/features/quick-add/QuickAddProvider';
 import { CommandPaletteProvider } from '@/features/search/CommandPalette';
@@ -38,6 +39,7 @@ export function AppShell({ user, activeUsers, title, children }: Props) {
         currentUserRole={user.rawRole}
       >
         <ToastProvider>
+          <PwaController />
           <CommandPaletteProvider>
             <QuickAddProvider>
               <div className="flex min-h-screen bg-bg text-text">
