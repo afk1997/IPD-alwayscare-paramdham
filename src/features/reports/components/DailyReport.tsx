@@ -45,7 +45,7 @@ export function DailyReport({ date, rows }: Props) {
   };
 
   const onDateChange = (value: string) => {
-    const q = new URLSearchParams(params);
+    const q = new URLSearchParams(params?.toString());
     q.set('date', value);
     router.replace(`/reports/today?${q.toString()}`);
   };

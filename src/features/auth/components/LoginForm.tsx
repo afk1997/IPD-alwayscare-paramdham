@@ -14,7 +14,7 @@ function safeNext(p: string | null): string {
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = safeNext(params.get('next'));
+  const next = safeNext(params?.get('next') ?? null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 

@@ -38,6 +38,8 @@ export async function AnimalDetail({ animalId }: Props) {
   const caseLocked = caseClosed && !isSuperAdmin;
   const hasInvalidatedRecord = !!animal.deathRecord?.invalidatedAt || !!animal.dischargeRecord?.invalidatedAt;
   const lastActivityAt = activities[0]?.occurredAt ?? null;
+  const REPORT_ROLES = ['DOCTOR', 'ADMIN', 'SUPER_ADMIN'] as const;
+  const canGenerateReport = !!currentUser && (REPORT_ROLES as readonly string[]).includes(currentUser.role);
 
   // Aggregate every photo / x-ray / video the patient has — admission media,
   // every activity's attached media, plus documents that are images.
@@ -144,6 +146,8 @@ export async function AnimalDetail({ animalId }: Props) {
           status={animal.status}
           canReopen={isSuperAdmin && caseClosed}
           canRevalidate={isSuperAdmin && !caseClosed && hasInvalidatedRecord}
+          canGenerateReport={canGenerateReport}
+          admittedAt={animal.admittedAt.toISOString()}
         />
       </div>
 

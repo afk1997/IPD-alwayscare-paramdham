@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { useToast } from '@/components/ui/Toast';
 import { ActivityQuickAdd } from '@/features/activities/components/ActivityQuickAdd';
 import { invalidateLifecycleAction, revalidateLifecycleAction } from '@/features/animals/lifecycle/actions';
+import { DownloadReportButton } from '@/features/reports/components/DownloadReportButton';
 import { useActiveUsers } from '@/features/users/ActiveUsersContext';
 import { LogOut, MoreHorizontal, Pencil, Plus, Skull } from 'lucide-react';
 import Link from 'next/link';
@@ -16,9 +17,18 @@ interface Props {
   status?: 'CRITICAL' | 'STABLE' | 'OBSERVATION' | 'DISCHARGED' | 'DECEASED';
   canReopen?: boolean;
   canRevalidate?: boolean;
+  canGenerateReport?: boolean;
+  admittedAt?: string;
 }
 
-export function AnimalDetailActions({ animalId, status, canReopen, canRevalidate }: Props) {
+export function AnimalDetailActions({
+  animalId,
+  status,
+  canReopen,
+  canRevalidate,
+  canGenerateReport,
+  admittedAt,
+}: Props) {
   const [quickOpen, setQuickOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -98,6 +108,9 @@ export function AnimalDetailActions({ animalId, status, canReopen, canRevalidate
         </Button>
       )}
       <PatientShareButton animalId={animalId} />
+      {canGenerateReport && admittedAt && (
+        <DownloadReportButton animalId={animalId} canGenerate admittedAt={admittedAt} />
+      )}
       {canWrite && !caseLocked && (
         <>
           <button

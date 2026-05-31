@@ -426,6 +426,12 @@ function LifecycleRow({ event, onClick }: { event: LifecycleEvent; onClick?: () 
   );
 }
 
+// Fixed weekday/month names so the header is byte-identical on server and
+// client. `toLocaleDateString(undefined, …)` skewed across ICU versions
+// (server "Fri, 29 May" vs browser "Fri 29 May") → hydration mismatch.
+const HEADER_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const HEADER_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function formatDayHeader(iso: string): string {
   const d = new Date(iso);
   const today = new Date();
@@ -434,7 +440,7 @@ function formatDayHeader(iso: string): string {
   yest.setDate(yest.getDate() - 1);
   if (d.getTime() === today.getTime()) return 'Today';
   if (d.getTime() === yest.getTime()) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'short', day: '2-digit', month: 'short' });
+  return `${HEADER_WEEKDAYS[d.getDay()]} ${String(d.getDate()).padStart(2, '0')} ${HEADER_MONTHS[d.getMonth()]}`;
 }
 
 function formatTime(iso: string): string {

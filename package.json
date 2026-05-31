@@ -30,6 +30,7 @@
     "@auth/prisma-adapter": "2.7.4",
     "@hookform/resolvers": "3.9.1",
     "@prisma/client": "5.22.0",
+    "@react-pdf/renderer": "4.5.1",
     "@tanstack/react-virtual": "^3.13.26",
     "bcryptjs": "2.4.3",
     "googleapis": "144.0.0",

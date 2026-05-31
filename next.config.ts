@@ -30,6 +30,15 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  outputFileTracingIncludes: {
+    '/api/patients/[id]/report': ['./src/features/reports/patient-pdf/fonts/*.ttf'],
+  },
+  // @react-pdf/renderer ships its own React reconciler. If Next bundles it
+  // under the React-Server-Components condition, renderToBuffer throws React
+  // error #31 (element created by the server runtime is rejected by react-pdf's
+  // reconciler). Externalizing it makes Next load it as a plain Node module
+  // using the standard React, which is what its reconciler expects.
+  serverExternalPackages: ['@react-pdf/renderer'],
   reactStrictMode: true,
   typedRoutes: false,
   poweredByHeader: false,
