@@ -36,7 +36,6 @@ function shortDate(d: Date): string {
 export interface ShareTextInput {
   animalName: string;
   animalSpecies: string;
-  animalWard: string | null;
   type: ActivityType;
   occurredAt: Date;
   // biome-ignore lint/suspicious/noExplicitAny: per-type discriminated shape
@@ -50,8 +49,7 @@ export function formatActivityShareText(a: ShareTextInput): string {
   const lines: string[] = [];
 
   const emoji = SPECIES_EMOJI[a.animalSpecies] ?? DEFAULT_EMOJI;
-  const wardPart = a.animalWard ? ` · ${a.animalWard}` : '';
-  lines.push(`${emoji} *${a.animalName}* (${a.animalSpecies}${wardPart}) · ${shortDate(a.occurredAt)}`);
+  lines.push(`${emoji} *${a.animalName}* (${a.animalSpecies}) · ${shortDate(a.occurredAt)}`);
 
   const time = clockHHMM(a.occurredAt);
   const label = ACTIVITY_LABELS[a.type];

@@ -8,7 +8,6 @@ function row(over: Partial<ActivityRow>): ActivityRow {
     animalId: 'a1',
     animalName: 'Bruno',
     animalSpecies: 'Dog',
-    animalWard: null,
     type: 'TREATMENT',
     occurredAt: new Date('2026-05-20T09:30:00+05:30'),
     byName: 'Dr. Mehta',
@@ -63,14 +62,13 @@ describe('formatDailyReportText', () => {
     );
   });
 
-  it('sorts animal groups alphabetically (case-insensitive) and includes ward', () => {
+  it('sorts animal groups alphabetically (case-insensitive)', () => {
     const rows: ActivityRow[] = [
       row({
         id: 'a',
         animalId: 'milo',
         animalName: 'Milo',
         animalSpecies: 'Cat',
-        animalWard: 'ISO-A',
         occurredAt: new Date('2026-05-20T09:00:00+05:30'),
         type: 'ROUND',
         summary: 'Improving',
@@ -81,7 +79,6 @@ describe('formatDailyReportText', () => {
         animalId: 'bruno',
         animalName: 'bruno', // lowercase to test case-insensitive sort
         animalSpecies: 'Dog',
-        animalWard: 'Surgery-1',
         occurredAt: new Date('2026-05-20T09:15:00+05:30'),
         type: 'ROUND',
         summary: 'Stable',
@@ -94,10 +91,10 @@ describe('formatDailyReportText', () => {
         '*🏥 Arham Always Care — Wed, 20 May 2026*',
         '2 entries',
         '',
-        '🐶 *bruno* (Dog · Surgery-1)',
+        '🐶 *bruno* (Dog)',
         '• *09:15  Doctor round* — Stable  (Dr. Mehta)',
         '',
-        '🐱 *Milo* (Cat · ISO-A)',
+        '🐱 *Milo* (Cat)',
         '• *09:00  Doctor round* — Improving  (Dr. Iyer)',
       ].join('\n'),
     );

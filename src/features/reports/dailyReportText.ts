@@ -54,15 +54,11 @@ export function formatDailyReportText(date: string, rows: ActivityRow[]): string
   if (rows.length === 0) return lines.join('\n');
 
   // Group by animalId; preserve first-seen order then sort groups by name.
-  const groups = new Map<
-    string,
-    { name: string; species: string; ward: string | null; rows: ActivityRow[] }
-  >();
+  const groups = new Map<string, { name: string; species: string; rows: ActivityRow[] }>();
   for (const r of rows) {
     const g = groups.get(r.animalId) ?? {
       name: r.animalName,
       species: r.animalSpecies,
-      ward: r.animalWard,
       rows: [],
     };
     g.rows.push(r);
@@ -75,10 +71,9 @@ export function formatDailyReportText(date: string, rows: ActivityRow[]): string
 
   for (const g of sortedGroups) {
     lines.push(''); // blank line before each animal block
-    const wardPart = g.ward ? ` · ${g.ward}` : '';
-    // Animal name bolded; species + ward stay regular weight so the
+    // Animal name bolded; species stays regular weight so the
     // emphasis lands cleanly on the patient identifier.
-    lines.push(`${speciesEmoji(g.species)} *${g.name}* (${g.species}${wardPart})`);
+    lines.push(`${speciesEmoji(g.species)} *${g.name}* (${g.species})`);
     const sortedRows = g.rows.slice().sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
     for (const r of sortedRows) {
       const time = clockHHMM(r.occurredAt);

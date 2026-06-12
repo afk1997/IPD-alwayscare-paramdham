@@ -160,7 +160,6 @@ export interface ActivityRow {
   animalId: string;
   animalName: string;
   animalSpecies: string;
-  animalWard: string | null;
   type: ActivityType;
   occurredAt: Date;
   byName: string;
@@ -190,7 +189,7 @@ export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
       byName: true,
       remarks: true,
       data: true,
-      animal: { select: { name: true, species: true, ward: true } },
+      animal: { select: { name: true, species: true } },
       // Count only READY assets — PENDING / FAILED would 425/410 through
       // /api/files and shouldn't claim the 📎 indicator in the copy.
       _count: { select: { media: { where: { asset: { status: 'READY' } } } } },
@@ -201,7 +200,6 @@ export async function listActivitiesOnDate(date: Date): Promise<ActivityRow[]> {
     animalId: r.animalId,
     animalName: r.animal.name,
     animalSpecies: r.animal.species,
-    animalWard: r.animal.ward,
     type: r.type,
     occurredAt: r.occurredAt,
     byName: r.byName,
@@ -235,7 +233,7 @@ export async function listActivitiesOnDateForAnimal(date: Date, animalId: string
       byName: true,
       remarks: true,
       data: true,
-      animal: { select: { name: true, species: true, ward: true } },
+      animal: { select: { name: true, species: true } },
       _count: { select: { media: { where: { asset: { status: 'READY' } } } } },
     },
   });
@@ -244,7 +242,6 @@ export async function listActivitiesOnDateForAnimal(date: Date, animalId: string
     animalId: r.animalId,
     animalName: r.animal.name,
     animalSpecies: r.animal.species,
-    animalWard: r.animal.ward,
     type: r.type,
     occurredAt: r.occurredAt,
     byName: r.byName,
@@ -269,7 +266,6 @@ export interface PerAnimalReport {
     id: string;
     name: string;
     species: string;
-    ward: string | null;
     admittedAt: Date;
     dischargedAt: Date | null;
     deceasedAt: Date | null;
@@ -285,7 +281,6 @@ export async function getPerAnimalReport(animalId: string): Promise<PerAnimalRep
       id: true,
       name: true,
       species: true,
-      ward: true,
       admittedAt: true,
       dischargedAt: true,
       deceasedAt: true,
