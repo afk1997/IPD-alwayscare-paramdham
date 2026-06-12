@@ -95,7 +95,6 @@ const ANIMAL_SEEDS = [
     surgeryRequired: 'Likely TPLO',
     contagious: false,
     status: 'CRITICAL' as const,
-    ward: 'Surgery-1',
     testsAdvised: ['XRAY', 'BLOOD_TEST'] as const,
   },
   {
@@ -118,7 +117,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'Sub-Q fluids, NSAIDs, ABx',
     contagious: true,
     status: 'OBSERVATION' as const,
-    ward: 'ISO-A',
     testsAdvised: ['BLOOD_TEST'] as const,
   },
   {
@@ -140,7 +138,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'IV fluids, antiemetic',
     contagious: false,
     status: 'STABLE' as const,
-    ward: 'Med-2',
     testsAdvised: ['USG', 'BLOOD_TEST'] as const,
   },
   {
@@ -164,7 +161,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'Maggot extraction under sedation, broad-spectrum ABx',
     contagious: false,
     status: 'CRITICAL' as const,
-    ward: 'Surgery-2',
     testsAdvised: ['BLOOD_TEST'] as const,
   },
   {
@@ -186,7 +182,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'BG curve, hydration',
     contagious: false,
     status: 'STABLE' as const,
-    ward: 'Med-3',
     testsAdvised: ['BLOOD_TEST', 'USG'] as const,
   },
 ];
@@ -213,7 +208,6 @@ async function admitAnimal(actor: Actor, seed: (typeof ANIMAL_SEEDS)[number]) {
     history: undefined,
     contagious: seed.contagious,
     status: seed.status,
-    ward: seed.ward,
     diagnosis: seed.diagnosis,
     immediateTreatment: seed.immediateTreatment,
     surgeryRequired: 'surgeryRequired' in seed ? seed.surgeryRequired : undefined,
@@ -521,9 +515,7 @@ async function main() {
   // ── Inline animal edit — triggers UpdateAnimalSchema ──────────────────
   if (admitted[1]) {
     try {
-      await time('updateAnimal (ward + ageText)', () =>
-        updateAnimal(admin, admitted[1]!.id, { ward: 'ISO-B', ageText: '2y 3m' }),
-      );
+      await time('updateAnimal (ageText)', () => updateAnimal(admin, admitted[1]!.id, { ageText: '2y 3m' }));
       log('  + updateAnimal OK (Zod validated)');
     } catch (e) {
       flag('reliability', `updateAnimal failed: ${e instanceof Error ? e.message : String(e)}`);

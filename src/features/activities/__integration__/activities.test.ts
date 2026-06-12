@@ -21,6 +21,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const baseAnimal: Omit<CreateAnimalInput, 'name'> = {
   species: 'Dog',
+  complaint: 'QA: test complaint',
   vaccination: 'NONE',
   sterilized: false,
   aggressive: false,

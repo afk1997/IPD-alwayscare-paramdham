@@ -58,7 +58,7 @@ export function PatientListFilters({ initialSearch, initialStatus, initialSpecie
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, breed, ward…"
+          placeholder="Search name, breed…"
           className="h-10 w-full rounded-xl border border-line bg-paper pr-3 pl-9 text-[14px] placeholder:text-soft focus:border-accent focus:outline-none"
         />
       </label>

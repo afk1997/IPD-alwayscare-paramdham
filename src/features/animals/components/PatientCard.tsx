@@ -32,7 +32,6 @@ export function PatientCard({ animal }: Props) {
         <div className="mt-1 truncate text-[12.5px] text-muted">
           {animal.species}
           {animal.breed ? ` · ${animal.breed}` : ''}
-          {animal.ward ? ` · ${animal.ward}` : ''}
           {animal.cage ? ` · 🏠 ${animal.cage}` : ''}
         </div>
         <div

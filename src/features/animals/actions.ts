@@ -55,7 +55,6 @@ export interface AnimalDetailRow {
   sterilized: boolean;
   aggressive: boolean;
   contagious: boolean;
-  ward: string | null;
   cage: string | null;
   cageId: string | null;
   status: string;
@@ -103,7 +102,6 @@ export async function updateAnimalAction(
       sterilized: updated.sterilized,
       aggressive: updated.aggressive,
       contagious: updated.contagious,
-      ward: updated.ward,
       cage: updated.cage?.name ?? null,
       cageId: updated.cageId,
       status: updated.status,

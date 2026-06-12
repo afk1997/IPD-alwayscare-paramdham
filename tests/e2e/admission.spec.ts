@@ -22,13 +22,24 @@ test('admit a new animal end-to-end', async ({ page }) => {
   await page.getByLabel('Contact number').fill('+91 99999 99999');
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  // Step 3: Medical
+  // Step 3: Medical — chief complaint is required, so an empty Continue
+  // must block with an inline error and stay on this step.
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByText('Chief complaint is required')).toBeVisible();
   await page.getByLabel('Chief complaint').fill('Hit by vehicle');
-  await page.getByLabel('Ward').fill('ICU-2');
+  // Blur so the onBlur revalidation clears the inline error (and its
+  // layout shift) before Continue is clicked — otherwise the error row
+  // collapses between mousedown and mouseup and the click lands on the
+  // form container instead of the button.
+  await page.getByLabel('Chief complaint').blur();
+  await expect(page.getByText('Chief complaint is required')).toBeHidden();
   await page.getByLabel('Status').selectOption('CRITICAL');
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  // Step 4: Media (skip — no upload)
+  // Step 4: Media (skip — no upload). Wait for the step to render before
+  // clicking its Continue so the click can't fire while step 3 is still
+  // mid-transition.
+  await expect(page.getByRole('heading', { name: 'Admission media' })).toBeVisible();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // Step 5: Doctor notes

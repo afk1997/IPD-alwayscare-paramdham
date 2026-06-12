@@ -25,7 +25,6 @@ const DEFAULTS: CreateAnimalInput = {
   history: '',
   contagious: false,
   status: 'OBSERVATION',
-  ward: '',
   cageId: '',
   diagnosis: '',
   immediateTreatment: '',

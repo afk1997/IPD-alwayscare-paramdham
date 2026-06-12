@@ -210,7 +210,7 @@ export async function getActivityShareTextAction(activityId: string): Promise<Ac
         data: true,
         remarks: true,
         byName: true,
-        animal: { select: { name: true, species: true, ward: true } },
+        animal: { select: { name: true, species: true } },
         // Only READY media — PENDING/FAILED uploads would otherwise inflate the
         // "📎 N attachments" indicator in the shared text (matches the report
         // queries).
@@ -221,7 +221,6 @@ export async function getActivityShareTextAction(activityId: string): Promise<Ac
     const text = formatActivityShareText({
       animalName: row.animal.name,
       animalSpecies: row.animal.species,
-      animalWard: row.animal.ward,
       type: row.type,
       occurredAt: row.occurredAt,
       data: row.data,

@@ -19,6 +19,7 @@ describe('animal lifecycle — integration vs real DB', () => {
     const animal = await createAnimal(staff, {
       name: qaName('LifecycleStaff'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -44,6 +45,7 @@ describe('animal lifecycle — integration vs real DB', () => {
     const animal = await createAnimal(doctor, {
       name: qaName('DischargeTarget'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -81,6 +83,7 @@ describe('animal lifecycle — integration vs real DB', () => {
     const animal = await createAnimal(doctor, {
       name: qaName('DeathTarget'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -112,6 +115,7 @@ describe('animal lifecycle — integration vs real DB', () => {
     const animal = await createAnimal(doctor, {
       name: qaName('DischargeSoftDel'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -131,6 +135,7 @@ describe('animal lifecycle — integration vs real DB', () => {
     const animal = await createAnimal(doctor, {
       name: qaName('DocOwnership'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,

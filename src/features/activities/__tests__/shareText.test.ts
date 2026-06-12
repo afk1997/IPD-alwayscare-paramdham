@@ -5,7 +5,6 @@ import { formatActivityShareText } from '../shareText';
 const baseAnimal = {
   animalName: 'Buddy',
   animalSpecies: 'Dog',
-  animalWard: 'A1',
 };
 
 const occurredAt = new Date('2026-05-20T09:00:00Z'); // 14:30 IST
@@ -23,7 +22,7 @@ describe('formatActivityShareText', () => {
     });
     expect(out).toBe(
       [
-        '🐶 *Buddy* (Dog · A1) · 20 May 2026',
+        '🐶 *Buddy* (Dog) · 20 May 2026',
         '*14:30  Treatment*  📎',
         'Meloxicam 1.5 mg IV',
         'Remarks: pain controlled',
@@ -45,26 +44,10 @@ describe('formatActivityShareText', () => {
     expect(out.split('\n')[1]).toBe('*14:30  Treatment*');
   });
 
-  it('omits ward when null', () => {
-    const out = formatActivityShareText({
-      animalName: 'Buddy',
-      animalSpecies: 'Dog',
-      animalWard: null,
-      type: 'TREATMENT' as ActivityType,
-      occurredAt,
-      data: { meds: [{ name: 'X', dose: '1', route: 'IV' }] },
-      remarks: null,
-      byName: 'Dr. Mehta',
-      mediaCount: 0,
-    });
-    expect(out.split('\n')[0]).toBe('🐶 *Buddy* (Dog) · 20 May 2026');
-  });
-
   it('falls back to 🐾 for unknown species', () => {
     const out = formatActivityShareText({
       animalName: 'Lucky',
       animalSpecies: 'Tortoise',
-      animalWard: null,
       type: 'ROUND' as ActivityType,
       occurredAt,
       data: { temp: '38.5' },

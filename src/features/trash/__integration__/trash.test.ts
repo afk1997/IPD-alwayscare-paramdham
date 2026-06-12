@@ -37,6 +37,7 @@ describe('trash queries — integration vs real DB', () => {
     const animal = await createAnimal(admin, {
       name: qaName('TrashAnimal'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -76,6 +77,7 @@ describe('trash queries — integration vs real DB', () => {
     const animal = await createAnimal(admin, {
       name: qaName('TrashWho'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -96,6 +98,7 @@ describe('trash queries — integration vs real DB', () => {
     const animal = await createAnimal(admin, {
       name: qaName('TrashChild'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,

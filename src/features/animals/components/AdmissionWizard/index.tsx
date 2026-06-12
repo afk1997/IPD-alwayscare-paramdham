@@ -14,7 +14,7 @@ import { STEP_LABELS, useAdmissionForm } from './useAdmissionForm';
 const STEP_VALIDATION: Record<number, (keyof CreateAnimalInput)[]> = {
   0: ['name', 'species'],
   1: [],
-  2: ['status'],
+  2: ['status', 'complaint'],
   3: [],
   4: [],
 };

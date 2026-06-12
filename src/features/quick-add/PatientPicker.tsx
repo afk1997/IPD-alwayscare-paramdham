@@ -59,7 +59,7 @@ export function PatientPicker({ onPick, onCancel }: Props) {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name, species, ward…"
+          placeholder="Search by name, species…"
           className="h-10 w-full rounded-xl border border-line bg-paper pr-3 pl-9 text-[14px] placeholder:text-soft focus:border-accent focus:outline-none"
         />
       </label>
@@ -94,10 +94,7 @@ export function PatientPicker({ onPick, onCancel }: Props) {
             <Photo seed={a.id} alt={a.name} rounded={12} className="h-10 w-10 shrink-0" />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-display font-semibold text-[14px]">{a.name}</span>
-              <span className="mt-0.5 block truncate text-[12px] text-muted">
-                {a.species}
-                {a.ward ? ` · ${a.ward}` : ''}
-              </span>
+              <span className="mt-0.5 block truncate text-[12px] text-muted">{a.species}</span>
             </span>
             <Pill status={STATUS_TONE[a.status]}>{STATUS_LABELS[a.status]}</Pill>
             <ChevronRight size={14} className="shrink-0 text-soft" />

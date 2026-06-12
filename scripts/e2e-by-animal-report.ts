@@ -42,7 +42,7 @@ async function main() {
     log('3) Focus picker and pick first match…');
     const picker = page.getByPlaceholder(/search by animal name/i);
     await picker.click();
-    // The dropdown lists existing admitted animals by name + species/ward.
+    // The dropdown lists existing admitted animals by name + species.
     const firstHit = page.locator('ul > li > button').first();
     await firstHit.waitFor({ timeout: 10_000 });
     const name = (await firstHit.innerText()).split('\n')[0]?.trim() ?? '';

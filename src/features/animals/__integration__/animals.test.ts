@@ -22,6 +22,7 @@ describe('animals service — integration vs real DB', () => {
     const created = await createAnimal(staff, {
       name,
       species: 'Dog',
+      complaint: 'QA: test complaint',
       breed: 'Indie',
       gender: 'MALE',
       ageText: '~2 yrs',
@@ -50,6 +51,7 @@ describe('animals service — integration vs real DB', () => {
     const created = await createAnimal(staff, {
       name: qaName('StaffEditTarget'),
       species: 'Cat',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -58,10 +60,13 @@ describe('animals service — integration vs real DB', () => {
       testsAdvised: [],
       mediaAssetIds: [],
     });
-    await expect(updateAnimal(staff, created.id, { ward: 'A' })).rejects.toBeInstanceOf(RbacError);
+    await expect(updateAnimal(staff, created.id, { injuryType: 'Trauma' })).rejects.toBeInstanceOf(RbacError);
     // DOCTOR is allowed
-    const updated = await updateAnimal(doctor, created.id, { ward: 'A', diagnosis: 'Probable URI' });
-    expect(updated.ward).toBe('A');
+    const updated = await updateAnimal(doctor, created.id, {
+      injuryType: 'Trauma',
+      diagnosis: 'Probable URI',
+    });
+    expect(updated.injuryType).toBe('Trauma');
     expect(updated.diagnosis).toBe('Probable URI');
   });
 
@@ -70,6 +75,7 @@ describe('animals service — integration vs real DB', () => {
     const created = await createAnimal(doctor, {
       name: qaName('DiffTest'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       weightKg: 12.5,
       vaccination: 'NONE',
       sterilized: false,
@@ -105,6 +111,7 @@ describe('animals service — integration vs real DB', () => {
     const created = await createAnimal(admin, {
       name: qaName('DeleteTarget'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -124,6 +131,7 @@ describe('animals service — integration vs real DB', () => {
     const created = await createAnimal(admin, {
       name: qaName('RoundTrip'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -164,6 +172,7 @@ describe('animals service — integration vs real DB', () => {
     const created = await createAnimal(admin, {
       name: qaName('Idem'),
       species: 'Cat',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -187,6 +196,7 @@ describe('animals service — integration vs real DB', () => {
       createAnimal(admin, {
         name: `${QA_PREFIX}${'X'.repeat(150)}`,
         species: 'Dog',
+        complaint: 'QA: test complaint',
         vaccination: 'NONE',
         sterilized: false,
         aggressive: false,

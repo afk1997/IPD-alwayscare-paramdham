@@ -27,7 +27,6 @@ export default async function EditAnimalPage({ params }: { params: Promise<{ id:
           sterilized: animal.sterilized,
           aggressive: animal.aggressive,
           contagious: animal.contagious,
-          ward: animal.ward,
           cageId: animal.cageId,
           status: animal.status,
           complaint: animal.complaint,

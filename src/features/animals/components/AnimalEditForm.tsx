@@ -23,7 +23,6 @@ interface Props {
     sterilized: boolean;
     aggressive: boolean;
     contagious: boolean;
-    ward: string | null;
     cageId: string | null;
     status: string;
     complaint: string | null;
@@ -69,7 +68,6 @@ export function AnimalEditForm({ animal, cages, onDone, onCancel }: Props) {
         sterilized: form.sterilized,
         aggressive: form.aggressive,
         contagious: form.contagious,
-        ward: form.ward,
         cageId: form.cageId,
         status: form.status as 'CRITICAL' | 'STABLE' | 'OBSERVATION',
         complaint: form.complaint,
@@ -190,7 +188,7 @@ export function AnimalEditForm({ animal, cages, onDone, onCancel }: Props) {
         </div>
       </FormSection>
 
-      <FormSection title="Status, cage & ward">
+      <FormSection title="Status & cage">
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Status">
             {(id) => (
@@ -216,11 +214,6 @@ export function AnimalEditForm({ animal, cages, onDone, onCancel }: Props) {
             </FormField>
           )}
         </div>
-        <FormField label="Ward (legacy)">
-          {(id) => (
-            <Input id={id} value={form.ward ?? ''} onChange={(e) => onField('ward', e.target.value)} />
-          )}
-        </FormField>
       </FormSection>
 
       <FormSection title="Medical">

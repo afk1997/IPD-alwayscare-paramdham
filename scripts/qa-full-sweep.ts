@@ -178,7 +178,6 @@ async function phase2Uploads(ctx: BrowserContext) {
 
   // Step 3 — medical
   await page.getByLabel('Chief complaint').fill('QA full-sweep · suspected fracture');
-  await page.getByLabel('Ward').fill('QA-Ward');
   await page.getByLabel('Status').selectOption('CRITICAL');
   await page.getByRole('button', { name: 'Continue' }).click();
 
