@@ -48,6 +48,7 @@ export interface RawDocument {
 }
 export interface RawReportData {
   generatedAt: string;
+  generatedByName: string;
   range: { from: string; to: string } | null;
   animal: {
     name: string;
@@ -63,8 +64,13 @@ export interface RawReportData {
     rescuer: string | null;
     broughtBy: string | null;
     media: RawMedia[];
-    death: { causeOfDeath: string; diedAt: string } | null;
-    discharge: { dischargedAt: string } | null;
+    death: { causeOfDeath: string; diedAt: string; recordedByName: string | null } | null;
+    discharge: {
+      dischargedAt: string;
+      summary: string;
+      instructions: string | null;
+      dischargedByName: string | null;
+    } | null;
   };
   activities: RawActivity[];
   documents: RawDocument[];
@@ -95,6 +101,7 @@ export interface ReportMed {
 }
 export interface ReportModel {
   generatedAt: string;
+  generatedByName: string;
   rangeLabel: string | null;
   patient: {
     name: string;
@@ -110,7 +117,14 @@ export interface ReportModel {
     broughtBy: string | null;
     avatarAssetId: string | null;
   };
-  outcome: { kind: 'in-care' | 'discharged' | 'deceased'; label: string; causeOfDeath: string | null };
+  outcome: {
+    kind: 'in-care' | 'discharged' | 'deceased';
+    label: string;
+    causeOfDeath: string | null;
+    summary: string | null;
+    instructions: string | null;
+    byName: string | null;
+  };
   stats: { days: number; perType: { type: ActivityType; label: string; count: number }[]; photos: number };
   meds: ReportMed[];
   admissionMedia: RawMedia[];
@@ -157,14 +171,27 @@ function buildOutcome(a: RawReportData['animal']): ReportModel['outcome'] {
       kind: 'deceased',
       label: `Deceased · ${shortDate(a.death.diedAt)}`,
       causeOfDeath: a.death.causeOfDeath,
+      summary: null,
+      instructions: null,
+      byName: a.death.recordedByName,
     };
   if (a.discharge)
     return {
       kind: 'discharged',
       label: `Discharged · ${shortDate(a.discharge.dischargedAt)}`,
       causeOfDeath: null,
+      summary: a.discharge.summary,
+      instructions: a.discharge.instructions,
+      byName: a.discharge.dischargedByName,
     };
-  return { kind: 'in-care', label: 'In care', causeOfDeath: null };
+  return {
+    kind: 'in-care',
+    label: 'In care',
+    causeOfDeath: null,
+    summary: null,
+    instructions: null,
+    byName: null,
+  };
 }
 
 export function buildReportModel(raw: RawReportData): ReportModel {
@@ -213,6 +240,7 @@ export function buildReportModel(raw: RawReportData): ReportModel {
 
   return {
     generatedAt: raw.generatedAt,
+    generatedByName: raw.generatedByName,
     rangeLabel: raw.range
       ? `${shortDate(`${raw.range.from}T12:00:00+05:30`)} – ${shortDate(`${raw.range.to}T12:00:00+05:30`)}`
       : null,

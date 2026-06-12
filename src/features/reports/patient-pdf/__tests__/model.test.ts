@@ -3,6 +3,7 @@ import { type RawReportData, buildReportModel } from '../model';
 
 const raw: RawReportData = {
   generatedAt: '2026-05-31T06:30:00.000Z',
+  generatedByName: 'Asha (Reception)',
   range: null,
   animal: {
     name: 'Facebook ',
@@ -19,7 +20,12 @@ const raw: RawReportData = {
     broughtBy: 'NGO',
     media: [{ assetId: 'adm1', kind: 'PHOTO', label: null, filename: 'a.jpg', storageKey: 'local:x/a.jpg' }],
     death: null,
-    discharge: { dischargedAt: '2026-05-29T10:00:00.000Z' },
+    discharge: {
+      dischargedAt: '2026-05-29T10:00:00.000Z',
+      summary: 'Recovered well, weight-bearing on all limbs',
+      instructions: 'Cone for 5 days; review after 2 weeks',
+      dischargedByName: 'Dr. Mehta',
+    },
   },
   activities: [
     {
@@ -65,5 +71,9 @@ describe('buildReportModel', () => {
     expect(food?.summary).toContain('Khichdi');
     expect(food?.stills).toHaveLength(1);
     expect(food?.details).toContain('Vomiting: no');
+    expect(m.outcome.summary).toBe('Recovered well, weight-bearing on all limbs');
+    expect(m.outcome.instructions).toBe('Cone for 5 days; review after 2 weeks');
+    expect(m.outcome.byName).toBe('Dr. Mehta');
+    expect(m.generatedByName).toBe('Asha (Reception)');
   });
 });

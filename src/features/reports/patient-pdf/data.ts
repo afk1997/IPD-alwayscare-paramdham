@@ -22,6 +22,7 @@ const toRawMedia = (m: MediaRow): RawMedia => ({
 
 export async function getPatientReportData(
   animalId: string,
+  generatedByName: string,
   range?: { from: string; to: string },
 ): Promise<ReportModel | null> {
   const animal = await prisma.animal.findFirst({
@@ -29,8 +30,23 @@ export async function getPatientReportData(
     include: {
       cage: { select: { name: true } },
       media: { where: { asset: { status: 'READY' } }, orderBy: { order: 'asc' }, include: { asset: true } },
-      deathRecord: { select: { causeOfDeath: true, diedAt: true, invalidatedAt: true } },
-      dischargeRecord: { select: { dischargedAt: true, invalidatedAt: true } },
+      deathRecord: {
+        select: {
+          causeOfDeath: true,
+          diedAt: true,
+          invalidatedAt: true,
+          recordedBy: { select: { name: true } },
+        },
+      },
+      dischargeRecord: {
+        select: {
+          dischargedAt: true,
+          summary: true,
+          instructions: true,
+          invalidatedAt: true,
+          dischargedBy: { select: { name: true } },
+        },
+      },
     },
   });
   if (!animal) return null;
@@ -56,15 +72,25 @@ export async function getPatientReportData(
 
   const death =
     animal.deathRecord && !animal.deathRecord.invalidatedAt
-      ? { causeOfDeath: animal.deathRecord.causeOfDeath, diedAt: animal.deathRecord.diedAt.toISOString() }
+      ? {
+          causeOfDeath: animal.deathRecord.causeOfDeath,
+          diedAt: animal.deathRecord.diedAt.toISOString(),
+          recordedByName: animal.deathRecord.recordedBy?.name ?? null,
+        }
       : null;
   const discharge =
     animal.dischargeRecord && !animal.dischargeRecord.invalidatedAt
-      ? { dischargedAt: animal.dischargeRecord.dischargedAt.toISOString() }
+      ? {
+          dischargedAt: animal.dischargeRecord.dischargedAt.toISOString(),
+          summary: animal.dischargeRecord.summary,
+          instructions: animal.dischargeRecord.instructions,
+          dischargedByName: animal.dischargeRecord.dischargedBy?.name ?? null,
+        }
       : null;
 
   const raw: RawReportData = {
     generatedAt: new Date().toISOString(),
+    generatedByName,
     range: range ?? null,
     animal: {
       name: animal.name,

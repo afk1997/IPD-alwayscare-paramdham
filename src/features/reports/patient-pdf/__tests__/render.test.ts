@@ -5,6 +5,7 @@ import { renderPatientReportPdf } from '../render';
 
 const model: ReportModel = {
   generatedAt: '2026-05-31T06:30:00.000Z',
+  generatedByName: 'Asha (Reception)',
   rangeLabel: null,
   patient: {
     name: 'रॉकी',
@@ -20,7 +21,14 @@ const model: ReportModel = {
     broughtBy: 'NGO',
     avatarAssetId: 'a1',
   },
-  outcome: { kind: 'in-care', label: 'In care', causeOfDeath: null },
+  outcome: {
+    kind: 'in-care',
+    label: 'In care',
+    causeOfDeath: null,
+    summary: null,
+    instructions: null,
+    byName: null,
+  },
   stats: { days: 6, perType: [{ type: 'FOOD', label: 'Food & water', count: 1 }], photos: 1 },
   meds: [
     { name: 'Amoxiclav', doses: ['20mg/kg'], routes: ['Oral'], times: 2, days: 2, span: '26 May – 27 May' },
