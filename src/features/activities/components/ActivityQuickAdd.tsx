@@ -67,6 +67,8 @@ export function ActivityQuickAdd({ animalId, open, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-40 flex items-end justify-center md:items-center"
+      // biome-ignore lint/a11y/useSemanticElements: pattern shared with QuickAddModal
+      role="dialog"
       aria-modal="true"
       aria-label={selected ? ACTIVITY_LABELS[selected] : 'Log activity'}
     >

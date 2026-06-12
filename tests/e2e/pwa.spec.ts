@@ -5,7 +5,7 @@ test('manifest is served and installable', async ({ request }) => {
   expect(res.status()).toBe(200);
   const m = await res.json();
   expect(m.display).toBe('standalone');
-  expect(m.name).toMatch(/Arham/);
+  expect(m.name).toBe('IPD Always Care');
   expect((m.icons ?? []).length).toBeGreaterThanOrEqual(2);
 });
 

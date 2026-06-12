@@ -21,7 +21,10 @@ test('log a food activity via quick-add', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Log activity', level: 2 })).toBeVisible();
 
   // Pick FOOD — the modal heading updates to "Food & water".
-  await page.getByRole('button', { name: /food & water/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /food & water/i })
+    .click();
   await expect(page.getByRole('heading', { name: 'Food & water', level: 2 })).toBeVisible();
 
   await page.getByLabel('Food type').fill('Curd-rice + paneer');
@@ -64,7 +67,12 @@ test('date filter narrows the feed and keeps the admission pinned', async ({ pag
   fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
   fiveDaysAgo.setHours(10, 0, 0, 0);
   await page.getByRole('button', { name: /log activity/i }).click();
-  await page.getByRole('button', { name: /food & water/i }).click();
+  // Scope to the quick-add dialog — the activity feed behind it can contain
+  // "Food & water" rows from earlier entries, which trip strict mode.
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /food & water/i })
+    .click();
   await page.getByLabel('Food type').fill('BackdatedFood');
   await page.getByRole('button', { name: 'Fully', exact: true }).click();
   await page.locator('input[type="datetime-local"]').fill(dtLocal(fiveDaysAgo));
@@ -73,7 +81,10 @@ test('date filter narrows the feed and keeps the admission pinned', async ({ pag
 
   // Entry #2 — today (default occurredAt).
   await page.getByRole('button', { name: /log activity/i }).click();
-  await page.getByRole('button', { name: /food & water/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /food & water/i })
+    .click();
   await page.getByLabel('Food type').fill('TodayFood');
   await page.getByRole('button', { name: 'Fully', exact: true }).click();
   await page.getByRole('button', { name: 'Save entry' }).click();
