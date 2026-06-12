@@ -153,7 +153,7 @@ function Palette({ onClose }: PaletteProps) {
           {results.length === 0 && (
             <p className="px-4 py-6 text-center text-[12.5px] text-muted">
               {query
-                ? 'No matches. Try a name, breed, ward, or activity note.'
+                ? 'No matches. Try a name, breed, or activity note.'
                 : 'Type to find patients or activities.'}
             </p>
           )}

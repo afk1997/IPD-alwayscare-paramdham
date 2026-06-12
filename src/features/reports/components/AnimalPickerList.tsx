@@ -74,10 +74,7 @@ export function AnimalPickerList({ selectedId }: Props) {
                 >
                   <div className="flex flex-col">
                     <span className="font-display font-semibold text-[14px]">{r.name}</span>
-                    <span className="text-[11.5px] text-muted">
-                      {r.species}
-                      {r.ward ? ` · ${r.ward}` : ''}
-                    </span>
+                    <span className="text-[11.5px] text-muted">{r.species}</span>
                   </div>
                   <Pill status={tone}>{label}</Pill>
                 </Link>

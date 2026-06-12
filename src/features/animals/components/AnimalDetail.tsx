@@ -164,7 +164,6 @@ export async function AnimalDetail({ animalId }: Props) {
           // stringify here, same as AnimalDetailsTab does just below.
           weightKg: animal.weightKg ? String(animal.weightKg) : null,
           color: animal.color,
-          ward: animal.ward,
           cage: animal.cage,
           contagious: animal.contagious,
           aggressive: animal.aggressive,

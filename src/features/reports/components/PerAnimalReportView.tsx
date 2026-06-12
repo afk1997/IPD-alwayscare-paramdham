@@ -58,10 +58,7 @@ export function PerAnimalReportView({ report }: Props) {
         <div className="flex items-center gap-3">
           <div className="flex flex-col">
             <span className="font-display font-bold text-[20px]">{animal.name}</span>
-            <span className="text-[12.5px] text-muted">
-              {animal.species}
-              {animal.ward ? ` · ${animal.ward}` : ''}
-            </span>
+            <span className="text-[12.5px] text-muted">{animal.species}</span>
           </div>
           <Pill status={statusTone} className="ml-auto">
             {status}
