@@ -52,6 +52,21 @@ const nextConfig: NextConfig = {
   // reconciler). Externalizing it makes Next load it as a plain Node module
   // using the standard React, which is what its reconciler expects.
   serverExternalPackages: ['@react-pdf/renderer'],
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Next's default externalization emits `import("@react-pdf/renderer")`
+      // (the ESM build) for the Pages-Router report route. Loaded that way —
+      // through the server's module hooks — react-pdf's text layout
+      // mis-renders: leading glyphs get dropped at narrow widths (meds-table
+      // dose "0.2 mg/kg" rendered as ".2 mg/kg") and the registered
+      // hyphenation callback is ignored (mid-word "w/eight-bearing" breaks).
+      // The exact same render through `require` (CJS build, project React) is
+      // pixel-correct, so pin the external to CommonJS. Verified empirically
+      // in Task 7 of docs/superpowers/plans/2026-06-12-patient-report-v2.md.
+      config.externals = [{ '@react-pdf/renderer': 'commonjs @react-pdf/renderer' }, ...config.externals];
+    }
+    return config;
+  },
   reactStrictMode: true,
   typedRoutes: false,
   poweredByHeader: false,

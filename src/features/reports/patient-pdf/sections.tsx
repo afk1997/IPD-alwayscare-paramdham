@@ -57,12 +57,15 @@ export function Masthead({ model, logo }: { model: ReportModel; logo: Buffer | n
 }
 
 // Fixed compact header — renders on pages 2+ only. The OUTER fixed View
-// carries no style (an empty styled bar would otherwise paint over the
-// page-1 masthead); the styled bar lives inside the render prop.
+// carries the absolute position (pinned to the physical page top, like the
+// Footer) but no paint, so page 1 shows nothing; the styled bar lives inside
+// the render prop. Keeping the bar's visuals off the outer node matters: an
+// empty styled bar would otherwise paint over the page-1 masthead.
 export function PageHeader({ model, logo }: { model: ReportModel; logo: Buffer | null }) {
   return (
     <View
       fixed
+      style={{ position: 'absolute', top: 0, left: 0, right: 0 }}
       render={({ pageNumber }) =>
         pageNumber === 1 ? null : (
           <View style={s.pgHead}>
@@ -147,7 +150,9 @@ export function RecoveryStrip({ model, images }: { model: ReportModel; images: M
           <FitImage id={model.recovery.first.assetId} images={images} maxW={160} maxH={120} />
           <Text style={s.gcap}>{model.recovery.first.label}</Text>
         </View>
-        <Text style={s.recoveryArrow}>→</Text>
+        {/* '»' — U+2192 '→' is not in the bundled NotoSans subset and falls
+            back to a Helvetica quote glyph. */}
+        <Text style={s.recoveryArrow}>»</Text>
         <View>
           <FitImage id={model.recovery.last.assetId} images={images} maxW={160} maxH={120} />
           <Text style={s.gcap}>{model.recovery.last.label}</Text>
@@ -221,8 +226,10 @@ function SectionCard({ e, images }: { e: SectionEntry; images: Map<string, Repor
   const color = TYPE_COLOR[e.type] ?? BRAND.muted;
   return (
     <View style={[s.sectionCard, { borderLeftColor: color }]}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <T style={{ fontSize: 10, fontWeight: 700 }} dyn={e.summary}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {/* flex:1 bounds the title so a long summary wraps instead of running
+            under the right-aligned timestamp. */}
+        <T style={{ fontSize: 10, fontWeight: 700, flex: 1, paddingRight: 8 }} dyn={e.summary}>
           {e.summary}
         </T>
         <Text style={s.time}>
@@ -333,7 +340,7 @@ function ActivityBlock({ e, images }: { e: ReportEntry; images: Map<string, Repo
           {e.summary}
         </T>
         <Text style={s.crossRef}>
-          {e.crossRef === 'surgery' ? '→ Surgery section' : '→ Diagnostics section'}
+          {e.crossRef === 'surgery' ? '» Surgery section' : '» Diagnostics section'}
         </Text>
       </View>
     );
@@ -465,7 +472,7 @@ export function OutcomeSignoff({ model }: { model: ReportModel }) {
   return (
     <BV title="Outcome & sign-off">
       <Text style={s.sec}>Outcome & sign-off</Text>
-      <View style={[s.outcomeBox, { borderColor: `${tone}88`, backgroundColor: `${tone}0d` }]}>
+      <View style={[s.outcomeBox, { borderColor: tone, backgroundColor: `${tone}0d` }]}>
         <Text style={[s.outcomeTitle, { color: tone }]}>{model.outcome.label.toUpperCase()}</Text>
         {model.outcome.causeOfDeath && (
           <T style={s.dline} dyn={model.outcome.causeOfDeath}>

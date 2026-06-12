@@ -53,12 +53,12 @@ export const s = StyleSheet.create({
   },
   mastBrandFallback: { fontFamily: 'Noto Serif', fontWeight: 700, fontSize: 20, color: BRAND.red },
   mastKicker: { fontSize: 7, letterSpacing: 2, color: BRAND.soft, marginTop: 8 },
-  // Fixed compact header, pages 2+
+  // Fixed compact header, pages 2+. Positioning (absolute, pinned to the
+  // physical page top) lives on the OUTER fixed View in PageHeader — an
+  // absolute style here would anchor to the in-flow fixed View instead,
+  // which sits at the content origin (below the page padding) and painted
+  // the bar over the first element of every page.
   pgHead: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     backgroundColor: BRAND.cream,
     borderBottomWidth: 1,
     borderBottomColor: BRAND.gold,
@@ -172,7 +172,10 @@ export const s = StyleSheet.create({
   imgMat: {
     backgroundColor: BRAND.mat,
     borderWidth: 1,
-    borderColor: `${BRAND.gold}66`,
+    // Solid hue only: react-pdf misparses 8-digit #RRGGBBAA borderColor
+    // (it reads the wrong 6 digits — gold+66 painted green). Backgrounds
+    // handle alpha-hex fine; borders must stay 6-digit.
+    borderColor: BRAND.gold,
     borderRadius: 5,
     padding: 3,
     alignSelf: 'flex-start',
@@ -183,7 +186,7 @@ export const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: `${BRAND.gold}66`,
+    borderColor: BRAND.gold,
   },
   link: { fontSize: 8, color: BRAND.red, marginTop: 4 },
   sectionCard: {
