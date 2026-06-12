@@ -41,7 +41,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
-    '/api/patients/[id]/report': ['./src/features/reports/patient-pdf/fonts/*.ttf'],
+    '/api/patients/[id]/report': [
+      './src/features/reports/patient-pdf/fonts/*.ttf',
+      './src/features/reports/patient-pdf/assets/logo.png',
+    ],
   },
   // @react-pdf/renderer ships its own React reconciler. If Next bundles it
   // under the React-Server-Components condition, renderToBuffer throws React
