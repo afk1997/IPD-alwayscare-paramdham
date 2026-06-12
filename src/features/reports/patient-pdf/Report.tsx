@@ -1,4 +1,5 @@
 import { Document, Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
+import type { ReportImage } from './fit';
 import { pickFont } from './fonts';
 import type { RawMedia, ReportEntry, ReportModel } from './model';
 
@@ -188,12 +189,12 @@ function ImgOrPlaceholder({
   w,
   h,
   style,
-}: { id: string; images: Map<string, Buffer>; w: number; h: number; style?: PdfStyle }) {
-  const buf = images.get(id);
-  if (buf)
+}: { id: string; images: Map<string, ReportImage>; w: number; h: number; style?: PdfStyle }) {
+  const img = images.get(id);
+  if (img)
     return (
       <Image
-        src={{ data: buf, format: 'jpg' }}
+        src={{ data: img.data, format: 'jpg' }}
         style={[{ width: w, height: h }, ...(Array.isArray(style) ? style : style ? [style] : [])]}
       />
     );
@@ -216,7 +217,7 @@ function detailPill(text: string, i: number) {
   ) : null;
 }
 
-function ActivityBlock({ e, images }: { e: ReportEntry; images: Map<string, Buffer> }) {
+function ActivityBlock({ e, images }: { e: ReportEntry; images: Map<string, ReportImage> }) {
   const color = TYPE_COLOR[e.type] ?? C.muted;
   const label = e.type[0] + e.type.slice(1).toLowerCase();
   const pills = e.details.map((d, i) => detailPill(d, i)).filter(Boolean);
@@ -306,7 +307,7 @@ function ActivityBlock({ e, images }: { e: ReportEntry; images: Map<string, Buff
   );
 }
 
-export function Report({ model, images }: { model: ReportModel; images: Map<string, Buffer> }) {
+export function Report({ model, images }: { model: ReportModel; images: Map<string, ReportImage> }) {
   const p = model.patient;
   const kv = (label: string, val: string | null) =>
     val ? (

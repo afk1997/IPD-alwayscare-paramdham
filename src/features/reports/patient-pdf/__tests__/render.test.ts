@@ -54,7 +54,10 @@ describe('renderPatientReportPdf', () => {
     })
       .jpeg()
       .toBuffer();
-    const buf = await renderPatientReportPdf(model, new Map([['a1', img]]));
+    const buf = await renderPatientReportPdf(
+      model,
+      new Map([['a1', { data: img, width: 400, height: 300 }]]),
+    );
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
     expect(buf.length).toBeGreaterThan(2000);
   });
