@@ -3,7 +3,7 @@ import type React from 'react';
 import { LOGO_AR } from './assets';
 import { FitImage, KV, T } from './components';
 import type { ReportImage } from './fit';
-import type { RawMedia, ReportEntry, ReportModel, SectionEntry } from './model';
+import type { RawMedia, ReportEntry, ReportModel } from './model';
 import { BRAND, OUTCOME_BG, TYPE_COLOR, s } from './styles';
 
 const CLINIC_NAME = 'Arham Always Care';
@@ -37,6 +37,20 @@ const istDateTime = (iso: string) =>
     hour12: false,
     timeZone: 'Asia/Kolkata',
   })} IST`;
+
+// Full-width key-value row for intake fields whose values run long
+// (complaint, history, treatment notes); hidden when the value is empty.
+function KVWide({ label, val }: { label: string; val: string | null }) {
+  if (!val) return null;
+  return (
+    <View style={[s.kvItem, { width: '100%' }]}>
+      <Text style={s.k}>{label}</Text>
+      <T style={s.v} dyn={val}>
+        {val}
+      </T>
+    </View>
+  );
+}
 
 // ── Chrome ────────────────────────────────────────────────────────────────
 
@@ -100,7 +114,7 @@ export function Footer({ model }: { model: ReportModel }) {
   );
 }
 
-// ── Page-1 content ────────────────────────────────────────────────────────
+// ── Page-1 content: identity + the full intake form ──────────────────────
 
 export function Hero({ model, images }: { model: ReportModel; images: Map<string, ReportImage> }) {
   const p = model.patient;
@@ -128,168 +142,59 @@ export function Hero({ model, images }: { model: ReportModel; images: Map<string
         <View style={s.kv}>
           <KV label="Species" val={p.breedAge} />
           <KV label="Sex / Age" val={p.sexAge} />
+          <KV label="Color" val={p.color} />
+          <KV label="Weight" val={p.weightKg ? `${p.weightKg} kg` : null} />
+          <KV label="Vaccination" val={p.vaccination} />
+          <KV label="Flags" val={p.flags} />
           <KV label="Cage" val={p.cage} />
           <KV label="Admitted" val={istDate(p.admittedAt)} />
-          <KV label="Complaint" val={p.complaint} />
-          <KV label="Diagnosis" val={p.diagnosis} />
-          <KV label="Rescuer" val={p.rescuer} />
-          <KV label="Brought by" val={p.broughtBy} />
         </View>
       </View>
     </View>
   );
 }
 
-export function RecoveryStrip({ model, images }: { model: ReportModel; images: Map<string, ReportImage> }) {
-  if (!model.recovery) return null;
+export function MedicalIntake({ model }: { model: ReportModel }) {
+  const p = model.patient;
+  const fields = [
+    p.complaint,
+    p.injuryType,
+    p.history,
+    p.diagnosis,
+    p.immediateTreatment,
+    p.surgeryRequired,
+    p.testsAdvised,
+  ];
+  if (!fields.some(Boolean)) return null;
   return (
-    <>
-      <Text style={s.sec}>Recovery</Text>
-      <View style={s.recoveryRow}>
-        <View>
-          <FitImage id={model.recovery.first.assetId} images={images} maxW={160} maxH={120} />
-          <Text style={s.gcap}>{model.recovery.first.label}</Text>
-        </View>
-        {/* '»' — U+2192 '→' is not in the bundled NotoSans subset and falls
-            back to a Helvetica quote glyph. */}
-        <Text style={s.recoveryArrow}>»</Text>
-        <View>
-          <FitImage id={model.recovery.last.assetId} images={images} maxW={160} maxH={120} />
-          <Text style={s.gcap}>{model.recovery.last.label}</Text>
-        </View>
-      </View>
-    </>
-  );
-}
-
-export function StatTiles({ model }: { model: ReportModel }) {
-  return (
-    <BV title="Stay at a glance">
-      <Text style={s.sec}>Stay at a glance</Text>
-      <View style={s.stats}>
-        <View style={s.tile}>
-          <Text style={s.tileN}>{model.stats.days}</Text>
-          <Text style={s.tileL}>Days admitted</Text>
-        </View>
-        {model.stats.perType.map((t) => (
-          <View key={t.type} style={s.tile}>
-            <Text style={s.tileN}>{t.count}</Text>
-            <Text style={s.tileL}>{t.label}</Text>
-          </View>
-        ))}
-        <View style={s.tile}>
-          <Text style={s.tileN}>{model.stats.photos}</Text>
-          <Text style={s.tileL}>Photos</Text>
-        </View>
-      </View>
-      {model.outcome.causeOfDeath && (
-        <T style={s.dline} dyn={model.outcome.causeOfDeath}>
-          Cause of death: {model.outcome.causeOfDeath}
-        </T>
-      )}
-    </BV>
-  );
-}
-
-export function MedsTable({ model }: { model: ReportModel }) {
-  if (model.meds.length === 0) return null;
-  return (
-    <BV title="Medications">
-      <Text style={s.sec}>Medications given</Text>
-      <View style={s.table}>
-        <View style={s.trH}>
-          <Text style={s.th}>Drug</Text>
-          <Text style={s.th}>Dose</Text>
-          <Text style={s.th}>Route</Text>
-          <Text style={s.th}>Times</Text>
-          <Text style={s.th}>Span</Text>
-        </View>
-        {model.meds.map((m) => (
-          <View key={m.name} style={s.tr}>
-            <T style={[s.td, { fontWeight: 700 }]} dyn={m.name}>
-              {m.name}
-            </T>
-            <Text style={s.td}>{m.doses.join(', ') || '—'}</Text>
-            <Text style={s.td}>{m.routes.join(', ') || '—'}</Text>
-            <Text style={s.td}>{m.times}×</Text>
-            <Text style={s.td}>{m.span}</Text>
-          </View>
-        ))}
+    <BV title="Medical intake">
+      <Text style={s.sec}>Medical intake</Text>
+      <View style={s.kv}>
+        <KVWide label="Complaint" val={p.complaint} />
+        <KVWide label="Injury type" val={p.injuryType} />
+        <KVWide label="History" val={p.history} />
+        <KVWide label="Diagnosis" val={p.diagnosis} />
+        <KVWide label="Treatment" val={p.immediateTreatment} />
+        <KVWide label="Surgery req." val={p.surgeryRequired} />
+        <KVWide label="Tests advised" val={p.testsAdvised} />
       </View>
     </BV>
   );
 }
 
-// ── Pull-out clinical sections ────────────────────────────────────────────
-
-function SectionCard({ e, images }: { e: SectionEntry; images: Map<string, ReportImage> }) {
-  const color = TYPE_COLOR[e.type] ?? BRAND.muted;
+export function RescueIntake({ model }: { model: ReportModel }) {
+  const p = model.patient;
+  if (!p.rescuer && !p.rescuerPhone && !p.address && !p.ngo && !p.broughtBy) return null;
   return (
-    <View style={[s.sectionCard, { borderLeftColor: color }]}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        {/* flex:1 bounds the title so a long summary wraps instead of running
-            under the right-aligned timestamp. */}
-        <T style={{ fontSize: 10, fontWeight: 700, flex: 1, paddingRight: 8 }} dyn={e.summary}>
-          {e.summary}
-        </T>
-        <Text style={s.time}>
-          {e.dayLabel} · {e.time}
-        </Text>
+    <BV title="Rescue & owner">
+      <Text style={s.sec}>Rescue / owner</Text>
+      <View style={s.kv}>
+        <KV label="Rescuer" val={p.rescuer} />
+        <KV label="Contact" val={p.rescuerPhone} />
+        <KV label="NGO" val={p.ngo} />
+        <KV label="Brought by" val={p.broughtBy} />
+        <KVWide label="Address" val={p.address} />
       </View>
-      {e.details.map((l) => (
-        <T key={l} style={s.dline} dyn={l}>
-          {l}
-        </T>
-      ))}
-      {e.links.map((m) => (
-        <T key={m.assetId} style={s.link} dyn={m.filename}>
-          {m.kind === 'VIDEO' ? 'Video: ' : 'Doc: '}
-          {m.filename}
-        </T>
-      ))}
-      {e.stills.length > 0 && (
-        <View style={s.grid}>
-          {e.stills.map((m) => (
-            <View key={m.assetId}>
-              <FitImage id={m.assetId} images={images} maxW={150} maxH={220} />
-              <Text style={s.gcap}>
-                {e.time} · {m.label || (m.kind === 'XRAY' ? 'X-ray' : 'Photo')}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-      <T style={s.by} dyn={e.byName}>
-        by {e.byName}
-        {e.edited ? ' · edited' : ''}
-      </T>
-    </View>
-  );
-}
-
-export function SurgerySection({ model, images }: { model: ReportModel; images: Map<string, ReportImage> }) {
-  if (model.surgeries.length === 0) return null;
-  return (
-    <BV title="Surgery">
-      <Text style={s.sec}>Surgery</Text>
-      {model.surgeries.map((e) => (
-        <SectionCard key={e.occurredAt} e={e} images={images} />
-      ))}
-    </BV>
-  );
-}
-
-export function DiagnosticsSection({
-  model,
-  images,
-}: { model: ReportModel; images: Map<string, ReportImage> }) {
-  if (model.diagnostics.length === 0) return null;
-  return (
-    <BV title="Diagnostics">
-      <Text style={s.sec}>Diagnostics</Text>
-      {model.diagnostics.map((e) => (
-        <SectionCard key={e.occurredAt} e={e} images={images} />
-      ))}
     </BV>
   );
 }
@@ -328,23 +233,6 @@ function detailPill(text: string, i: number) {
 function ActivityBlock({ e, images }: { e: ReportEntry; images: Map<string, ReportImage> }) {
   const color = TYPE_COLOR[e.type] ?? BRAND.muted;
   const label = e.type[0] + e.type.slice(1).toLowerCase();
-
-  // SURGERY / DIAGNOSTIC live as full cards in their own sections; the log
-  // keeps a compact, cross-referenced row so the chronology stays complete.
-  if (e.crossRef) {
-    return (
-      <View style={[s.crow, { borderLeftColor: color }]} wrap={false}>
-        <Text style={s.time}>{e.time}</Text>
-        <Text style={[s.chip, { backgroundColor: `${color}22`, color }]}>{label}</Text>
-        <T style={{ flex: 1, fontSize: 9 }} dyn={e.summary}>
-          {e.summary}
-        </T>
-        <Text style={s.crossRef}>
-          {e.crossRef === 'surgery' ? '» Surgery section' : '» Diagnostics section'}
-        </Text>
-      </View>
-    );
-  }
 
   const pills = e.details.map((d, i) => detailPill(d, i)).filter(Boolean);
   const lines = e.details.filter(
@@ -470,47 +358,35 @@ export function DocumentsList({ model }: { model: ReportModel }) {
 export function OutcomeSignoff({ model }: { model: ReportModel }) {
   const tone = OUTCOME_BG[model.outcome.kind];
   return (
-    <BV title="Outcome & sign-off">
-      <Text style={s.sec}>Outcome & sign-off</Text>
+    <BV title="Outcome">
+      <Text style={s.sec}>Outcome</Text>
       <View style={[s.outcomeBox, { borderColor: tone, backgroundColor: `${tone}0d` }]}>
         <Text style={[s.outcomeTitle, { color: tone }]}>{model.outcome.label.toUpperCase()}</Text>
-        {model.outcome.causeOfDeath && (
+        {!!model.outcome.causeOfDeath && (
           <T style={s.dline} dyn={model.outcome.causeOfDeath}>
             Cause of death: {model.outcome.causeOfDeath}
           </T>
         )}
-        {model.outcome.summary && (
+        {!!model.outcome.summary && (
           <T style={s.dline} dyn={model.outcome.summary}>
             {model.outcome.summary}
           </T>
         )}
-        {model.outcome.instructions && (
+        {!!model.outcome.instructions && (
           <T style={s.dline} dyn={model.outcome.instructions}>
             Aftercare: {model.outcome.instructions}
           </T>
         )}
-        {model.outcome.byName && (
+        {!!model.outcome.byName && (
           <T style={s.by} dyn={model.outcome.byName}>
             {model.outcome.kind === 'deceased' ? 'Recorded by ' : 'Discharged by '}
             {model.outcome.byName}
           </T>
         )}
       </View>
-      <View wrap={false}>
-        <View style={s.signRow}>
-          <View style={s.signCell}>
-            <View style={s.signRule} />
-            <Text style={s.signLabel}>Attending veterinarian</Text>
-          </View>
-          <View style={s.signCell}>
-            <View style={s.signRule} />
-            <Text style={s.signLabel}>Date</Text>
-          </View>
-        </View>
-        <T style={s.provenance} dyn={model.generatedByName}>
-          Generated from IPD records on {istDateTime(model.generatedAt)} · by {model.generatedByName}
-        </T>
-      </View>
+      <T style={s.provenance} dyn={model.generatedByName}>
+        Generated from IPD records on {istDateTime(model.generatedAt)} · by {model.generatedByName}
+      </T>
     </BV>
   );
 }

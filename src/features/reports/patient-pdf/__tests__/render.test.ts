@@ -20,12 +20,24 @@ const model: ReportModel = {
     species: 'Dog',
     breedAge: 'Dog · Indie',
     sexAge: 'MALE · ~2y',
+    color: 'Brown',
+    weightKg: '12.5',
+    vaccination: 'None',
+    flags: 'Sterilized · Contagious',
     cage: 'C-3',
     status: 'DISCHARGED',
     admittedAt: '2026-05-25T10:00:00.000Z',
     complaint: 'Hit by vehicle',
+    injuryType: 'Trauma',
+    history: 'Found roadside near the temple',
     diagnosis: 'Fracture',
+    immediateTreatment: 'Pain relief, wound dressing',
+    surgeryRequired: 'Likely',
+    testsAdvised: 'X-ray, Blood test',
     rescuer: 'Asha',
+    rescuerPhone: '+91 99999 99999',
+    address: '12 Temple Road',
+    ngo: 'Seva',
     broughtBy: 'NGO',
     avatarAssetId: 'a1',
   },
@@ -37,35 +49,23 @@ const model: ReportModel = {
     instructions: 'Cone for 5 days',
     byName: 'Dr. Mehta',
   },
-  recovery: {
-    first: { assetId: 'a1', label: 'DAY 1 · at admission' },
-    last: { assetId: 'a2', label: 'DAY 5 · at discharge' },
-  },
-  stats: { days: 5, perType: [{ type: 'FOOD', label: 'Food & water', count: 1 }], photos: 2 },
-  meds: [
-    { name: 'Amoxiclav', doses: ['20mg/kg'], routes: ['Oral'], times: 2, days: 2, span: '26 May – 27 May' },
-  ],
-  surgeries: [
-    {
-      occurredAt: '2026-05-26T11:30:00.000Z',
-      type: 'SURGERY',
-      time: '11:30',
-      byName: 'Dr. Iyer',
-      edited: false,
-      summary: 'Fracture repair (45 min) — Dr. Iyer',
-      details: ['Anesthesia: Iso', 'Findings: clean break'],
-      stills: [still('a2')],
-      links: [],
-      dayLabel: 'Tue 26 May 2026',
-    },
-  ],
-  diagnostics: [],
   admissionMedia: [still('a1')],
   days: [
     {
       key: '2026-05-26',
       label: 'Tue 26 May 2026',
       entries: [
+        {
+          occurredAt: '2026-05-26T11:30:00.000Z',
+          type: 'SURGERY',
+          time: '11:30',
+          byName: 'Dr. Iyer',
+          edited: false,
+          summary: 'Fracture repair (45 min) — Dr. Iyer',
+          details: ['Anesthesia: Iso', 'Findings: clean break'],
+          stills: [still('a2')],
+          links: [],
+        },
         {
           occurredAt: '2026-05-26T12:00:00.000Z',
           type: 'FOOD',
@@ -77,18 +77,6 @@ const model: ReportModel = {
           stills: [still('a1')],
           links: [],
         },
-        {
-          occurredAt: '2026-05-26T11:30:00.000Z',
-          type: 'SURGERY',
-          time: '11:30',
-          byName: 'Dr. Iyer',
-          edited: false,
-          summary: 'Fracture repair (45 min) — Dr. Iyer',
-          details: [],
-          stills: [],
-          links: [],
-          crossRef: 'surgery',
-        },
       ],
     },
   ],
@@ -96,7 +84,7 @@ const model: ReportModel = {
 };
 
 describe('renderPatientReportPdf', () => {
-  it('renders the v2 document (brand, sections, recovery, sign-off, mixed scripts)', async () => {
+  it('renders the intake-first document (brand, intake, timeline, outcome, mixed scripts)', async () => {
     const mk = (rgb: { r: number; g: number; b: number }, w: number, h: number) =>
       sharp({ create: { width: w, height: h, channels: 3 as const, background: rgb } })
         .jpeg()

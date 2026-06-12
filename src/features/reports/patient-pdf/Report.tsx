@@ -5,17 +5,14 @@ import type { ReportModel } from './model';
 import {
   AdmissionMediaSection,
   DayLog,
-  DiagnosticsSection,
   DocumentsList,
   Footer,
   Hero,
   Masthead,
-  MedsTable,
+  MedicalIntake,
   OutcomeSignoff,
   PageHeader,
-  RecoveryStrip,
-  StatTiles,
-  SurgerySection,
+  RescueIntake,
 } from './sections';
 import { s } from './styles';
 
@@ -27,11 +24,8 @@ export function Report({ model, images }: { model: ReportModel; images: Map<stri
         <Masthead model={model} logo={logo} />
         <PageHeader model={model} logo={logo} />
         <Hero model={model} images={images} />
-        <RecoveryStrip model={model} images={images} />
-        <StatTiles model={model} />
-        <MedsTable model={model} />
-        <SurgerySection model={model} images={images} />
-        <DiagnosticsSection model={model} images={images} />
+        <MedicalIntake model={model} />
+        <RescueIntake model={model} />
         <AdmissionMediaSection model={model} images={images} />
         <DayLog model={model} images={images} />
         <DocumentsList model={model} />

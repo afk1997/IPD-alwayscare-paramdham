@@ -29,6 +29,7 @@ export async function getPatientReportData(
     where: { id: animalId, deletedAt: null },
     include: {
       cage: { select: { name: true } },
+      testsAdvised: true,
       media: { where: { asset: { status: 'READY' } }, orderBy: { order: 'asc' }, include: { asset: true } },
       deathRecord: {
         select: {
@@ -98,12 +99,26 @@ export async function getPatientReportData(
       breed: animal.breed,
       gender: animal.gender,
       ageText: animal.ageText,
+      color: animal.color,
+      weightKg: animal.weightKg ? String(animal.weightKg) : null,
+      vaccination: animal.vaccination,
+      sterilized: animal.sterilized,
+      aggressive: animal.aggressive,
+      contagious: animal.contagious,
       cageName: animal.cage?.name ?? null,
       status: animal.status,
       admittedAt: animal.admittedAt.toISOString(),
       complaint: animal.complaint,
+      injuryType: animal.injuryType,
+      history: animal.history,
       diagnosis: animal.diagnosis,
+      immediateTreatment: animal.immediateTreatment,
+      surgeryRequired: animal.surgeryRequired,
+      testsAdvised: animal.testsAdvised.map((t) => t.test),
       rescuer: animal.rescuer,
+      rescuerPhone: animal.rescuerPhone,
+      address: animal.address,
+      ngo: animal.ngo,
       broughtBy: animal.broughtBy,
       media: animal.media.map(toRawMedia),
       death,
@@ -146,7 +161,5 @@ export function collectImageAssets(model: ReportModel): { assetId: string; stora
   for (const doc of model.documents)
     if (doc.file && (doc.file.kind === 'PHOTO' || doc.file.kind === 'XRAY'))
       out.set(doc.file.assetId, doc.file.storageKey);
-  for (const e of [...model.surgeries, ...model.diagnostics])
-    for (const m of e.stills) out.set(m.assetId, m.storageKey);
   return Array.from(out.entries()).map(([assetId, storageKey]) => ({ assetId, storageKey }));
 }
