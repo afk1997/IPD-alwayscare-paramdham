@@ -95,7 +95,6 @@ const ANIMAL_SEEDS = [
     surgeryRequired: 'Likely TPLO',
     contagious: false,
     status: 'CRITICAL' as const,
-    ward: 'Surgery-1',
     testsAdvised: ['XRAY', 'BLOOD_TEST'] as const,
   },
   {
@@ -118,7 +117,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'Sub-Q fluids, NSAIDs, ABx',
     contagious: true,
     status: 'OBSERVATION' as const,
-    ward: 'ISO-A',
     testsAdvised: ['BLOOD_TEST'] as const,
   },
   {
@@ -140,7 +138,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'IV fluids, antiemetic',
     contagious: false,
     status: 'STABLE' as const,
-    ward: 'Med-2',
     testsAdvised: ['USG', 'BLOOD_TEST'] as const,
   },
   {
@@ -164,7 +161,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'Maggot extraction under sedation, broad-spectrum ABx',
     contagious: false,
     status: 'CRITICAL' as const,
-    ward: 'Surgery-2',
     testsAdvised: ['BLOOD_TEST'] as const,
   },
   {
@@ -186,7 +182,6 @@ const ANIMAL_SEEDS = [
     immediateTreatment: 'BG curve, hydration',
     contagious: false,
     status: 'STABLE' as const,
-    ward: 'Med-3',
     testsAdvised: ['BLOOD_TEST', 'USG'] as const,
   },
 ];

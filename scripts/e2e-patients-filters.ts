@@ -36,7 +36,7 @@ async function main() {
 
     log('2) Navigate to /patients…');
     await page.goto('/patients');
-    await page.getByPlaceholder(/Search name, breed, ward/).waitFor({ timeout: 10_000 });
+    await page.getByPlaceholder(/Search name, breed/).waitFor({ timeout: 10_000 });
 
     const waitForQuery = (pred: () => boolean, label: string) =>
       page.waitForFunction(pred, undefined, { timeout: 8_000, polling: 100 }).catch(() => {
@@ -47,7 +47,7 @@ async function main() {
     // Scope to filter buttons by waiting for the search input first, then
     // walking up to its container — the only chip buttons are inside the
     // PatientListFilters component.
-    const searchInput = page.getByPlaceholder(/Search name, breed, ward/);
+    const searchInput = page.getByPlaceholder(/Search name, breed/);
     await searchInput.waitFor();
     const filterRow = searchInput.locator('xpath=ancestor::div[contains(@class,"flex-col")][1]');
     await filterRow.getByRole('button', { name: /^Critical$/ }).click();
@@ -64,7 +64,7 @@ async function main() {
     await waitForQuery(() => !window.location.search.includes('status='), 'status cleared');
 
     log('6) Type a search query…');
-    await page.getByPlaceholder(/Search name, breed, ward/).fill('zz_nonexistent_query');
+    await page.getByPlaceholder(/Search name, breed/).fill('zz_nonexistent_query');
     await waitForQuery(() => window.location.search.includes('q=zz_nonexistent_query'), '?q=…');
     await page.getByText(/No animals match these filters/).waitFor({ timeout: 8_000 });
 
