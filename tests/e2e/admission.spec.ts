@@ -22,9 +22,11 @@ test('admit a new animal end-to-end', async ({ page }) => {
   await page.getByLabel('Contact number').fill('+91 99999 99999');
   await page.getByRole('button', { name: 'Continue' }).click();
 
-  // Step 3: Medical
+  // Step 3: Medical — chief complaint is required, so an empty Continue
+  // must block with an inline error and stay on this step.
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByText('Chief complaint is required')).toBeVisible();
   await page.getByLabel('Chief complaint').fill('Hit by vehicle');
-  await page.getByLabel('Ward').fill('ICU-2');
   await page.getByLabel('Status').selectOption('CRITICAL');
   await page.getByRole('button', { name: 'Continue' }).click();
 

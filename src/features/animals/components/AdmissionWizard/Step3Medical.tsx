@@ -13,11 +13,16 @@ interface Props {
 }
 
 export function Step3Medical({ form, cages }: Props) {
-  const { register } = form;
+  const { register, formState } = form;
   return (
     <FormSection title="Medical condition" description="Why is this animal in IPD?">
-      <FormField label="Chief complaint" htmlFor="complaint">
-        <Textarea id="complaint" rows={3} {...register('complaint')} />
+      <FormField
+        label="Chief complaint"
+        htmlFor="complaint"
+        required
+        error={formState.errors.complaint?.message}
+      >
+        <Textarea id="complaint" rows={3} {...register('complaint')} invalid={!!formState.errors.complaint} />
       </FormField>
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Injury type" htmlFor="injuryType" hint="Trauma, medical, post-op, etc.">
@@ -27,9 +32,6 @@ export function Step3Medical({ form, cages }: Props) {
           <CageSelect id="cageId" options={cages} {...register('cageId')} />
         </FormField>
       </div>
-      <FormField label="Ward (legacy)" htmlFor="ward">
-        <Input id="ward" placeholder="ICU-1, Cat ward…" {...register('ward')} />
-      </FormField>
       <FormField label="History" htmlFor="history">
         <Textarea id="history" rows={3} {...register('history')} />
       </FormField>
