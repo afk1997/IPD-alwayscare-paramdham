@@ -43,6 +43,7 @@ const model: ReportModel = {
       label: 'Tue 26 May 2026',
       entries: [
         {
+          occurredAt: '2026-05-26T12:00:00.000Z',
           type: 'FOOD',
           time: '12:00',
           byName: 'કૂતરો',

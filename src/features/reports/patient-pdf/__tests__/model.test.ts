@@ -137,7 +137,7 @@ describe('buildReportModel', () => {
     const m = buildReportModel(r);
     expect(m.recovery).toEqual({
       first: { assetId: 'adm1', label: 'DAY 1 · at admission' },
-      last: { assetId: 'late1', label: `DAY ${m.stats.days} · at discharge` },
+      last: { assetId: 'late1', label: 'DAY 4 · at discharge' },
     });
   });
 

@@ -77,6 +77,8 @@ export interface RawReportData {
 }
 
 export interface ReportEntry {
+  // Raw ISO timestamp — the renderer's unique key (day+time can collide).
+  occurredAt: string;
   type: ActivityType;
   time: string;
   byName: string;
@@ -226,6 +228,7 @@ export function buildReportModel(raw: RawReportData): ReportModel {
     photos += stills.length;
     if (act.type === 'TREATMENT') accumulateMeds(medMap, act);
     const entry: ReportEntry = {
+      occurredAt: act.occurredAt,
       type: act.type,
       time: timeLabel(act.occurredAt),
       byName: act.byName,

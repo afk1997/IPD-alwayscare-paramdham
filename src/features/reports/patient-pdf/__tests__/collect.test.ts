@@ -10,6 +10,7 @@ const model = {
       label: 'd',
       entries: [
         {
+          occurredAt: 'iso',
           stills: [{ assetId: 'p1', storageKey: 'k-p1', kind: 'PHOTO', label: null, filename: 'p' }],
           type: 'FOOD',
           time: '12:00',
@@ -34,6 +35,7 @@ const model = {
   ],
   surgeries: [
     {
+      occurredAt: 'iso',
       stills: [{ assetId: 'sx1', storageKey: 'k-sx1', kind: 'XRAY', label: null, filename: 's' }],
       type: 'SURGERY',
       time: '11:30',
