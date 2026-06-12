@@ -72,7 +72,6 @@ export async function getPatientReportData(
       breed: animal.breed,
       gender: animal.gender,
       ageText: animal.ageText,
-      ward: animal.ward,
       cageName: animal.cage?.name ?? null,
       status: animal.status,
       admittedAt: animal.admittedAt.toISOString(),

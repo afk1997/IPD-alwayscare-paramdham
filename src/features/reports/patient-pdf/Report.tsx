@@ -362,7 +362,7 @@ export function Report({ model, images }: { model: ReportModel; images: Map<stri
             <View style={s.kv}>
               {kv('Species', p.breedAge)}
               {kv('Sex / Age', p.sexAge)}
-              {kv('Ward / Cage', p.wardCage)}
+              {kv('Cage', p.cage)}
               {kv(
                 'Admitted',
                 new Date(p.admittedAt).toLocaleDateString('en-GB', {

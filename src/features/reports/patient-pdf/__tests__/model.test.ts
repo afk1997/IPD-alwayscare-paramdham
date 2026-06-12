@@ -10,7 +10,6 @@ const raw: RawReportData = {
     breed: 'Indie',
     gender: 'MALE',
     ageText: '~2y',
-    ward: 'ICU',
     cageName: 'C-3',
     status: 'DISCHARGED',
     admittedAt: '2026-05-25T10:00:00.000Z',
@@ -51,6 +50,7 @@ describe('buildReportModel', () => {
   it('computes outcome, stats, meds, day groups', () => {
     const m = buildReportModel(raw);
     expect(m.patient.name).toBe('Facebook'); // trimmed
+    expect(m.patient.cage).toBe('C-3');
     expect(m.outcome.kind).toBe('discharged');
     expect(m.stats.days).toBe(4); // 25 -> 29 May
     expect(m.stats.perType.find((t) => t.type === 'TREATMENT')?.count).toBe(1);

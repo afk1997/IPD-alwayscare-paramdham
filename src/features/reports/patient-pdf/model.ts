@@ -55,7 +55,6 @@ export interface RawReportData {
     breed: string | null;
     gender: string | null;
     ageText: string | null;
-    ward: string | null;
     cageName: string | null;
     status: string;
     admittedAt: string;
@@ -102,7 +101,7 @@ export interface ReportModel {
     species: string;
     breedAge: string;
     sexAge: string;
-    wardCage: string;
+    cage: string;
     status: string;
     admittedAt: string;
     complaint: string | null;
@@ -222,7 +221,7 @@ export function buildReportModel(raw: RawReportData): ReportModel {
       species: a.species,
       breedAge: [a.species, a.breed].filter(Boolean).join(' · '),
       sexAge: [a.gender, a.ageText].filter(Boolean).join(' · '),
-      wardCage: [a.ward, a.cageName].filter(Boolean).join(' · '),
+      cage: a.cageName ?? '',
       status: a.status,
       admittedAt: a.admittedAt,
       complaint: a.complaint,

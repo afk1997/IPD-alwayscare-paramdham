@@ -11,7 +11,7 @@ const model: ReportModel = {
     species: 'Dog',
     breedAge: 'Dog · Indie',
     sexAge: 'MALE · ~2y',
-    wardCage: 'ICU · C-3',
+    cage: 'C-3',
     status: 'STABLE',
     admittedAt: '2026-05-25T10:00:00.000Z',
     complaint: 'Hit by vehicle',
