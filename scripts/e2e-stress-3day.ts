@@ -213,7 +213,6 @@ async function admitAnimal(actor: Actor, seed: (typeof ANIMAL_SEEDS)[number]) {
     history: undefined,
     contagious: seed.contagious,
     status: seed.status,
-    ward: seed.ward,
     diagnosis: seed.diagnosis,
     immediateTreatment: seed.immediateTreatment,
     surgeryRequired: 'surgeryRequired' in seed ? seed.surgeryRequired : undefined,
@@ -521,9 +520,7 @@ async function main() {
   // ── Inline animal edit — triggers UpdateAnimalSchema ──────────────────
   if (admitted[1]) {
     try {
-      await time('updateAnimal (ward + ageText)', () =>
-        updateAnimal(admin, admitted[1]!.id, { ward: 'ISO-B', ageText: '2y 3m' }),
-      );
+      await time('updateAnimal (ageText)', () => updateAnimal(admin, admitted[1]!.id, { ageText: '2y 3m' }));
       log('  + updateAnimal OK (Zod validated)');
     } catch (e) {
       flag('reliability', `updateAnimal failed: ${e instanceof Error ? e.message : String(e)}`);

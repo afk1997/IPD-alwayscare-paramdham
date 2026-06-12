@@ -53,7 +53,7 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
     address: nz(parsed.address),
     ngo: nz(parsed.ngo),
     broughtBy: nz(parsed.broughtBy),
-    complaint: nz(parsed.complaint),
+    complaint: parsed.complaint,
     injuryType: nz(parsed.injuryType),
     history: nz(parsed.history),
     diagnosis: nz(parsed.diagnosis),
@@ -61,7 +61,6 @@ export async function createAnimal(actor: Actor, input: CreateAnimalInput) {
     surgeryRequired: nz(parsed.surgeryRequired),
     contagious: parsed.contagious,
     status: parsed.status as AnimalStatus,
-    ward: nz(parsed.ward),
     // Set the FK scalar directly (not `cage: { connect }`): a relational
     // connect on this 1-to-1 would STEAL an occupied cage by nulling its
     // current occupant. The scalar write instead trips the unique index
@@ -179,7 +178,6 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
   if (parsed.surgeryRequired !== undefined) data.surgeryRequired = parsed.surgeryRequired;
   if (parsed.contagious !== undefined) data.contagious = parsed.contagious;
   if (parsed.status !== undefined) data.status = parsed.status;
-  if (parsed.ward !== undefined) data.ward = parsed.ward;
   // Scalar FK write (not `cage: { connect }`) so reassigning to an occupied
   // cage trips the unique index (P2002) instead of silently stealing it.
   if (parsed.cageId !== undefined) data.cageId = parsed.cageId;
@@ -192,7 +190,7 @@ export async function updateAnimal(actor: Actor, animalId: string, patch: Update
         include: { testsAdvised: true, cage: { select: { id: true, name: true } } },
       });
       // SD-10: per-field diff. The prior implementation only recorded
-      // {name, status, ward, complaint} — silently dropping clinical edits
+      // {name, status, complaint} — silently dropping clinical edits
       // like diagnosis, contagious, weightKg, vaccination, etc.
       const diff = diffAnimalFields(before, updated);
       if (diff.changedKeys.length > 0) {
@@ -235,7 +233,6 @@ const AUDITED_ANIMAL_FIELDS = [
   'surgeryRequired',
   'contagious',
   'status',
-  'ward',
   'cageId',
 ] as const;
 
@@ -288,7 +285,6 @@ export async function softDeleteAnimal(actor: Actor, animalId: string) {
         name: before.name,
         species: before.species,
         status: before.status,
-        ward: before.ward,
         admittedAt: before.admittedAt.toISOString(),
       },
     });

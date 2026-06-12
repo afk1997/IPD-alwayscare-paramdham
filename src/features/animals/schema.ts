@@ -41,7 +41,6 @@ export const CreateAnimalSchema = z.object({
   history: z.string().max(2000).optional().or(z.literal('')),
   contagious: z.coerce.boolean().default(false),
   status: z.enum(STATUSES).default('OBSERVATION'),
-  ward: z.string().max(40).optional().or(z.literal('')),
   cageId: z.string().cuid().optional().or(z.literal('')),
 
   // doctor notes
@@ -97,7 +96,6 @@ export const UpdateAnimalSchema = z.object({
   surgeryRequired: nullableStr(200),
   contagious: z.boolean().optional(),
   status: z.enum(STATUSES).optional(),
-  ward: nullableStr(40),
   cageId: z.string().cuid().nullable().optional(),
 });
 export type UpdateAnimalInput = z.infer<typeof UpdateAnimalSchema>;

@@ -60,10 +60,13 @@ describe('animals service — integration vs real DB', () => {
       testsAdvised: [],
       mediaAssetIds: [],
     });
-    await expect(updateAnimal(staff, created.id, { ward: 'A' })).rejects.toBeInstanceOf(RbacError);
+    await expect(updateAnimal(staff, created.id, { injuryType: 'Trauma' })).rejects.toBeInstanceOf(RbacError);
     // DOCTOR is allowed
-    const updated = await updateAnimal(doctor, created.id, { ward: 'A', diagnosis: 'Probable URI' });
-    expect(updated.ward).toBe('A');
+    const updated = await updateAnimal(doctor, created.id, {
+      injuryType: 'Trauma',
+      diagnosis: 'Probable URI',
+    });
+    expect(updated.injuryType).toBe('Trauma');
     expect(updated.diagnosis).toBe('Probable URI');
   });
 
