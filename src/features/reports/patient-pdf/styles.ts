@@ -26,7 +26,7 @@ export const TYPE_COLOR: Record<string, string> = {
 
 export const OUTCOME_BG = { 'in-care': '#93370D', discharged: '#15803D', deceased: '#B42318' } as const;
 
-export const PAGE_PAD_TOP = 44; // room for the fixed compact header on pages 2+
+export const PAGE_PAD_TOP = 50; // fixed compact header (≈46pt: 14 padding + 31 logo + 1 border) + breathing room
 export const PAGE_PAD_X = 30;
 
 export const s = StyleSheet.create({

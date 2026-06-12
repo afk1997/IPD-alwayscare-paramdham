@@ -6,6 +6,8 @@ import type { ReportImage } from './fit';
 import type { RawMedia, ReportEntry, ReportModel, SectionEntry } from './model';
 import { BRAND, OUTCOME_BG, TYPE_COLOR, s } from './styles';
 
+const CLINIC_NAME = 'Arham Always Care';
+
 // react-pdf 4.5.1 types don't expose `bookmark` on ViewProps, but the prop
 // is supported at runtime.  This thin wrapper avoids scattering `as any`.
 function BV({
@@ -44,7 +46,7 @@ export function Masthead({ model, logo }: { model: ReportModel; logo: Buffer | n
       {logo ? (
         <Image src={logo} style={{ width: 200, height: 200 * LOGO_AR }} />
       ) : (
-        <Text style={s.mastBrandFallback}>Arham Always Care</Text>
+        <Text style={s.mastBrandFallback}>{CLINIC_NAME}</Text>
       )}
       <Text style={s.mastKicker}>
         PATIENT REPORT · {(model.rangeLabel ?? 'WHOLE STAY').toUpperCase()} · GENERATED{' '}
@@ -68,7 +70,7 @@ export function PageHeader({ model, logo }: { model: ReportModel; logo: Buffer |
               <Image src={logo} style={{ width: 56, height: 56 * LOGO_AR }} />
             ) : (
               <Text style={{ fontFamily: 'Noto Serif', fontWeight: 700, fontSize: 9, color: BRAND.red }}>
-                Arham Always Care
+                {CLINIC_NAME}
               </Text>
             )}
             <T style={s.pgHeadMeta} dyn={model.patient.name}>
@@ -89,7 +91,7 @@ export function Footer({ model }: { model: ReportModel }) {
       </T>
       <Text
         style={s.footText}
-        render={({ pageNumber, totalPages }) => `Arham Always Care · Page ${pageNumber} of ${totalPages}`}
+        render={({ pageNumber, totalPages }) => `${CLINIC_NAME} · Page ${pageNumber} of ${totalPages}`}
       />
     </View>
   );
@@ -218,7 +220,7 @@ export function MedsTable({ model }: { model: ReportModel }) {
 function SectionCard({ e, images }: { e: SectionEntry; images: Map<string, ReportImage> }) {
   const color = TYPE_COLOR[e.type] ?? BRAND.muted;
   return (
-    <View style={[s.sectionCard, { borderLeftColor: color }]} wrap={false}>
+    <View style={[s.sectionCard, { borderLeftColor: color }]}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <T style={{ fontSize: 10, fontWeight: 700 }} dyn={e.summary}>
           {e.summary}
@@ -426,7 +428,7 @@ export function DayLog({ model, images }: { model: ReportModel; images: Map<stri
       </Text>
       {model.days.map((d) => (
         <View key={d.key}>
-          <View style={s.dayBand}>
+          <View style={s.dayBand} minPresenceAhead={40}>
             <Text style={s.dayLabel}>{d.label}</Text>
             <Text style={s.dayCnt}>
               {d.entries.length} {d.entries.length === 1 ? 'entry' : 'entries'}
@@ -461,7 +463,7 @@ export function DocumentsList({ model }: { model: ReportModel }) {
 export function OutcomeSignoff({ model }: { model: ReportModel }) {
   const tone = OUTCOME_BG[model.outcome.kind];
   return (
-    <BV title="Outcome & sign-off" wrap={false}>
+    <BV title="Outcome & sign-off">
       <Text style={s.sec}>Outcome & sign-off</Text>
       <View style={[s.outcomeBox, { borderColor: `${tone}88`, backgroundColor: `${tone}0d` }]}>
         <Text style={[s.outcomeTitle, { color: tone }]}>{model.outcome.label.toUpperCase()}</Text>
@@ -487,19 +489,21 @@ export function OutcomeSignoff({ model }: { model: ReportModel }) {
           </T>
         )}
       </View>
-      <View style={s.signRow}>
-        <View style={s.signCell}>
-          <View style={s.signRule} />
-          <Text style={s.signLabel}>Attending veterinarian</Text>
+      <View wrap={false}>
+        <View style={s.signRow}>
+          <View style={s.signCell}>
+            <View style={s.signRule} />
+            <Text style={s.signLabel}>Attending veterinarian</Text>
+          </View>
+          <View style={s.signCell}>
+            <View style={s.signRule} />
+            <Text style={s.signLabel}>Date</Text>
+          </View>
         </View>
-        <View style={s.signCell}>
-          <View style={s.signRule} />
-          <Text style={s.signLabel}>Date</Text>
-        </View>
+        <T style={s.provenance} dyn={model.generatedByName}>
+          Generated from IPD records on {istDateTime(model.generatedAt)} · by {model.generatedByName}
+        </T>
       </View>
-      <T style={s.provenance} dyn={model.generatedByName}>
-        Generated from IPD records on {istDateTime(model.generatedAt)} · by {model.generatedByName}
-      </T>
     </BV>
   );
 }
