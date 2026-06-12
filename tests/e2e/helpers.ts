@@ -8,6 +8,21 @@ export const E2E_ADMIN = {
 };
 
 export async function login(page: Page, email = E2E_ADMIN.email, password = E2E_ADMIN.password) {
+  // The suite runs against `next dev`, whose dev-tools badge (<nextjs-portal>)
+  // floats above the UI and can intercept clicks (e.g. the activity sheet's
+  // Edit button). Hide it in every document this page loads.
+  await page.addInitScript(() => {
+    const hide = () => {
+      const style = document.createElement('style');
+      style.textContent = 'nextjs-portal { display: none !important; }';
+      document.head.appendChild(style);
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', hide);
+    } else {
+      hide();
+    }
+  });
   await page.goto('/login');
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);

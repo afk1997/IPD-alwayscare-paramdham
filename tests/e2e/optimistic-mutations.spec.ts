@@ -3,18 +3,31 @@ import { login } from './helpers';
 
 test('saving an activity does not trigger a full page reload', async ({ page }) => {
   await login(page);
-  await page.goto('/patients');
 
-  const hrefs = await page
-    .locator('a[href^="/patients/"]')
-    .evaluateAll((els) => els.map((e) => e.getAttribute('href')));
-  const realPatient = hrefs.find((h) => h && h !== '/patients/new' && /^\/patients\/[a-z0-9]{20,}$/.test(h));
-  if (!realPatient) {
-    test.skip(true, 'no patient cards seeded');
-    return;
-  }
-  await page.goto(realPatient);
-  await page.waitForLoadState('networkidle').catch(() => {});
+  // Self-sufficient data: admit a patient and log one activity, so the edit
+  // flow below never depends on what earlier specs left in the database.
+  // (Picking "the first patient card" used to skip whenever the most recent
+  // admission had no activities.)
+  await page.goto('/patients/new');
+  await page.getByLabel('Animal name / temporary ID').fill('OptimisticTest');
+  await page.getByLabel('Species').selectOption('Dog');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByLabel('Chief complaint').fill('Optimistic update flow');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Admit animal' }).click();
+  await page.waitForURL(/\/patients\/[a-z0-9]+$/, { timeout: 30_000 });
+
+  await page.getByRole('button', { name: /log activity/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /food & water/i })
+    .click();
+  await page.getByLabel('Food type').fill('OptimisticFood');
+  await page.getByRole('button', { name: 'Fully', exact: true }).click();
+  await page.getByRole('button', { name: 'Save entry' }).click();
+  await expect(page.getByText('OptimisticFood')).toBeVisible({ timeout: 10_000 });
 
   // Mark a unique sentinel on the page; if the timeline triggers a hard
   // reload, the sentinel disappears.
@@ -22,13 +35,7 @@ test('saving an activity does not trigger a full page reload', async ({ page }) 
     (window as unknown as { __phase2Sentinel: number }).__phase2Sentinel = Date.now();
   });
 
-  const firstRow = page.getByTestId('activity-row').first();
-  const visible = await firstRow.isVisible().catch(() => false);
-  if (!visible) {
-    test.skip(true, 'no activity rows on this patient');
-    return;
-  }
-  await firstRow.click();
+  await page.getByTestId('activity-row').first().click();
 
   const editButton = page.getByRole('button', { name: /^edit$/i });
   if (!(await editButton.isVisible().catch(() => false))) {
