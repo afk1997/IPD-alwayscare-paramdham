@@ -34,7 +34,7 @@ describe('getPatientReportData — integration vs real DB', () => {
     expect(model?.outcome.kind).toBe('discharged');
     expect(model?.outcome.summary).toBe('Recovered well');
     expect(model?.outcome.instructions).toBe('Cone for 5 days');
-    expect(model?.outcome.byName).toBeTruthy();
+    expect(model?.outcome.byName).toBe(doctor.name);
     expect(model?.generatedByName).toBe('QA Generator');
   });
 });

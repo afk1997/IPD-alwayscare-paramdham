@@ -75,7 +75,7 @@ export async function getPatientReportData(
       ? {
           causeOfDeath: animal.deathRecord.causeOfDeath,
           diedAt: animal.deathRecord.diedAt.toISOString(),
-          recordedByName: animal.deathRecord.recordedBy?.name ?? null,
+          recordedByName: animal.deathRecord.recordedBy.name,
         }
       : null;
   const discharge =
@@ -84,7 +84,7 @@ export async function getPatientReportData(
           dischargedAt: animal.dischargeRecord.dischargedAt.toISOString(),
           summary: animal.dischargeRecord.summary,
           instructions: animal.dischargeRecord.instructions,
-          dischargedByName: animal.dischargeRecord.dischargedBy?.name ?? null,
+          dischargedByName: animal.dischargeRecord.dischargedBy.name,
         }
       : null;
 

@@ -76,4 +76,19 @@ describe('buildReportModel', () => {
     expect(m.outcome.byName).toBe('Dr. Mehta');
     expect(m.generatedByName).toBe('Asha (Reception)');
   });
+
+  it('builds the deceased outcome with cause and recorded-by', () => {
+    const dead: typeof raw = structuredClone(raw);
+    dead.animal.discharge = null;
+    dead.animal.death = {
+      causeOfDeath: 'Multi-organ failure',
+      diedAt: '2026-05-28T22:00:00.000Z',
+      recordedByName: 'Dr. Iyer',
+    };
+    const m = buildReportModel(dead);
+    expect(m.outcome.kind).toBe('deceased');
+    expect(m.outcome.causeOfDeath).toBe('Multi-organ failure');
+    expect(m.outcome.byName).toBe('Dr. Iyer');
+    expect(m.outcome.summary).toBeNull();
+  });
 });

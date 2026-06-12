@@ -64,12 +64,12 @@ export interface RawReportData {
     rescuer: string | null;
     broughtBy: string | null;
     media: RawMedia[];
-    death: { causeOfDeath: string; diedAt: string; recordedByName: string | null } | null;
+    death: { causeOfDeath: string; diedAt: string; recordedByName: string } | null;
     discharge: {
       dischargedAt: string;
       summary: string;
       instructions: string | null;
-      dischargedByName: string | null;
+      dischargedByName: string;
     } | null;
   };
   activities: RawActivity[];
