@@ -212,7 +212,6 @@ export async function AnimalDetail({ animalId }: Props) {
                 sterilized: animal.sterilized,
                 aggressive: animal.aggressive,
                 contagious: animal.contagious,
-                ward: animal.ward,
                 cage: animal.cage?.name ?? null,
                 cageId: animal.cageId,
                 status: animal.status,

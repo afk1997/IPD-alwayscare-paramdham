@@ -17,7 +17,6 @@ export interface AnimalListItem {
   name: string;
   species: string;
   breed: string | null;
-  ward: string | null;
   cage: string | null;
   status: AnimalStatus;
   contagious: boolean;
@@ -40,7 +39,6 @@ const ANIMAL_CARD_SELECT = {
   name: true,
   species: true,
   breed: true,
-  ward: true,
   cage: { select: { name: true } },
   status: true,
   contagious: true,
@@ -74,7 +72,6 @@ function toAnimalListItem(r: AnimalCardRow): AnimalListItem {
     name: r.name,
     species: r.species,
     breed: r.breed,
-    ward: r.ward,
     cage: r.cage?.name ?? null,
     status: r.status,
     contagious: r.contagious,
@@ -112,7 +109,6 @@ export async function listAnimals(params: ListAnimalsParams = {}): Promise<Anima
           OR: [
             { name: { contains: search, mode: 'insensitive' as const } },
             { breed: { contains: search, mode: 'insensitive' as const } },
-            { ward: { contains: search, mode: 'insensitive' as const } },
           ],
         }
       : {}),
@@ -174,7 +170,6 @@ export interface ActiveAnimalLite {
   id: string;
   name: string;
   species: string;
-  ward: string | null;
   status: AnimalStatus;
 }
 
@@ -194,7 +189,6 @@ async function _searchActiveAnimalsRaw(
           OR: [
             { name: { contains: q, mode: 'insensitive' as const } },
             { species: { contains: q, mode: 'insensitive' as const } },
-            { ward: { contains: q, mode: 'insensitive' as const } },
           ],
         }
       : {}),
@@ -203,7 +197,7 @@ async function _searchActiveAnimalsRaw(
     where,
     orderBy: [{ status: 'asc' }, { admittedAt: 'desc' }],
     take,
-    select: { id: true, name: true, species: true, ward: true, status: true },
+    select: { id: true, name: true, species: true, status: true },
   });
 }
 
