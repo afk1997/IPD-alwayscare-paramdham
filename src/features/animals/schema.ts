@@ -36,7 +36,7 @@ export const CreateAnimalSchema = z.object({
   broughtBy: z.string().max(120).optional().or(z.literal('')),
 
   // medical
-  complaint: z.string().max(2000).optional().or(z.literal('')),
+  complaint: z.string().trim().min(1, 'Chief complaint is required').max(2000),
   injuryType: z.string().max(120).optional().or(z.literal('')),
   history: z.string().max(2000).optional().or(z.literal('')),
   contagious: z.coerce.boolean().default(false),

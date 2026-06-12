@@ -57,6 +57,7 @@ describe('documents service — integration vs real DB', () => {
     const animal = await createAnimal(staff, {
       name: qaName('DocAnimal1'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -75,6 +76,7 @@ describe('documents service — integration vs real DB', () => {
     const animal = await createAnimal(doctor, {
       name: qaName('DocAnimal2'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
@@ -113,6 +115,7 @@ describe('documents service — integration vs real DB', () => {
     const animal = await createAnimal(admin, {
       name: qaName('SoftDelAnimalForDoc'),
       species: 'Dog',
+      complaint: 'QA: test complaint',
       vaccination: 'NONE',
       sterilized: false,
       aggressive: false,
