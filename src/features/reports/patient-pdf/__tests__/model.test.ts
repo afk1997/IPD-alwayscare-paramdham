@@ -51,6 +51,7 @@ describe('buildReportModel', () => {
     const m = buildReportModel(raw);
     expect(m.patient.name).toBe('Facebook'); // trimmed
     expect(m.patient.cage).toBe('C-3');
+    expect(buildReportModel({ ...raw, animal: { ...raw.animal, cageName: null } }).patient.cage).toBeNull();
     expect(m.outcome.kind).toBe('discharged');
     expect(m.stats.days).toBe(4); // 25 -> 29 May
     expect(m.stats.perType.find((t) => t.type === 'TREATMENT')?.count).toBe(1);
