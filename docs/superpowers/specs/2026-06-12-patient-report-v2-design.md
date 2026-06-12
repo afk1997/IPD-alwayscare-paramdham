@@ -33,7 +33,7 @@ The v1 patient PDF works but undersells the clinic and the data: app-teal chrome
 9. **Day-by-day log:** day bands + entries as today, EXCEPT SURGERY and DIAGNOSTIC entries always render as compact one-line rows suffixed `→ Surgery section` / `→ Diagnostics section`; their stills appear only in the dedicated sections (no double-embedding, smaller files). Photo stats count each still once.
 10. **Documents:** as today, restyled.
 11. **Outcome & sign-off (closing section, kept unsplit on a page via `wrap={false}` / break control):**
-    - Outcome box: `DISCHARGED · date` + discharge summary text + "Discharged by <name>" — or `DECEASED · date` + cause of death + "Recorded by <name>" — or `IN CARE` with current status.
+    - Outcome box: `DISCHARGED · date` + discharge summary text + aftercare instructions (`DischargeRecord.instructions`, when present) + "Discharged by <name>" — or `DECEASED · date` + cause of death + "Recorded by <name>" — or `IN CARE` with current status.
     - Signature lines: `Attending veterinarian` and `Date` (blank rules for ink).
     - Provenance line: `Generated from IPD records on <datetime IST> · by <current user name>`.
 12. **Chrome on every page:** pages 2+ get a fixed compact header (small logo left, `<NAME> · PATIENT REPORT · GENERATED <date>` right, gold rule); all pages keep the fixed footer — left `name (species) · Confidential clinical record`, right `Arham Always Care · Page N of M`.
@@ -50,7 +50,7 @@ All inside `src/features/reports/patient-pdf/`:
 - **`assets/logo.png`** *(new)*: the user's PNG downscaled to ~600px width. Loaded with the same packaging mechanism the bundled fonts already use (filesystem path relative to the feature, traced into the serverless bundle the same way `fonts/` is). Missing/unreadable at runtime → text fallback "Arham Always Care" in the masthead; the report must never fail because of the logo.
 - **`images.ts`**: `loadReportImages` now resolves each still via `sharp(...).toBuffer({ resolveWithObject: true })` and returns `Map<assetId, ReportImage>` where `ReportImage = { data: Buffer; width: number; height: number }`. Resize stays `fit: 'inside'` ≤1000px, JPEG q72 — `inside` already preserves the full image; v2 finally *renders* it that way.
 - **`model.ts`**:
-  - `RawReportData.animal.discharge` gains `summary: string | null` and `dischargedByName: string | null`; `death` gains `recordedByName: string | null`. New top-level `generatedByName: string`.
+  - `RawReportData.animal.discharge` gains `summary: string` (required in the DB), `instructions: string | null`, and `dischargedByName: string`; `death` gains `recordedByName: string`. New top-level `generatedByName: string`.
   - `ReportModel` gains: `recovery: { first: { assetId, label }, last: { assetId, label } } | null`; `surgeries: ReportEntry[]`; `diagnostics: ReportEntry[]` (full entries with stills, each also carrying its `dayLabel` for the card header); day-log entries for those two types carry `crossRef: 'surgery' | 'diagnostics'` and empty `stills`; `outcome` gains `summary`, `byName`; `generatedByName`.
 - **`data.ts`**: select `dischargeRecord.summary` + `dischargedBy.name` and `deathRecord.recordedBy.name` (both already loaded by relation in the existing query — only the mapping grows); accept and pass through `generatedByName` from the route.
 - **Route (`patients/[id]/report/route.ts`)**: passes `actor.name` as `generatedByName`. No other change (auth/RBAC/params/filename unchanged).
