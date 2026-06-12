@@ -42,7 +42,6 @@ export function AnimalDetailsTab({ animal: initial, cages }: Props) {
             sterilized: animal.sterilized,
             aggressive: animal.aggressive,
             contagious: animal.contagious,
-            ward: animal.ward,
             cageId: animal.cageId,
             status: animal.status,
             complaint: animal.complaint,
@@ -77,7 +76,6 @@ export function AnimalDetailsTab({ animal: initial, cages }: Props) {
 
       <DetailSection title="Details">
         <DetailGrid>
-          <Field label="Ward" value={animal.ward} />
           <Field label="Cage" value={animal.cage} />
           <Field label="Admitted at" value={formatDateTime(animal.admittedAt)} />
           <Field label="Color" value={animal.color} />
