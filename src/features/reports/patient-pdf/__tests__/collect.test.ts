@@ -32,6 +32,21 @@ const model = {
       file: { assetId: 'doc1', storageKey: 'k-doc1', kind: 'PHOTO', filename: 'd' },
     },
   ],
+  surgeries: [
+    {
+      stills: [{ assetId: 'sx1', storageKey: 'k-sx1', kind: 'XRAY', label: null, filename: 's' }],
+      type: 'SURGERY',
+      time: '11:30',
+      byName: 'x',
+      edited: false,
+      summary: '',
+      details: [],
+      links: [],
+      dayLabel: 'Tue 26 May 2026',
+    },
+  ],
+  diagnostics: [],
+  recovery: null,
 } as unknown as ReportModel;
 
 describe('collectImageAssets', () => {
@@ -39,6 +54,6 @@ describe('collectImageAssets', () => {
     const got = collectImageAssets(model)
       .map((x) => x.assetId)
       .sort();
-    expect(got).toEqual(['adm1', 'doc1', 'p1']);
+    expect(got).toEqual(['adm1', 'doc1', 'p1', 'sx1']);
   });
 });

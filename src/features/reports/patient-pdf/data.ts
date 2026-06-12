@@ -146,5 +146,7 @@ export function collectImageAssets(model: ReportModel): { assetId: string; stora
   for (const doc of model.documents)
     if (doc.file && (doc.file.kind === 'PHOTO' || doc.file.kind === 'XRAY'))
       out.set(doc.file.assetId, doc.file.storageKey);
+  for (const e of [...model.surgeries, ...model.diagnostics])
+    for (const m of e.stills) out.set(m.assetId, m.storageKey);
   return Array.from(out.entries()).map(([assetId, storageKey]) => ({ assetId, storageKey }));
 }

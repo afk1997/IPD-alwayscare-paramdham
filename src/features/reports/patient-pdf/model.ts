@@ -85,6 +85,13 @@ export interface ReportEntry {
   details: string[];
   stills: RawMedia[];
   links: RawMedia[];
+  // Set on SURGERY / DIAGNOSTIC day-log rows: the full card (with stills)
+  // lives in the dedicated section; the log shows a compact cross-ref row.
+  crossRef?: 'surgery' | 'diagnostics';
+}
+
+export interface SectionEntry extends ReportEntry {
+  dayLabel: string;
 }
 export interface ReportDay {
   key: string;
@@ -127,6 +134,9 @@ export interface ReportModel {
   };
   stats: { days: number; perType: { type: ActivityType; label: string; count: number }[]; photos: number };
   meds: ReportMed[];
+  recovery: { first: { assetId: string; label: string }; last: { assetId: string; label: string } } | null;
+  surgeries: SectionEntry[];
+  diagnostics: SectionEntry[];
   admissionMedia: RawMedia[];
   days: ReportDay[];
   documents: RawDocument[];
@@ -199,10 +209,16 @@ export function buildReportModel(raw: RawReportData): ReportModel {
   const endIso = a.death?.diedAt ?? a.discharge?.dischargedAt ?? raw.generatedAt;
   const days = Math.max(1, Math.ceil((+new Date(endIso) - +new Date(a.admittedAt)) / 86_400_000));
 
+  const outcome = buildOutcome(a);
   const perTypeMap = new Map<ActivityType, number>();
   let photos = 0;
   const medMap = new Map<string, MedEntry>();
   const grouped = new Map<string, ReportEntry[]>();
+  const surgeries: SectionEntry[] = [];
+  const diagnostics: SectionEntry[] = [];
+  // Recovery-pair candidates: PHOTO kind only, never X-rays.
+  let firstActivityPhoto: { assetId: string; day: string } | null = null;
+  let lastActivityPhoto: { assetId: string; day: string } | null = null;
 
   for (const act of raw.activities) {
     perTypeMap.set(act.type, (perTypeMap.get(act.type) ?? 0) + 1);
@@ -219,7 +235,23 @@ export function buildReportModel(raw: RawReportData): ReportModel {
       stills,
       links: act.media.filter((m) => !isStill(m.kind)),
     };
-    groupedPush(grouped, dayKey(act.occurredAt), entry);
+    for (const m of stills) {
+      if (m.kind !== 'PHOTO') continue;
+      const cand = { assetId: m.assetId, day: dayKey(act.occurredAt) };
+      if (!firstActivityPhoto) firstActivityPhoto = cand;
+      lastActivityPhoto = cand;
+    }
+    if (act.type === 'SURGERY' || act.type === 'DIAGNOSTIC') {
+      const isSurgery = act.type === 'SURGERY';
+      (isSurgery ? surgeries : diagnostics).push({ ...entry, dayLabel: dayLabel(act.occurredAt) });
+      groupedPush(grouped, dayKey(act.occurredAt), {
+        ...entry,
+        stills: [],
+        crossRef: isSurgery ? 'surgery' : 'diagnostics',
+      });
+    } else {
+      groupedPush(grouped, dayKey(act.occurredAt), entry);
+    }
   }
 
   const daysArr: ReportDay[] = Array.from(grouped.entries())
@@ -237,6 +269,22 @@ export function buildReportModel(raw: RawReportData): ReportModel {
       span: buildMedSpan(ds),
     };
   });
+
+  const admissionPhoto = a.media.find((m) => m.kind === 'PHOTO') ?? null;
+  const first = admissionPhoto
+    ? { assetId: admissionPhoto.assetId, day: dayKey(a.admittedAt) }
+    : firstActivityPhoto;
+  const last = lastActivityPhoto;
+  const recovery =
+    first && last && first.assetId !== last.assetId && first.day !== last.day
+      ? {
+          first: { assetId: first.assetId, label: 'DAY 1 · at admission' },
+          last: {
+            assetId: last.assetId,
+            label: `DAY ${days} · ${outcome.kind === 'discharged' ? 'at discharge' : 'latest'}`,
+          },
+        }
+      : null;
 
   return {
     generatedAt: raw.generatedAt,
@@ -258,7 +306,7 @@ export function buildReportModel(raw: RawReportData): ReportModel {
       broughtBy: a.broughtBy,
       avatarAssetId: a.media.find((m) => isStill(m.kind))?.assetId ?? null,
     },
-    outcome: buildOutcome(a),
+    outcome,
     stats: {
       days,
       perType: Array.from(perTypeMap.entries()).map(([type, count]) => ({
@@ -269,6 +317,9 @@ export function buildReportModel(raw: RawReportData): ReportModel {
       photos,
     },
     meds,
+    recovery,
+    surgeries,
+    diagnostics,
     admissionMedia: a.media.filter((m) => isStill(m.kind)),
     days: daysArr,
     documents: raw.documents,

@@ -91,4 +91,66 @@ describe('buildReportModel', () => {
     expect(m.outcome.byName).toBe('Dr. Iyer');
     expect(m.outcome.summary).toBeNull();
   });
+
+  const photo = (assetId: string): (typeof raw.animal.media)[number] => ({
+    assetId,
+    kind: 'PHOTO',
+    label: null,
+    filename: `${assetId}.jpg`,
+    storageKey: `local:x/${assetId}.jpg`,
+  });
+
+  it('extracts surgeries into a section and compacts their log rows', () => {
+    const withSurgery: typeof raw = structuredClone(raw);
+    withSurgery.activities.push({
+      type: 'SURGERY',
+      occurredAt: '2026-05-26T11:30:00.000Z',
+      byName: 'Dr. Iyer',
+      editedAt: null,
+      remarks: null,
+      data: { surgeryName: 'Fracture repair', surgeon: 'Dr. Iyer', anesthesia: 'Iso' },
+      media: [photo('sx1')],
+    });
+    const m = buildReportModel(withSurgery);
+    expect(m.surgeries).toHaveLength(1);
+    expect(m.surgeries[0]?.stills.map((s) => s.assetId)).toEqual(['sx1']);
+    expect(m.surgeries[0]?.dayLabel).toContain('26 May 2026');
+    const logRow = m.days.flatMap((d) => d.entries).find((e) => e.type === 'SURGERY');
+    expect(logRow?.crossRef).toBe('surgery');
+    expect(logRow?.stills).toEqual([]);
+    // the surgery photo is counted exactly once
+    expect(m.stats.photos).toBe(2);
+  });
+
+  it('builds the recovery pair from admission photo → last activity photo on different days', () => {
+    const r: typeof raw = structuredClone(raw);
+    r.animal.media = [photo('adm1')];
+    r.activities.push({
+      type: 'FOOD',
+      occurredAt: '2026-05-28T12:00:00.000Z',
+      byName: 'Pooja',
+      editedAt: null,
+      remarks: null,
+      data: { foodType: 'Rice', intake: 'Fully', vomiting: false },
+      media: [photo('late1')],
+    });
+    const m = buildReportModel(r);
+    expect(m.recovery).toEqual({
+      first: { assetId: 'adm1', label: 'DAY 1 · at admission' },
+      last: { assetId: 'late1', label: `DAY ${m.stats.days} · at discharge` },
+    });
+  });
+
+  it('omits the recovery pair when photos fall on the same day or only one exists', () => {
+    const sameDay: typeof raw = structuredClone(raw);
+    sameDay.animal.media = [];
+    // raw already has exactly one FOOD activity photo (p1) — single photo → null
+    expect(buildReportModel(sameDay).recovery).toBeNull();
+  });
+
+  it('ignores X-rays for the recovery pair', () => {
+    const xr: typeof raw = structuredClone(raw);
+    xr.animal.media = [{ ...photo('adm1'), kind: 'XRAY' as const }];
+    expect(buildReportModel(xr).recovery?.first.assetId).not.toBe('adm1');
+  });
 });

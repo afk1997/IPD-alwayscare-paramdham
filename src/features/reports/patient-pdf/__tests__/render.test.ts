@@ -33,6 +33,9 @@ const model: ReportModel = {
   meds: [
     { name: 'Amoxiclav', doses: ['20mg/kg'], routes: ['Oral'], times: 2, days: 2, span: '26 May – 27 May' },
   ],
+  recovery: null,
+  surgeries: [],
+  diagnostics: [],
   admissionMedia: [],
   days: [
     {
