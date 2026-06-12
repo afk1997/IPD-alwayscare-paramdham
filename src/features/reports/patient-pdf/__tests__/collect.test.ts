@@ -10,6 +10,7 @@ const model = {
       label: 'd',
       entries: [
         {
+          occurredAt: 'iso',
           stills: [{ assetId: 'p1', storageKey: 'k-p1', kind: 'PHOTO', label: null, filename: 'p' }],
           type: 'FOOD',
           time: '12:00',

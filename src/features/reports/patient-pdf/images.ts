@@ -1,13 +1,17 @@
 import { getStorage } from '@/lib/storage';
 import sharp from 'sharp';
+import type { ReportImage } from './fit';
 
-// Downscale + normalise orientation; JPEG keeps the PDF small. Pure (Buffer in/out).
-export async function downscaleImage(buf: Buffer): Promise<Buffer> {
-  return sharp(buf)
+// Downscale + normalise orientation; JPEG keeps the PDF small.
+// Returns the bytes plus output dimensions so the renderer can lay the
+// COMPLETE image out at its own aspect ratio (never cropped).
+export async function downscaleImage(buf: Buffer): Promise<ReportImage> {
+  const { data, info } = await sharp(buf)
     .rotate() // honour EXIF orientation
     .resize({ width: 1000, height: 1000, fit: 'inside', withoutEnlargement: true })
     .jpeg({ quality: 72 })
-    .toBuffer();
+    .toBuffer({ resolveWithObject: true });
+  return { data, width: info.width, height: info.height };
 }
 
 async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
@@ -33,8 +37,8 @@ async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<v
 // placeholder); never fails the whole report.
 export async function loadReportImages(
   assets: { assetId: string; storageKey: string }[],
-): Promise<Map<string, Buffer>> {
-  const out = new Map<string, Buffer>();
+): Promise<Map<string, ReportImage>> {
+  const out = new Map<string, ReportImage>();
   const storage = getStorage();
   await mapLimit(assets, 4, async (a) => {
     try {

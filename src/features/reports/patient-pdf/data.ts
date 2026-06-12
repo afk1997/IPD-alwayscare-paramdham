@@ -22,15 +22,32 @@ const toRawMedia = (m: MediaRow): RawMedia => ({
 
 export async function getPatientReportData(
   animalId: string,
+  generatedByName: string,
   range?: { from: string; to: string },
 ): Promise<ReportModel | null> {
   const animal = await prisma.animal.findFirst({
     where: { id: animalId, deletedAt: null },
     include: {
       cage: { select: { name: true } },
+      testsAdvised: true,
       media: { where: { asset: { status: 'READY' } }, orderBy: { order: 'asc' }, include: { asset: true } },
-      deathRecord: { select: { causeOfDeath: true, diedAt: true, invalidatedAt: true } },
-      dischargeRecord: { select: { dischargedAt: true, invalidatedAt: true } },
+      deathRecord: {
+        select: {
+          causeOfDeath: true,
+          diedAt: true,
+          invalidatedAt: true,
+          recordedBy: { select: { name: true } },
+        },
+      },
+      dischargeRecord: {
+        select: {
+          dischargedAt: true,
+          summary: true,
+          instructions: true,
+          invalidatedAt: true,
+          dischargedBy: { select: { name: true } },
+        },
+      },
     },
   });
   if (!animal) return null;
@@ -56,15 +73,25 @@ export async function getPatientReportData(
 
   const death =
     animal.deathRecord && !animal.deathRecord.invalidatedAt
-      ? { causeOfDeath: animal.deathRecord.causeOfDeath, diedAt: animal.deathRecord.diedAt.toISOString() }
+      ? {
+          causeOfDeath: animal.deathRecord.causeOfDeath,
+          diedAt: animal.deathRecord.diedAt.toISOString(),
+          recordedByName: animal.deathRecord.recordedBy.name,
+        }
       : null;
   const discharge =
     animal.dischargeRecord && !animal.dischargeRecord.invalidatedAt
-      ? { dischargedAt: animal.dischargeRecord.dischargedAt.toISOString() }
+      ? {
+          dischargedAt: animal.dischargeRecord.dischargedAt.toISOString(),
+          summary: animal.dischargeRecord.summary,
+          instructions: animal.dischargeRecord.instructions,
+          dischargedByName: animal.dischargeRecord.dischargedBy.name,
+        }
       : null;
 
   const raw: RawReportData = {
     generatedAt: new Date().toISOString(),
+    generatedByName,
     range: range ?? null,
     animal: {
       name: animal.name,
@@ -72,12 +99,26 @@ export async function getPatientReportData(
       breed: animal.breed,
       gender: animal.gender,
       ageText: animal.ageText,
+      color: animal.color,
+      weightKg: animal.weightKg ? String(animal.weightKg) : null,
+      vaccination: animal.vaccination,
+      sterilized: animal.sterilized,
+      aggressive: animal.aggressive,
+      contagious: animal.contagious,
       cageName: animal.cage?.name ?? null,
       status: animal.status,
       admittedAt: animal.admittedAt.toISOString(),
       complaint: animal.complaint,
+      injuryType: animal.injuryType,
+      history: animal.history,
       diagnosis: animal.diagnosis,
+      immediateTreatment: animal.immediateTreatment,
+      surgeryRequired: animal.surgeryRequired,
+      testsAdvised: animal.testsAdvised.map((t) => t.test),
       rescuer: animal.rescuer,
+      rescuerPhone: animal.rescuerPhone,
+      address: animal.address,
+      ngo: animal.ngo,
       broughtBy: animal.broughtBy,
       media: animal.media.map(toRawMedia),
       death,

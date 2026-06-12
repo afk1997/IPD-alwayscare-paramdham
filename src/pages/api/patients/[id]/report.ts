@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // DB re-check (active + authoritative role), mirroring getCurrentUser.
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, role: true, active: true },
+    select: { id: true, role: true, active: true, name: true },
   });
   if (!dbUser || !dbUser.active) return res.status(401).json({ error: 'unauthenticated' });
   try {
@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const to = typeof req.query.to === 'string' ? req.query.to : undefined;
   const range = from && to ? { from, to } : undefined;
 
-  const model = await getPatientReportData(id, range);
+  const model = await getPatientReportData(id, dbUser.name, range);
   if (!model) return res.status(404).json({ error: 'not found' });
 
   const images = await loadReportImages(collectImageAssets(model));

@@ -3,42 +3,78 @@ import { describe, expect, it } from 'vitest';
 import type { ReportModel } from '../model';
 import { renderPatientReportPdf } from '../render';
 
+const still = (assetId: string) => ({
+  assetId,
+  kind: 'PHOTO' as const,
+  label: null,
+  filename: `${assetId}.jpg`,
+  storageKey: `k-${assetId}`,
+});
+
 const model: ReportModel = {
   generatedAt: '2026-05-31T06:30:00.000Z',
+  generatedByName: 'Asha (Reception)',
   rangeLabel: null,
   patient: {
     name: 'रॉकी',
     species: 'Dog',
     breedAge: 'Dog · Indie',
     sexAge: 'MALE · ~2y',
+    color: 'Brown',
+    weightKg: '12.5',
+    vaccination: 'None',
+    flags: 'Sterilized · Contagious',
     cage: 'C-3',
-    status: 'STABLE',
+    status: 'DISCHARGED',
     admittedAt: '2026-05-25T10:00:00.000Z',
     complaint: 'Hit by vehicle',
+    injuryType: 'Trauma',
+    history: 'Found roadside near the temple',
     diagnosis: 'Fracture',
+    immediateTreatment: 'Pain relief, wound dressing',
+    surgeryRequired: 'Likely',
+    testsAdvised: 'X-ray, Blood test',
     rescuer: 'Asha',
+    rescuerPhone: '+91 99999 99999',
+    address: '12 Temple Road',
+    ngo: 'Seva',
     broughtBy: 'NGO',
     avatarAssetId: 'a1',
   },
-  outcome: { kind: 'in-care', label: 'In care', causeOfDeath: null },
-  stats: { days: 6, perType: [{ type: 'FOOD', label: 'Food & water', count: 1 }], photos: 1 },
-  meds: [
-    { name: 'Amoxiclav', doses: ['20mg/kg'], routes: ['Oral'], times: 2, days: 2, span: '26 May – 27 May' },
-  ],
-  admissionMedia: [],
+  outcome: {
+    kind: 'discharged',
+    label: 'Discharged · 29 May',
+    causeOfDeath: null,
+    summary: 'Recovered well, weight-bearing on all limbs',
+    instructions: 'Cone for 5 days',
+    byName: 'Dr. Mehta',
+  },
+  admissionMedia: [still('a1')],
   days: [
     {
       key: '2026-05-26',
       label: 'Tue 26 May 2026',
       entries: [
         {
+          occurredAt: '2026-05-26T11:30:00.000Z',
+          type: 'SURGERY',
+          time: '11:30',
+          byName: 'Dr. Iyer',
+          edited: false,
+          summary: 'Fracture repair (45 min) — Dr. Iyer',
+          details: ['Anesthesia: Iso', 'Findings: clean break'],
+          stills: [still('a2')],
+          links: [],
+        },
+        {
+          occurredAt: '2026-05-26T12:00:00.000Z',
           type: 'FOOD',
           time: '12:00',
           byName: 'કૂતરો',
           edited: false,
           summary: 'Khichdi · 50g · Fully',
           details: ['Vomiting: no'],
-          stills: [{ assetId: 'a1', kind: 'PHOTO', label: 'bowl', filename: 'p.jpg', storageKey: 'k' }],
+          stills: [still('a1')],
           links: [],
         },
       ],
@@ -48,14 +84,23 @@ const model: ReportModel = {
 };
 
 describe('renderPatientReportPdf', () => {
-  it('produces a PDF buffer (fonts load, image embeds, mixed scripts)', async () => {
-    const img = await sharp({
-      create: { width: 400, height: 300, channels: 3, background: { r: 21, g: 128, b: 61 } },
-    })
-      .jpeg()
-      .toBuffer();
-    const buf = await renderPatientReportPdf(model, new Map([['a1', img]]));
+  it('renders the intake-first document (brand, intake, timeline, outcome, mixed scripts)', async () => {
+    const mk = (rgb: { r: number; g: number; b: number }, w: number, h: number) =>
+      sharp({ create: { width: w, height: h, channels: 3 as const, background: rgb } })
+        .jpeg()
+        .toBuffer();
+    const [imgA, imgB] = await Promise.all([
+      mk({ r: 21, g: 128, b: 61 }, 400, 300),
+      mk({ r: 14, g: 124, b: 123 }, 300, 500),
+    ]);
+    const buf = await renderPatientReportPdf(
+      model,
+      new Map([
+        ['a1', { data: imgA, width: 400, height: 300 }],
+        ['a2', { data: imgB, width: 300, height: 500 }],
+      ]),
+    );
     expect(buf.subarray(0, 5).toString()).toBe('%PDF-');
-    expect(buf.length).toBeGreaterThan(2000);
+    expect(buf.length).toBeGreaterThan(4000);
   });
 });
