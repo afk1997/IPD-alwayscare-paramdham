@@ -1,10 +1,12 @@
 import { StyleSheet } from '@react-pdf/renderer';
 
-// Brand tokens from the Arham Always Care logo (deep red + gold on cream).
+// Brand tokens from the Arham Always Care logo. Minimal palette: ink on
+// white, warm-grey secondary text, hairline rules; red appears only in the
+// logo, links and the outcome status.
 export const BRAND = {
   red: '#8B1A12',
   gold: '#C9A55C',
-  goldSoft: '#E8E0D0',
+  hairline: '#E8E2D8',
   cream: '#FDFBF6',
   mat: '#F1ECE2',
   ink: '#221A14',
@@ -12,7 +14,7 @@ export const BRAND = {
   soft: '#9A8D76',
 };
 
-// Activity-type rails match the app (unchanged from v1).
+// Activity-type dots match the app's type colours (unchanged from v1).
 export const TYPE_COLOR: Record<string, string> = {
   ADMISSION: '#0E7C7B',
   TREATMENT: '#2563EB',
@@ -26,162 +28,115 @@ export const TYPE_COLOR: Record<string, string> = {
 
 export const OUTCOME_BG = { 'in-care': '#93370D', discharged: '#15803D', deceased: '#B42318' } as const;
 
-export const PAGE_PAD_TOP = 50; // fixed compact header (≈46pt: 14 padding + 31 logo + 1 border) + breathing room
-export const PAGE_PAD_X = 30;
+export const PAGE_PAD_TOP = 50; // clears the fixed compact header on pages 2+
+export const PAGE_PAD_X = 36;
 
 export const s = StyleSheet.create({
   page: {
     paddingTop: PAGE_PAD_TOP,
-    paddingBottom: 46,
+    paddingBottom: 48,
     paddingHorizontal: PAGE_PAD_X,
     fontFamily: 'Noto Sans',
     fontSize: 9,
     color: BRAND.ink,
   },
-  // Page-1 masthead (in flow, fills the padding zone)
+  // Page-1 masthead (in flow, fills the padding zone). White, airy, one rule.
   masthead: {
-    backgroundColor: BRAND.cream,
     marginHorizontal: -PAGE_PAD_X,
     marginTop: -PAGE_PAD_TOP,
-    paddingTop: 18,
-    paddingBottom: 12,
+    paddingTop: 28,
+    paddingBottom: 16,
     paddingHorizontal: PAGE_PAD_X,
-    marginBottom: 14,
-    borderBottomWidth: 1.5,
+    marginBottom: 20,
+    borderBottomWidth: 0.75,
     borderBottomColor: BRAND.gold,
     alignItems: 'center',
   },
   mastBrandFallback: { fontFamily: 'Noto Serif', fontWeight: 700, fontSize: 20, color: BRAND.red },
-  mastKicker: { fontSize: 7, letterSpacing: 2, color: BRAND.soft, marginTop: 8 },
-  // Fixed compact header, pages 2+. Positioning (absolute, pinned to the
-  // physical page top) lives on the OUTER fixed View in PageHeader — an
-  // absolute style here would anchor to the in-flow fixed View instead,
-  // which sits at the content origin (below the page padding) and painted
-  // the bar over the first element of every page.
+  mastKicker: { fontSize: 6.5, letterSpacing: 2.2, color: BRAND.soft, marginTop: 10 },
+  // Fixed compact header, pages 2+. Positioning lives on the OUTER fixed
+  // View in PageHeader (see comment there).
   pgHead: {
-    backgroundColor: BRAND.cream,
-    borderBottomWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 0.5,
     borderBottomColor: BRAND.gold,
     paddingHorizontal: PAGE_PAD_X,
-    paddingVertical: 7,
+    paddingVertical: 9,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  pgHeadMeta: { fontSize: 6.5, color: BRAND.soft, letterSpacing: 0.5 },
-  hero: { flexDirection: 'row', gap: 14, marginBottom: 12 },
-  heroName: { fontFamily: 'Noto Serif', fontWeight: 700, fontSize: 18, color: BRAND.red },
-  pill: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    fontSize: 8,
-    fontWeight: 700,
-  },
-  kv: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8 },
-  kvItem: { width: '50%', flexDirection: 'row', marginBottom: 3, paddingRight: 10 },
-  k: { color: BRAND.soft, width: 64 },
-  v: { color: BRAND.ink, fontWeight: 700, flex: 1 },
+  pgHeadMeta: { fontSize: 6, color: BRAND.soft, letterSpacing: 1 },
+  hero: { flexDirection: 'row', gap: 16, marginBottom: 4 },
+  heroName: { fontFamily: 'Noto Serif', fontWeight: 700, fontSize: 21 },
+  outcomeInline: { marginTop: 5, fontSize: 7.5, fontWeight: 700, letterSpacing: 1 },
+  kv: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 10 },
+  kvItem: { width: '50%', flexDirection: 'row', marginBottom: 4, paddingRight: 12 },
+  k: { color: BRAND.soft, width: 70, fontSize: 8.5 },
+  v: { color: BRAND.ink, flex: 1, fontSize: 8.5 },
+  // Floating small-caps section label — no rule, whitespace does the work.
   sec: {
-    fontSize: 9,
+    fontSize: 7.5,
     fontWeight: 700,
-    color: BRAND.red,
+    color: BRAND.soft,
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginTop: 12,
-    marginBottom: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND.gold,
-    paddingBottom: 2,
+    letterSpacing: 1.8,
+    marginTop: 20,
+    marginBottom: 9,
   },
-  dayBand: {
+  // Day header: serif date over a hairline, count at the right.
+  dayHead: {
     flexDirection: 'row',
-    backgroundColor: BRAND.cream,
-    borderRadius: 7,
-    borderWidth: 1,
-    borderColor: BRAND.goldSoft,
-    paddingVertical: 5,
-    paddingHorizontal: 9,
-    marginTop: 14,
-    marginBottom: 8,
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    borderBottomWidth: 0.5,
+    borderBottomColor: BRAND.hairline,
+    paddingBottom: 3,
+    marginTop: 16,
+    marginBottom: 9,
   },
-  dayLabel: { fontSize: 9, fontWeight: 700, flex: 1 },
-  dayCnt: { fontSize: 8, color: BRAND.soft },
-  card: {
-    flexDirection: 'row',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: BRAND.goldSoft,
-    borderLeftWidth: 3,
-    borderRadius: 8,
-    padding: 9,
-    marginBottom: 7,
+  dayLabel: { fontFamily: 'Noto Serif', fontWeight: 700, fontSize: 10 },
+  dayCnt: { fontSize: 6.5, color: BRAND.soft, letterSpacing: 1 },
+  // Timeline row: time column · type dot · small-caps type · body.
+  row: { flexDirection: 'row', gap: 7, marginBottom: 7, alignItems: 'flex-start' },
+  time: { fontSize: 8, color: BRAND.soft, width: 26, marginTop: 0.5 },
+  dot: { width: 5, height: 5, borderRadius: 2.5, marginTop: 2.5 },
+  typeTag: {
+    fontSize: 6.5,
+    color: BRAND.soft,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    width: 56,
+    marginTop: 1,
   },
-  crow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: BRAND.goldSoft,
-    borderLeftWidth: 3,
-    borderRadius: 7,
-    paddingVertical: 5,
-    paddingHorizontal: 9,
-    marginBottom: 5,
-  },
-  chip: { fontSize: 8, fontWeight: 700, paddingVertical: 2, paddingHorizontal: 7, borderRadius: 8 },
-  time: { fontSize: 8, color: BRAND.muted, fontWeight: 700 },
-  summary: { fontSize: 10, fontWeight: 700, marginTop: 5 },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 5 },
-  dpill: {
-    fontSize: 8,
-    color: BRAND.muted,
-    backgroundColor: BRAND.cream,
-    borderWidth: 1,
-    borderColor: BRAND.goldSoft,
-    borderRadius: 8,
-    paddingVertical: 2,
-    paddingHorizontal: 7,
-  },
-  dline: { fontSize: 8.5, color: BRAND.muted, marginTop: 3 },
-  by: { fontSize: 7.5, color: BRAND.soft, marginTop: 6 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7, alignItems: 'flex-end' },
-  gcap: { fontSize: 6.5, color: BRAND.soft, marginTop: 2 },
-  imgMat: {
-    backgroundColor: BRAND.mat,
-    borderWidth: 1,
-    // Solid hue only: react-pdf misparses 8-digit #RRGGBBAA borderColor
-    // (it reads the wrong 6 digits — gold+66 painted green). Backgrounds
-    // handle alpha-hex fine; borders must stay 6-digit.
-    borderColor: BRAND.gold,
-    borderRadius: 5,
-    padding: 3,
-    alignSelf: 'flex-start',
-  },
+  entryBody: { flex: 1 },
+  summaryMin: { fontSize: 9 },
+  detailLine: { fontSize: 8, color: BRAND.muted, marginTop: 2.5 },
+  byMin: { fontSize: 6.5, color: BRAND.soft, marginTop: 3 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6, alignItems: 'flex-end' },
+  gcap: { fontSize: 6.5, color: BRAND.soft, marginTop: 3 },
   imgPh: {
-    borderRadius: 5,
-    backgroundColor: BRAND.mat,
+    borderRadius: 3,
+    backgroundColor: BRAND.cream,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: BRAND.gold,
+    borderWidth: 0.5,
+    borderColor: BRAND.hairline,
   },
-  link: { fontSize: 8, color: BRAND.red, marginTop: 4 },
-  outcomeBox: { borderWidth: 1, borderRadius: 8, padding: 10, marginBottom: 18 },
-  outcomeTitle: { fontSize: 10, fontWeight: 800 },
-  provenance: { fontSize: 7, color: BRAND.soft, textAlign: 'center', marginTop: 22 },
+  link: { fontSize: 8, color: BRAND.red, marginTop: 3 },
+  outcomeStatus: { fontSize: 9.5, fontWeight: 800, letterSpacing: 1 },
+  outcomeLine: { fontSize: 8.5, color: BRAND.muted, marginTop: 4, lineHeight: 1.5 },
+  provenance: { fontSize: 6.5, color: BRAND.soft, textAlign: 'center', marginTop: 26 },
   footer: {
     position: 'absolute',
-    bottom: 18,
+    bottom: 20,
     left: PAGE_PAD_X,
     right: PAGE_PAD_X,
-    borderTopWidth: 1,
+    borderTopWidth: 0.5,
     borderTopColor: BRAND.gold,
-    paddingTop: 6,
+    paddingTop: 7,
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
-  footText: { fontSize: 7.5, color: BRAND.soft },
+  footText: { fontSize: 6.5, color: BRAND.soft, letterSpacing: 0.4 },
 });

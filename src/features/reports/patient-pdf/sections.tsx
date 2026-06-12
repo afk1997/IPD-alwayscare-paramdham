@@ -58,7 +58,7 @@ export function Masthead({ model, logo }: { model: ReportModel; logo: Buffer | n
   return (
     <View style={s.masthead}>
       {logo ? (
-        <Image src={logo} style={{ width: 200, height: 200 * LOGO_AR }} />
+        <Image src={logo} style={{ width: 150, height: 150 * LOGO_AR }} />
       ) : (
         <Text style={s.mastBrandFallback}>{CLINIC_NAME}</Text>
       )}
@@ -84,7 +84,7 @@ export function PageHeader({ model, logo }: { model: ReportModel; logo: Buffer |
         pageNumber === 1 ? null : (
           <View style={s.pgHead}>
             {logo ? (
-              <Image src={logo} style={{ width: 56, height: 56 * LOGO_AR }} />
+              <Image src={logo} style={{ width: 48, height: 48 * LOGO_AR }} />
             ) : (
               <Text style={{ fontFamily: 'Noto Serif', fontWeight: 700, fontSize: 9, color: BRAND.red }}>
                 {CLINIC_NAME}
@@ -121,7 +121,7 @@ export function Hero({ model, images }: { model: ReportModel; images: Map<string
   return (
     <View style={s.hero}>
       {p.avatarAssetId ? (
-        <FitImage id={p.avatarAssetId} images={images} maxW={110} maxH={110} />
+        <FitImage id={p.avatarAssetId} images={images} maxW={104} maxH={104} />
       ) : (
         <View style={[s.imgPh, { width: 96, height: 96 }]}>
           <Text style={{ fontSize: 9, color: BRAND.soft }}>No photo</Text>
@@ -131,13 +131,8 @@ export function Hero({ model, images }: { model: ReportModel; images: Map<string
         <T style={s.heroName} dyn={p.name}>
           {p.name}
         </T>
-        <Text
-          style={[
-            s.pill,
-            { backgroundColor: `${OUTCOME_BG[model.outcome.kind]}22`, color: OUTCOME_BG[model.outcome.kind] },
-          ]}
-        >
-          {model.outcome.label}
+        <Text style={[s.outcomeInline, { color: OUTCOME_BG[model.outcome.kind] }]}>
+          {model.outcome.label.toUpperCase()}
         </Text>
         <View style={s.kv}>
           <KV label="Species" val={p.breedAge} />
@@ -210,7 +205,7 @@ export function AdmissionMediaSection({
       <View style={s.grid}>
         {model.admissionMedia.map((m: RawMedia) => (
           <View key={m.assetId}>
-            <FitImage id={m.assetId} images={images} maxW={150} maxH={220} />
+            <FitImage id={m.assetId} images={images} maxW={150} maxH={210} />
             <Text style={s.gcap}>{m.label || 'Admission'}</Text>
           </View>
         ))}
@@ -221,95 +216,56 @@ export function AdmissionMediaSection({
 
 // ── Day-by-day log ────────────────────────────────────────────────────────
 
-function detailPill(text: string, i: number) {
-  return text.length <= 26 &&
-    !/^(Notes|Remarks|Findings|Interpretation|Complications|Post-op|Bath notes|Summary):/.test(text) ? (
-    <T key={i} style={s.dpill}>
-      {text}
-    </T>
-  ) : null;
-}
+const LONG_DETAIL = /^(Notes|Remarks|Findings|Interpretation|Complications|Post-op|Bath notes|Summary):/;
 
 function ActivityBlock({ e, images }: { e: ReportEntry; images: Map<string, ReportImage> }) {
   const color = TYPE_COLOR[e.type] ?? BRAND.muted;
   const label = e.type[0] + e.type.slice(1).toLowerCase();
+  const short = e.details.filter((d) => d.length <= 26 && !LONG_DETAIL.test(d));
+  const long = e.details.filter((d) => d.length > 26 || LONG_DETAIL.test(d));
+  const hasBody = long.length > 0 || e.links.length > 0 || e.stills.length > 0;
 
-  const pills = e.details.map((d, i) => detailPill(d, i)).filter(Boolean);
-  const lines = e.details.filter(
-    (d) =>
-      d.length > 26 ||
-      /^(Notes|Remarks|Findings|Interpretation|Complications|Post-op|Bath notes|Summary):/.test(d),
-  );
-  const head = (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-      <Text style={[s.chip, { backgroundColor: `${color}22`, color }]}>{label}</Text>
+  return (
+    <View style={s.row} {...(e.stills.length === 0 ? { wrap: false } : {})}>
       <Text style={s.time}>{e.time}</Text>
-    </View>
-  );
-  const bodyText = (
-    <>
-      <T style={s.summary} dyn={e.summary}>
-        {e.summary}
-      </T>
-      {pills.length > 0 && <View style={s.pills}>{pills}</View>}
-      {lines.map((l) => (
-        <T key={l} style={s.dline} dyn={l}>
-          {l}
-        </T>
-      ))}
-      {e.links.map((m) => (
-        <T key={m.assetId} style={s.link} dyn={m.filename}>
-          {m.kind === 'VIDEO' ? 'Video: ' : 'Doc: '}
-          {m.filename}
-        </T>
-      ))}
-      <T style={s.by} dyn={e.byName}>
-        by {e.byName}
-        {e.edited ? ' · edited' : ''}
-      </T>
-    </>
-  );
-
-  if (e.stills.length === 0) {
-    return (
-      <View style={[s.crow, { borderLeftColor: color }]} wrap={false}>
-        <Text style={s.time}>{e.time}</Text>
-        <Text style={[s.chip, { backgroundColor: `${color}22`, color }]}>{label}</Text>
-        <T style={{ flex: 1, fontSize: 9 }} dyn={e.summary}>
+      <View style={[s.dot, { backgroundColor: color }]} />
+      <Text style={s.typeTag}>{label}</Text>
+      <View style={s.entryBody}>
+        <T style={s.summaryMin} dyn={e.summary}>
           {e.summary}
         </T>
-      </View>
-    );
-  }
-  if (e.stills.length === 1) {
-    return (
-      <View style={[s.card, { borderLeftColor: color }]} wrap={false}>
-        <View>
-          <FitImage id={e.stills[0]?.assetId ?? ''} images={images} maxW={150} maxH={220} />
-          <Text style={s.gcap}>
-            {e.time} · {e.stills[0]?.label || 'Photo'}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          {head}
-          {bodyText}
-        </View>
-      </View>
-    );
-  }
-  return (
-    <View style={[s.card, { borderLeftColor: color, flexDirection: 'column' }]}>
-      {head}
-      {bodyText}
-      <View style={s.grid}>
-        {e.stills.map((m) => (
-          <View key={m.assetId}>
-            <FitImage id={m.assetId} images={images} maxW={150} maxH={220} />
-            <Text style={s.gcap}>
-              {e.time} · {m.label || (m.kind === 'XRAY' ? 'X-ray' : 'Photo')}
-            </Text>
-          </View>
+        {short.length > 0 && (
+          <T style={s.detailLine} dyn={short.join('   ·   ')}>
+            {short.join('   ·   ')}
+          </T>
+        )}
+        {long.map((l) => (
+          <T key={l} style={s.detailLine} dyn={l}>
+            {l}
+          </T>
         ))}
+        {e.links.map((m) => (
+          <T key={m.assetId} style={s.link} dyn={m.filename}>
+            {m.kind === 'VIDEO' ? 'Video: ' : 'Doc: '}
+            {m.filename}
+          </T>
+        ))}
+        {e.stills.length > 0 && (
+          <View style={s.grid}>
+            {e.stills.map((m) => (
+              <View key={m.assetId}>
+                <FitImage id={m.assetId} images={images} maxW={148} maxH={200} />
+                <Text style={s.gcap}>{m.label || (m.kind === 'XRAY' ? 'X-ray' : 'Photo')}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        {hasBody && (
+          <T style={s.byMin} dyn={e.byName}>
+            by {e.byName}
+            {e.edited ? ' · edited' : ''}
+          </T>
+        )}
       </View>
     </View>
   );
@@ -318,15 +274,13 @@ function ActivityBlock({ e, images }: { e: ReportEntry; images: Map<string, Repo
 export function DayLog({ model, images }: { model: ReportModel; images: Map<string, ReportImage> }) {
   return (
     <BV title="Day-by-day log">
-      <Text style={[s.sec, { fontFamily: 'Noto Serif', fontSize: 12, color: BRAND.ink }]}>
-        Day-by-day log
-      </Text>
+      <Text style={s.sec}>Day-by-day log</Text>
       {model.days.map((d) => (
         <View key={d.key}>
-          <View style={s.dayBand} minPresenceAhead={40}>
+          <View style={s.dayHead} minPresenceAhead={40}>
             <Text style={s.dayLabel}>{d.label}</Text>
             <Text style={s.dayCnt}>
-              {d.entries.length} {d.entries.length === 1 ? 'entry' : 'entries'}
+              {d.entries.length} {d.entries.length === 1 ? 'ENTRY' : 'ENTRIES'}
             </Text>
           </View>
           {d.entries.map((e) => (
@@ -344,7 +298,7 @@ export function DocumentsList({ model }: { model: ReportModel }) {
     <BV title="Documents">
       <Text style={s.sec}>Documents ({model.documents.length})</Text>
       {model.documents.map((doc) => (
-        <T key={doc.id} style={s.dline} dyn={doc.name}>
+        <T key={doc.id} style={s.detailLine} dyn={doc.name}>
           {doc.category} · {doc.name}
           {doc.file ? '' : ' (no file)'}
         </T>
@@ -360,30 +314,28 @@ export function OutcomeSignoff({ model }: { model: ReportModel }) {
   return (
     <BV title="Outcome">
       <Text style={s.sec}>Outcome</Text>
-      <View style={[s.outcomeBox, { borderColor: tone, backgroundColor: `${tone}0d` }]}>
-        <Text style={[s.outcomeTitle, { color: tone }]}>{model.outcome.label.toUpperCase()}</Text>
-        {!!model.outcome.causeOfDeath && (
-          <T style={s.dline} dyn={model.outcome.causeOfDeath}>
-            Cause of death: {model.outcome.causeOfDeath}
-          </T>
-        )}
-        {!!model.outcome.summary && (
-          <T style={s.dline} dyn={model.outcome.summary}>
-            {model.outcome.summary}
-          </T>
-        )}
-        {!!model.outcome.instructions && (
-          <T style={s.dline} dyn={model.outcome.instructions}>
-            Aftercare: {model.outcome.instructions}
-          </T>
-        )}
-        {!!model.outcome.byName && (
-          <T style={s.by} dyn={model.outcome.byName}>
-            {model.outcome.kind === 'deceased' ? 'Recorded by ' : 'Discharged by '}
-            {model.outcome.byName}
-          </T>
-        )}
-      </View>
+      <Text style={[s.outcomeStatus, { color: tone }]}>{model.outcome.label.toUpperCase()}</Text>
+      {!!model.outcome.causeOfDeath && (
+        <T style={s.outcomeLine} dyn={model.outcome.causeOfDeath}>
+          Cause of death: {model.outcome.causeOfDeath}
+        </T>
+      )}
+      {!!model.outcome.summary && (
+        <T style={s.outcomeLine} dyn={model.outcome.summary}>
+          {model.outcome.summary}
+        </T>
+      )}
+      {!!model.outcome.instructions && (
+        <T style={s.outcomeLine} dyn={model.outcome.instructions}>
+          Aftercare: {model.outcome.instructions}
+        </T>
+      )}
+      {!!model.outcome.byName && (
+        <T style={s.byMin} dyn={model.outcome.byName}>
+          {model.outcome.kind === 'deceased' ? 'Recorded by ' : 'Discharged by '}
+          {model.outcome.byName}
+        </T>
+      )}
       <T style={s.provenance} dyn={model.generatedByName}>
         Generated from IPD records on {istDateTime(model.generatedAt)} · by {model.generatedByName}
       </T>

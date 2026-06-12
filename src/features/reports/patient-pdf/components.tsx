@@ -21,8 +21,9 @@ export function T({
   );
 }
 
-// Renders the COMPLETE image (no crop) at its own aspect ratio inside a
-// gold-matted frame no larger than maxW×maxH; placeholder when missing.
+// Renders the COMPLETE image (no crop) at its own aspect ratio, no larger
+// than maxW×maxH — bare, hairline-edged; placeholder when missing.
+// (Solid 6-digit borderColor only: react-pdf misparses 8-digit #RRGGBBAA.)
 export function FitImage({
   id,
   images,
@@ -39,9 +40,10 @@ export function FitImage({
   }
   const { w, h } = fitWithin(img.width, img.height, maxW, maxH);
   return (
-    <View style={s.imgMat}>
-      <Image src={{ data: img.data, format: 'jpg' }} style={{ width: w, height: h, borderRadius: 3 }} />
-    </View>
+    <Image
+      src={{ data: img.data, format: 'jpg' }}
+      style={{ width: w, height: h, borderRadius: 3, borderWidth: 0.5, borderColor: BRAND.hairline }}
+    />
   );
 }
 

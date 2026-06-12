@@ -202,7 +202,8 @@ function buildOutcome(a: RawReportData['animal']): ReportModel['outcome'] {
     };
   return {
     kind: 'in-care',
-    label: 'In care',
+    // Surface the live clinical status (Critical / Stable / Observation).
+    label: `In care · ${a.status.charAt(0) + a.status.slice(1).toLowerCase()}`,
     causeOfDeath: null,
     summary: null,
     instructions: null,
